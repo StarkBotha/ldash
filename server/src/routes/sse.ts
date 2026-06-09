@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { streamText } from 'hono/streaming';
+import { stream } from 'hono/streaming';
 import type { EventBus } from '../events/bus.js';
 
 export function createSseRouter(
@@ -16,12 +16,14 @@ export function createSseRouter(
       return c.json({ error: 'projectId query param required' }, 400);
     }
 
-    // Set SSE headers before the response starts streaming
+    // Set SSE headers before the response starts streaming.
+    // EventSource requires text/event-stream — streamText would send text/plain.
+    c.header('Content-Type', 'text/event-stream');
     c.header('Cache-Control', 'no-cache');
     c.header('Connection', 'keep-alive');
     c.header('X-Accel-Buffering', 'no');
 
-    return streamText(c, async (stream) => {
+    return stream(c, async (stream) => {
       // Write initial connected comment
       await stream.write(': connected\n\n');
 

@@ -1,0 +1,34 @@
+- generic [ref=e2]:
+  - button "⚙" [ref=e3] [cursor=pointer]
+  - generic [ref=e5]:
+    - generic [ref=e6]:
+      - button "← Back" [ref=e7]
+      - heading "Smoke Test Project" [level=1] [ref=e8]
+      - button "Edit" [ref=e9]
+      - generic [ref=e10]:
+        - button "Plan" [ref=e11]
+        - button "Export" [ref=e12]
+        - button "New item" [ref=e13]
+    - generic [ref=e14]:
+      - generic [ref=e16]:
+        - generic [ref=e17]: Backlog
+        - generic [ref=e18]: "0"
+        - button "+" [ref=e19] [cursor=pointer]
+      - generic [ref=e21]:
+        - generic [ref=e22]:
+          - generic [ref=e23]: In Progress
+          - generic [ref=e24]: "1"
+          - button "+" [ref=e25] [cursor=pointer]
+        - button "task Created via MCP by Claude Code" [active] [ref=e44] [cursor=pointer]:
+          - generic [ref=e45]:
+            - generic [ref=e46]: task
+            - generic [ref=e47]: Created via MCP by Claude Code
+      - generic [ref=e28]:
+        - generic [ref=e29]: Review
+        - generic [ref=e30]: "0"
+        - button "+" [ref=e31] [cursor=pointer]
+      - generic [ref=e34]:
+        - generic [ref=e35]: Done
+        - generic [ref=e36]: "0"
+        - button "+" [ref=e37] [cursor=pointer]
+    - status [ref=e39]: Draggable item D2WsHKrXW1ot9GK7XFDQY was dropped over droppable area D2WsHKrXW1ot9GK7XFDQY

@@ -150,6 +150,12 @@ describe('SSE endpoint', () => {
     expect(body.error).toBe('projectId query param required');
   });
 
+  it('responds with text/event-stream content type (EventSource requirement)', async () => {
+    const res = await fetch(`http://127.0.0.1:${port}/api/sse?projectId=proj_ct`);
+    expect(res.headers.get('content-type')).toContain('text/event-stream');
+    await res.body?.cancel();
+  });
+
   it('connects and receives initial : connected comment', async () => {
     const conn = await connectSSE(port, 'proj_test');
     await wait(100);

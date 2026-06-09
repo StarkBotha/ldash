@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { DndContext } from '@dnd-kit/core';
+import { DndContext, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import type { DragEndEvent } from '@dnd-kit/core';
 import { useQueryClient } from '@tanstack/react-query';
 import { useProject } from '../hooks/useProjects';
@@ -33,6 +33,9 @@ export function Board({ projectId, onBack }: Props) {
   const [isPlanningMode, setIsPlanningMode] = useState(false);
   const queryClient = useQueryClient();
   const { status } = useSSE(projectId);
+  // Require 8px of movement before a drag starts, so plain clicks on cards
+  // still fire onClick instead of being swallowed as zero-distance drags.
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
 
   if (isPlanningMode) {
     return <PlanView projectId={projectId} onClose={() => setIsPlanningMode(false)} />;
@@ -63,6 +66,9 @@ export function Board({ projectId, onBack }: Props) {
 
     const itemId = String(active.id);
     const overId = String(over.id);
+
+    // Dropped onto itself (e.g. a zero-distance drag) — nothing to do
+    if (itemId === overId) return;
 
     // Determine toColumnId: if overId is a column id use it directly, else look up the item's column
     const columnIds = new Set(sortedColumns.map((c) => c.id));
@@ -133,7 +139,7 @@ export function Board({ projectId, onBack }: Props) {
         </div>
       </div>
 
-      <DndContext onDragEnd={handleDragEnd}>
+      <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
         <div style={{ flex: 1, display: 'flex', overflowX: 'auto', padding: 16, gap: 16 }}>
           {sortedColumns.map((col) => (
             <Column

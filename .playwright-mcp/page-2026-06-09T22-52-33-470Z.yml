@@ -1,0 +1,61 @@
+- generic [ref=e2]:
+  - button "⚙" [active] [ref=e3] [cursor=pointer]
+  - generic [ref=e142]:
+    - generic [ref=e143]:
+      - heading "LLM Settings" [level=2] [ref=e144]
+      - button "✕" [ref=e145] [cursor=pointer]
+    - heading "Providers" [level=3] [ref=e146]
+    - button "+ Add provider" [ref=e147]
+    - heading "Active provider" [level=3] [ref=e148]
+    - combobox [ref=e149]:
+      - option "(none)" [selected]
+    - button "Save" [ref=e151] [cursor=pointer]
+  - generic [ref=e48]:
+    - generic [ref=e49]:
+      - button "← Back" [ref=e50]
+      - heading "Smoke Test Project" [level=1] [ref=e51]
+      - button "Edit" [ref=e52]
+      - generic [ref=e53]:
+        - button "Plan" [ref=e54]
+        - button "Export" [ref=e55]
+        - button "New item" [ref=e56]
+    - generic [ref=e57]:
+      - generic [ref=e59]:
+        - generic [ref=e60]: Backlog
+        - generic [ref=e61]: "0"
+        - button "+" [ref=e62] [cursor=pointer]
+      - generic [ref=e64]:
+        - generic [ref=e65]:
+          - generic [ref=e66]: In Progress
+          - generic [ref=e67]: "1"
+          - button "+" [ref=e68] [cursor=pointer]
+        - button "task Created via MCP by Claude Code" [ref=e70] [cursor=pointer]:
+          - generic [ref=e71]:
+            - generic [ref=e72]: task
+            - generic [ref=e73]: Created via MCP by Claude Code
+      - generic [ref=e75]:
+        - generic [ref=e76]: Review
+        - generic [ref=e77]: "0"
+        - button "+" [ref=e78] [cursor=pointer]
+      - generic [ref=e81]:
+        - generic [ref=e82]: Done
+        - generic [ref=e83]: "0"
+        - button "+" [ref=e84] [cursor=pointer]
+    - status [ref=e86]
+    - generic [ref=e88]:
+      - generic [ref=e89]:
+        - generic [ref=e90]:
+          - generic [ref=e92]: task
+          - heading "Created via MCP by Claude Code" [level=2] [ref=e93]
+        - generic [ref=e94]:
+          - button "Edit" [ref=e95]
+          - button "✕" [ref=e96]
+      - generic [ref=e97]:
+        - button "Details" [ref=e98] [cursor=pointer]
+        - button "Comments / Activity" [ref=e99] [cursor=pointer]
+        - button "Chat" [ref=e100] [cursor=pointer]
+      - generic [ref=e134]:
+        - generic [ref=e136]: No provider configured
+        - generic [ref=e138]:
+          - textbox "Ask about this item... (Enter to send, Shift+Enter for newline)" [ref=e139]
+          - button "Send" [disabled] [ref=e140] [cursor=pointer]
