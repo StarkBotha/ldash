@@ -86,6 +86,20 @@ export interface GatewaySettings {
   activeProvider: string | null;
 }
 
+export interface ChatMessage {
+  role: 'user' | 'assistant' | 'tool' | 'system';
+  content: string;
+  tool_call_id?: string;
+  tool_calls?: unknown[];
+}
+
+export type PlanningStreamEvent =
+  | { type: 'text'; content: string }
+  | { type: 'tool_call'; toolName: string; label: string }
+  | { type: 'tool_result'; toolName: string; success: boolean }
+  | { type: 'done' }
+  | { type: 'error'; message: string };
+
 export type ChatStreamEvent =
   | { type: 'text'; text: string }
   | { type: 'done' }

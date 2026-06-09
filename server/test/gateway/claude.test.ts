@@ -92,14 +92,20 @@ describe('ClaudeAdapter', () => {
     expect(process.env.ANTHROPIC_API_KEY).toBeUndefined();
   });
 
-  it('callWithTools throws not-implemented error', async () => {
+  it('callWithTools yields error chunk when CLAUDE_CODE_OAUTH_TOKEN is not set', async () => {
+    // Ensure the token is absent
+    delete process.env.CLAUDE_CODE_OAUTH_TOKEN;
+
     const adapter = new ClaudeAdapter({ authMode: 'subscription' });
 
-    await expect(async () => {
-      for await (const _chunk of adapter.callWithTools([], [])) {
-        // consume
-      }
-    }).rejects.toThrow(/not implemented/i);
+    const chunks: unknown[] = [];
+    for await (const chunk of adapter.callWithTools([{ role: 'user', content: 'Hi' }], [])) {
+      chunks.push(chunk);
+    }
+
+    expect(chunks).toContainEqual(
+      expect.objectContaining({ type: 'error', message: expect.stringContaining('CLAUDE_CODE_OAUTH_TOKEN') })
+    );
   });
 
   it('constructor throws if authMode is api-key and apiKey is missing', () => {

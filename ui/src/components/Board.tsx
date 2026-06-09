@@ -10,7 +10,9 @@ import { ConnectionIndicator } from './ConnectionIndicator';
 import { ItemDetailPanel } from './ItemDetailPanel';
 import { ItemForm } from './ItemForm';
 import { ProjectForm } from './ProjectForm';
+import { PlanView } from './PlanView';
 import { api } from '../api/client';
+import { triggerExport } from '../api/export';
 import type { Item } from '../types';
 
 interface Props {
@@ -28,8 +30,13 @@ export function Board({ projectId, onBack }: Props) {
   const [editingItem, setEditingItem] = useState<Item | null>(null);
   const [showProjectForm, setShowProjectForm] = useState(false);
   const [dragOverride, setDragOverride] = useState<{ itemId: string; toColumnId: string } | null>(null);
+  const [isPlanningMode, setIsPlanningMode] = useState(false);
   const queryClient = useQueryClient();
   const { status } = useSSE(projectId);
+
+  if (isPlanningMode) {
+    return <PlanView projectId={projectId} onClose={() => setIsPlanningMode(false)} />;
+  }
 
   if (colsLoading || itemsLoading) return <div style={{ padding: 24 }}>Loading board…</div>;
 
@@ -106,7 +113,20 @@ export function Board({ projectId, onBack }: Props) {
         <button onClick={onBack}>← Back</button>
         <h1 style={{ margin: 0, fontSize: 20 }}>{project?.name}</h1>
         <button onClick={() => setShowProjectForm(true)}>Edit</button>
-        <div style={{ marginLeft: 'auto' }}>
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+          <button onClick={() => setIsPlanningMode(true)}>Plan</button>
+          <button
+            onClick={async () => {
+              try {
+                const result = await triggerExport(projectId);
+                window.alert('Exported to: ' + result.outputDir);
+              } catch (err: unknown) {
+                window.alert('Export failed: ' + (err instanceof Error ? err.message : String(err)));
+              }
+            }}
+          >
+            Export
+          </button>
           <button onClick={() => openNewItemForm(sortedColumns[0]?.id ?? '')}>
             New item
           </button>

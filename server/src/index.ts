@@ -21,6 +21,8 @@ import { createMcpRouter } from './routes/mcp.js';
 import { createSseRouter } from './routes/sse.js';
 import { createConversationsRouter } from './routes/conversations.js';
 import { createSettingsRouter } from './routes/settings.js';
+import { createPlanningRouter } from './routes/planning.js';
+import { createExportRouter } from './routes/export.js';
 import { eventBus } from './events/bus.js';
 import type { Services } from './types.js';
 
@@ -92,6 +94,10 @@ app.route('/mcp', createMcpRouter(services, eventBus));
 // Conversations and settings routes
 app.route('/', createConversationsRouter(services, conversationService, settingsService));
 app.route('/', createSettingsRouter(settingsService));
+
+// Planning and export routes
+app.route('/', createPlanningRouter(services, settingsService, eventBus));
+app.route('/', createExportRouter(services));
 
 // 7. Register error middleware
 app.onError(onError);

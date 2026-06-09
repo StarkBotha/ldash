@@ -1,5 +1,5 @@
 export type ItemType = 'epic' | 'story' | 'task';
-export type ActorType = 'user' | 'claude';
+export type ActorType = 'user' | 'claude' | 'llm';
 
 export interface Column {
   id: string;

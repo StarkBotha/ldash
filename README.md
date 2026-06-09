@@ -149,6 +149,44 @@ API keys are stored in the local SQLite database and masked in all API responses
 - Per-item LLM chat with streaming responses and full item context assembly
 - Settings page for provider configuration (Claude subscription, OpenAI-compatible, OpenRouter, Ollama)
 
+## Planning mode
+
+Click the **Plan** button in any project board header to open planning mode. This replaces the board layout with a split view: a full-height AI chat panel on top (roughly 60 % of the viewport) and a live, read-only compact board below (roughly 40 %).
+
+The planning assistant has read access to your project's current state — columns, existing items, and the item hierarchy — injected as context on every turn. Tell it what you want to build. It will ask clarifying questions, propose a breakdown in words, and only call the board tools (`create_item`, `update_item`, `list_items`) once you have agreed. Items created during a planning session appear on the compact board below in real time via the existing SSE stream, with a tool-call indicator line in the chat (e.g. `Creating story: "Implement auth endpoint"`).
+
+All items created by the planning assistant are written with `actor_type: 'llm'` and `actor_id: 'planning-llm'` in the activity log, so you can always distinguish them from items you or Claude Code created.
+
+Click **Close planning mode** to return to the normal kanban board. All items created during the session are already on the board.
+
+Use **Clear history** inside the planning chat to start a fresh conversation; board items previously created are not removed.
+
+## Markdown export
+
+Click the **Export** button in any project board header to generate a markdown snapshot of the project. The export is written synchronously to `exports/<project-slug>/` relative to the server's working directory:
+
+- `README.md` — project overview listing all epics with links
+- `epic-<slug>/README.md` — one file per epic, containing its stories and tasks with status labels
+- `orphans.md` — any stories or tasks whose parent item no longer exists (only present if orphans exist)
+
+Running the export again overwrites the existing files. The files are derived from the database state and are never read back by the server — treat them as disposable snapshots you can commit, share, or delete.
+
+## How it all fits together
+
+The workflow moves in one direction and each layer builds on the previous one:
+
+1. **Plan with AI** — Open planning mode on a project, describe what you want to build, and let the assistant break it down into epics, stories, and tasks. It populates the board while you talk.
+
+2. **Board** — Everything lands on the kanban board with drag-and-drop columns (Backlog, In Progress, Review, Done). You can create, edit, move, flag, and block items at any time.
+
+3. **Connect Claude Code via MCP** — Register the server as an MCP endpoint (`claude mcp add ldash --transport http http://127.0.0.1:3000/mcp`). Claude Code can then read and write board items during a coding session — filing tasks it discovers, updating statuses as it completes work, and leaving comments on items.
+
+4. **Watch realtime** — Any change — from the UI, from Claude Code, or from the planning assistant — triggers an SSE event. All open browser tabs update the board within 2 seconds without a page reload.
+
+5. **Chat per task** — Open any item's detail panel and use the Chat tab to ask about that specific item. The assistant receives the full item context (title, status, comments, activity, children) on every message.
+
+6. **Export** — When a planning sprint is complete, export the project to markdown for a human-readable record you can commit alongside the code.
+
 ## Phases
 
-Phase 1: core board. Phase 2: MCP server. Phase 3: realtime SSE + drag-and-drop. Phase 4 (current): LLM chat + provider gateway. Phase 5: planning mode + markdown export.
+Phase 1: core board. Phase 2: MCP server. Phase 3: realtime SSE + drag-and-drop. Phase 4: LLM chat + provider gateway. Phase 5 (current): planning mode + markdown export.
