@@ -142,6 +142,38 @@ export class ItemService {
     return this.get(id) as Item;
   }
 
+  listFiltered(opts: {
+    project_id: string;
+    column_id?: string;
+    type?: ItemType;
+    parent_id?: string | null;
+  }): Item[] {
+    let sql = 'SELECT * FROM items WHERE project_id = ?';
+    const params: unknown[] = [opts.project_id];
+
+    if (opts.column_id !== undefined) {
+      sql += ' AND column_id = ?';
+      params.push(opts.column_id);
+    }
+    if (opts.type !== undefined) {
+      sql += ' AND type = ?';
+      params.push(opts.type);
+    }
+    if (opts.parent_id !== undefined) {
+      if (opts.parent_id === 'null') {
+        sql += ' AND parent_id IS NULL';
+      } else {
+        sql += ' AND parent_id = ?';
+        params.push(opts.parent_id);
+      }
+    }
+
+    sql += ' ORDER BY column_id ASC, position ASC';
+
+    const rows = this.db.prepare(sql).all(...params) as ItemRow[];
+    return rows.map(rowToItem);
+  }
+
   delete(id: string): void {
     this.db.prepare('DELETE FROM items WHERE id = ?').run(id);
   }

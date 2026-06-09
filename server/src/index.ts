@@ -14,6 +14,8 @@ import { itemsRouter, projectItemsRouter } from './routes/items.js';
 import { commentsRouter, itemCommentsRouter } from './routes/comments.js';
 import { projectActivityRouter, itemActivityRouter } from './routes/activity.js';
 import { onError } from './middleware/error.js';
+import { createMcpRouter } from './routes/mcp.js';
+import type { Services } from './types.js';
 
 const DB_PATH = process.env.DB_PATH ?? './ldash.db';
 const PORT = parseInt(process.env.PORT ?? '3000', 10);
@@ -33,6 +35,14 @@ const columnService = new ColumnService(db);
 const itemService = new ItemService(db);
 const commentService = new CommentService(db);
 const activityService = new ActivityService(db);
+
+const services: Services = {
+  projects: projectService,
+  items: itemService,
+  columns: columnService,
+  comments: commentService,
+  activity: activityService,
+};
 
 // 5. Create Hono app
 const app = new Hono();
@@ -55,6 +65,9 @@ itemNestedApp.route('/activity', itemActivityRouter(activityService, itemService
 app.route('/api/items/:itemId', itemNestedApp);
 
 app.route('/api/comments', commentsRouter(commentService, itemService, activityService));
+
+// MCP server
+app.route('/mcp', createMcpRouter(services));
 
 // 7. Register error middleware
 app.onError(onError);

@@ -81,6 +81,16 @@ ldash/
 | `PORT` | `3000` | Server listen port |
 | `DB_PATH` | `./ldash.db` | SQLite database file path |
 
+## Connect Claude Code
+
+After starting the server, register it as an MCP server in Claude Code from within your project repo:
+
+```sh
+claude mcp add ldash --transport http http://127.0.0.1:3000/mcp
+```
+
+Claude Code will connect to the ldash MCP endpoint and discover nine tools: `ldash_list_projects` to browse available projects, `ldash_list_items` to view board items with optional filters, `ldash_get_item` to read the full detail of an item including comments and recent activity, `ldash_create_item` to file new tasks or stories directly from a session, `ldash_update_item_fields` to revise a title or description, `ldash_update_item_status` to move an item between columns (accepts a column name or id), `ldash_add_comment` to leave a note on an item, `ldash_flag_item` to mark an item for human review, and `ldash_block_item` to record a blocker and the reason for it. All write operations record an activity entry with `actor_type: "claude"` so every change the agent makes is visible in the board's activity feed.
+
 ## Phases
 
 Phase 1 (this): core board. Phase 2: MCP server. Phase 3: realtime SSE. Phase 4: LLM chat. Phase 5: planning mode + markdown export.

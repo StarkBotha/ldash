@@ -72,3 +72,18 @@ export const EventTypes = {
 } as const;
 
 export type EventType = typeof EventTypes[keyof typeof EventTypes];
+
+// Services bundle used by the MCP server
+import type { ProjectService } from './services/projects.js';
+import type { ItemService } from './services/items.js';
+import type { ColumnService } from './services/columns.js';
+import type { CommentService } from './services/comments.js';
+import type { ActivityService } from './services/activity.js';
+
+export interface Services {
+  projects: ProjectService;
+  items: ItemService;
+  columns: ColumnService;
+  comments: CommentService;
+  activity: ActivityService;
+}

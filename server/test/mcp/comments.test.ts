@@ -1,0 +1,80 @@
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { createTestContext, type TestContext } from './setup.js';
+
+function getText(result: { content: Array<{ type: string; text?: string }> }): string {
+  return (result.content[0] as { type: 'text'; text: string }).text;
+}
+
+describe('ldash_add_comment', () => {
+  let ctx: TestContext;
+  let itemId: string;
+
+  beforeEach(async () => {
+    ctx = await createTestContext();
+    const project = ctx.services.projects.create({ name: 'Test Project' });
+    const columns = ctx.services.columns.list();
+    const item = ctx.services.items.create({
+      project_id: project.id,
+      type: 'task',
+      title: 'Test Item',
+      column_id: columns[0].id,
+    });
+    itemId = item.id;
+  });
+
+  afterEach(async () => {
+    await ctx.teardown();
+  });
+
+  it('creates a comment with author === "claude-code"', async () => {
+    const result = await ctx.client.callTool({
+      name: 'ldash_add_comment',
+      arguments: { item_id: itemId, body: 'This is a comment' },
+    });
+    expect(result.isError).toBeFalsy();
+    const comment = JSON.parse(getText(result));
+    expect(comment.author).toBe('claude-code');
+    expect(comment.body).toBe('This is a comment');
+    expect(comment.item_id).toBe(itemId);
+  });
+
+  it('comment appears in GET /api/items/:itemId/comments', async () => {
+    await ctx.client.callTool({
+      name: 'ldash_add_comment',
+      arguments: { item_id: itemId, body: 'HTTP visible comment' },
+    });
+
+    const comments = ctx.services.comments.listByItem(itemId);
+    expect(comments.some(c => c.body === 'HTTP visible comment')).toBe(true);
+  });
+
+  it('returns isError for empty body (Zod validation)', async () => {
+    const result = await ctx.client.callTool({
+      name: 'ldash_add_comment',
+      arguments: { item_id: itemId, body: '' },
+    });
+    expect(result.isError).toBe(true);
+  });
+
+  it('returns isError for nonexistent item_id', async () => {
+    const result = await ctx.client.callTool({
+      name: 'ldash_add_comment',
+      arguments: { item_id: 'no-such-item', body: 'Hello' },
+    });
+    expect(result.isError).toBe(true);
+    expect(getText(result)).toContain('not found');
+  });
+
+  it('writes comment.created activity with actor_type === "claude"', async () => {
+    await ctx.client.callTool({
+      name: 'ldash_add_comment',
+      arguments: { item_id: itemId, body: 'Activity comment' },
+    });
+
+    const activity = ctx.services.activity.listByItem(itemId, { limit: 10 });
+    const entry = activity.find(a => a.event_type === 'comment.created');
+    expect(entry).toBeDefined();
+    expect(entry!.actor_type).toBe('claude');
+    expect(entry!.actor_id).toBe('claude-code');
+  });
+});
