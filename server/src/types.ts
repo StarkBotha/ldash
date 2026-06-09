@@ -1,0 +1,74 @@
+export type ItemType = 'epic' | 'story' | 'task';
+export type ActorType = 'user' | 'claude';
+
+export interface Column {
+  id: string;
+  name: string;
+  position: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Project {
+  id: string;
+  name: string;
+  description: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Item {
+  id: string;
+  project_id: string;
+  parent_id: string | null;
+  type: ItemType;
+  title: string;
+  description: string;
+  column_id: string;
+  position: number;
+  flagged: boolean;
+  blocked: boolean;
+  blocked_reason: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Comment {
+  id: string;
+  item_id: string;
+  author: string;
+  body: string;
+  created_at: string;
+}
+
+export interface ActivityEntry {
+  id: string;
+  item_id: string | null;
+  project_id: string | null;
+  actor_type: ActorType;
+  actor_id: string;
+  event_type: string;
+  payload: Record<string, unknown>;
+  created_at: string;
+}
+
+// Event type constants
+export const EventTypes = {
+  PROJECT_CREATED: 'project.created',
+  PROJECT_UPDATED: 'project.updated',
+  PROJECT_DELETED: 'project.deleted',
+  ITEM_CREATED: 'item.created',
+  ITEM_UPDATED: 'item.updated',
+  ITEM_MOVED: 'item.moved',
+  ITEM_DELETED: 'item.deleted',
+  ITEM_FLAGGED: 'item.flagged',
+  ITEM_UNFLAGGED: 'item.unflagged',
+  ITEM_BLOCKED: 'item.blocked',
+  ITEM_UNBLOCKED: 'item.unblocked',
+  COMMENT_CREATED: 'comment.created',
+  COLUMN_CREATED: 'column.created',
+  COLUMN_UPDATED: 'column.updated',
+  COLUMN_REORDERED: 'column.reordered',
+} as const;
+
+export type EventType = typeof EventTypes[keyof typeof EventTypes];

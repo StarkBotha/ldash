@@ -1,0 +1,53 @@
+export type ItemType = 'epic' | 'story' | 'task';
+export type ActorType = 'user' | 'claude';
+
+export interface Column {
+  id: string;
+  name: string;
+  position: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Project {
+  id: string;
+  name: string;
+  description: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Item {
+  id: string;
+  project_id: string;
+  parent_id: string | null;
+  type: ItemType;
+  title: string;
+  description: string;
+  column_id: string;
+  position: number;
+  flagged: boolean;
+  blocked: boolean;
+  blocked_reason: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Comment {
+  id: string;
+  item_id: string;
+  author: string;
+  body: string;
+  created_at: string;
+}
+
+export interface ActivityEntry {
+  id: string;
+  item_id: string | null;
+  project_id: string | null;
+  actor_type: ActorType;
+  actor_id: string;
+  event_type: string;
+  payload: Record<string, unknown>;
+  created_at: string;
+}
