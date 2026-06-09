@@ -4,6 +4,8 @@ import type { ProjectService } from '../services/projects.js';
 import type { ColumnService } from '../services/columns.js';
 import type { ActivityService } from '../services/activity.js';
 import { EventTypes } from '../types.js';
+import { eventBus as defaultBus } from '../events/bus.js';
+import type { EventBus } from '../events/bus.js';
 
 const VALID_TYPES = new Set(['epic', 'story', 'task']);
 
@@ -17,7 +19,8 @@ export function itemsRouter(
   itemService: ItemService,
   projectService: ProjectService,
   columnService: ColumnService,
-  activityService: ActivityService
+  activityService: ActivityService,
+  bus: EventBus = defaultBus
 ): Hono {
   const app = new Hono();
 
@@ -98,6 +101,13 @@ export function itemsRouter(
       payload: { title: item.title, type: item.type, column_id: item.column_id },
     });
 
+    bus.emit({
+      type: 'item.created',
+      projectId: item.project_id,
+      entityId: item.id,
+      data: { item },
+    });
+
     return c.json(item, 201);
   });
 
@@ -170,6 +180,13 @@ export function itemsRouter(
       payload: { fields: { old: oldFields, new: newFields } },
     });
 
+    bus.emit({
+      type: 'item.updated',
+      projectId: existing.project_id,
+      entityId: id,
+      data: { item: updated },
+    });
+
     return c.json(updated);
   });
 
@@ -213,6 +230,13 @@ export function itemsRouter(
       },
     });
 
+    bus.emit({
+      type: 'item.moved',
+      projectId: existing.project_id,
+      entityId: id,
+      data: { item: updated, fromColumnId: existing.column_id, toColumnId: column_id },
+    });
+
     return c.json(updated);
   });
 
@@ -239,6 +263,13 @@ export function itemsRouter(
       item_id: id,
       event_type: flagged ? EventTypes.ITEM_FLAGGED : EventTypes.ITEM_UNFLAGGED,
       payload: { flagged },
+    });
+
+    bus.emit({
+      type: flagged ? 'item.flagged' : 'item.unflagged',
+      projectId: existing.project_id,
+      entityId: id,
+      data: { item: updated },
     });
 
     return c.json(updated);
@@ -274,6 +305,13 @@ export function itemsRouter(
       payload: blocked ? { blocked: true, reason: resolvedReason } : { blocked: false },
     });
 
+    bus.emit({
+      type: blocked ? 'item.blocked' : 'item.unblocked',
+      projectId: existing.project_id,
+      entityId: id,
+      data: { item: updated },
+    });
+
     return c.json(updated);
   });
 
@@ -295,6 +333,14 @@ export function itemsRouter(
     });
 
     itemService.delete(id);
+
+    bus.emit({
+      type: 'item.deleted',
+      projectId: existing.project_id,
+      entityId: id,
+      data: { itemId: id, title: existing.title, type: existing.type },
+    });
+
     return new Response(null, { status: 204 });
   });
 

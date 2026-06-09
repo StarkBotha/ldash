@@ -2,8 +2,10 @@ import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/
 import type { Context } from 'hono';
 import { createMcpServer } from './server.js';
 import type { Services } from '../types.js';
+import { eventBus as defaultBus } from '../events/bus.js';
+import type { EventBus } from '../events/bus.js';
 
-export function createMcpHandler(services: Services): {
+export function createMcpHandler(services: Services, bus: EventBus = defaultBus): {
   handlePost: (c: Context) => Promise<Response>;
   handleGet: (c: Context) => Promise<Response>;
 } {
@@ -16,7 +18,7 @@ export function createMcpHandler(services: Services): {
     }
 
     // Stateless mode: create a new server + transport per request
-    const server = createMcpServer(services);
+    const server = createMcpServer(services, bus);
     const transport = new WebStandardStreamableHTTPServerTransport({
       sessionIdGenerator: undefined,
     });
@@ -28,7 +30,7 @@ export function createMcpHandler(services: Services): {
 
   const handleGet = async (c: Context): Promise<Response> => {
     // Stateless mode: create a new server + transport per request
-    const server = createMcpServer(services);
+    const server = createMcpServer(services, bus);
     const transport = new WebStandardStreamableHTTPServerTransport({
       sessionIdGenerator: undefined,
     });

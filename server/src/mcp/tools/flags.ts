@@ -1,8 +1,10 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { Services } from '../../types.js';
+import { eventBus as defaultBus } from '../../events/bus.js';
+import type { EventBus } from '../../events/bus.js';
 
-export function registerFlagTools(server: McpServer, services: Services): void {
+export function registerFlagTools(server: McpServer, services: Services, bus: EventBus = defaultBus): void {
   // ldash_flag_item
   server.tool(
     'ldash_flag_item',
@@ -26,6 +28,13 @@ export function registerFlagTools(server: McpServer, services: Services): void {
         actor_id: 'claude-code',
         event_type: input.flagged ? 'item.flagged' : 'item.unflagged',
         payload: { flagged: input.flagged },
+      });
+
+      bus.emit({
+        type: input.flagged ? 'item.flagged' : 'item.unflagged',
+        projectId: item.project_id,
+        entityId: input.item_id,
+        data: { item: updatedItem },
       });
 
       return { content: [{ type: 'text' as const, text: JSON.stringify(updatedItem, null, 2) }] };
@@ -64,6 +73,13 @@ export function registerFlagTools(server: McpServer, services: Services): void {
         actor_id: 'claude-code',
         event_type: input.blocked ? 'item.blocked' : 'item.unblocked',
         payload: input.blocked ? { blocked: true, reason: input.reason } : { blocked: false },
+      });
+
+      bus.emit({
+        type: input.blocked ? 'item.blocked' : 'item.unblocked',
+        projectId: item.project_id,
+        entityId: input.item_id,
+        data: { item: updatedItem },
       });
 
       return { content: [{ type: 'text' as const, text: JSON.stringify(updatedItem, null, 2) }] };

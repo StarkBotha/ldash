@@ -2,6 +2,8 @@ import { Hono } from 'hono';
 import type { ColumnService } from '../services/columns.js';
 import type { ActivityService } from '../services/activity.js';
 import { EventTypes } from '../types.js';
+import { eventBus as defaultBus } from '../events/bus.js';
+import type { EventBus } from '../events/bus.js';
 
 function makeError(msg: string, status: number): Error {
   const err = new Error(msg) as Error & { status: number };
@@ -11,7 +13,8 @@ function makeError(msg: string, status: number): Error {
 
 export function columnsRouter(
   columnService: ColumnService,
-  activityService: ActivityService
+  activityService: ActivityService,
+  bus: EventBus = defaultBus
 ): Hono {
   const app = new Hono();
 
@@ -50,6 +53,13 @@ export function columnsRouter(
       payload: { order },
     });
 
+    bus.emit({
+      type: 'column.reordered',
+      projectId: '',
+      entityId: '',
+      data: { columns: updated },
+    });
+
     return c.json(updated);
   });
 
@@ -67,6 +77,13 @@ export function columnsRouter(
     activityService.append({
       event_type: EventTypes.COLUMN_CREATED,
       payload: { name: column.name },
+    });
+
+    bus.emit({
+      type: 'column.created',
+      projectId: '',
+      entityId: column.id,
+      data: { column },
     });
 
     return c.json(column, 201);
@@ -93,6 +110,13 @@ export function columnsRouter(
     activityService.append({
       event_type: EventTypes.COLUMN_UPDATED,
       payload: { fields: { old: { name: oldName }, new: { name: updated.name } } },
+    });
+
+    bus.emit({
+      type: 'column.updated',
+      projectId: '',
+      entityId: id,
+      data: { column: updated },
     });
 
     return c.json(updated);

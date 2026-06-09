@@ -51,3 +51,27 @@ export interface ActivityEntry {
   payload: Record<string, unknown>;
   created_at: string;
 }
+
+export type BoardEventType =
+  | 'item.created'
+  | 'item.updated'
+  | 'item.moved'
+  | 'item.deleted'
+  | 'item.flagged'
+  | 'item.unflagged'
+  | 'item.blocked'
+  | 'item.unblocked'
+  | 'comment.created'
+  | 'project.created'
+  | 'project.updated'
+  | 'project.deleted'
+  | 'column.created'
+  | 'column.updated'
+  | 'column.reordered';
+
+export interface BoardEvent {
+  type: BoardEventType;
+  projectId: string;
+  entityId: string;
+  data: Record<string, unknown>;
+}

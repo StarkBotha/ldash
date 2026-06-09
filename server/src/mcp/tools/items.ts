@@ -1,8 +1,10 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { Services } from '../../types.js';
+import { eventBus as defaultBus } from '../../events/bus.js';
+import type { EventBus } from '../../events/bus.js';
 
-export function registerItemTools(server: McpServer, services: Services): void {
+export function registerItemTools(server: McpServer, services: Services, bus: EventBus = defaultBus): void {
   // ldash_list_items
   server.tool(
     'ldash_list_items',
@@ -133,6 +135,13 @@ export function registerItemTools(server: McpServer, services: Services): void {
         payload: { title: item.title, type: item.type, column_id: item.column_id },
       });
 
+      bus.emit({
+        type: 'item.created',
+        projectId: item.project_id,
+        entityId: item.id,
+        data: { item },
+      });
+
       return { content: [{ type: 'text' as const, text: JSON.stringify(item, null, 2) }] };
     }
   );
@@ -177,6 +186,13 @@ export function registerItemTools(server: McpServer, services: Services): void {
         actor_id: 'claude-code',
         event_type: 'item.updated',
         payload: { fields },
+      });
+
+      bus.emit({
+        type: 'item.updated',
+        projectId: oldItem.project_id,
+        entityId: input.item_id,
+        data: { item: updatedItem },
       });
 
       return { content: [{ type: 'text' as const, text: JSON.stringify(updatedItem, null, 2) }] };
@@ -226,6 +242,13 @@ export function registerItemTools(server: McpServer, services: Services): void {
           from_column_name: fromColumnName,
           to_column_name: toColumnName,
         },
+      });
+
+      bus.emit({
+        type: 'item.moved',
+        projectId: oldItem.project_id,
+        entityId: input.item_id,
+        data: { item: movedItem, fromColumnId: oldItem.column_id, toColumnId: resolvedColumn.id },
       });
 
       return { content: [{ type: 'text' as const, text: JSON.stringify(movedItem, null, 2) }] };

@@ -1,3 +1,5 @@
+import { useDroppable } from '@dnd-kit/core';
+import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { Card } from './Card';
 import type { Column as ColumnType, Item } from '../types';
 
@@ -10,17 +12,23 @@ interface Props {
 
 export function Column({ column, items, onCardClick, onNewItem }: Props) {
   const sorted = [...items].sort((a, b) => a.position - b.position);
+  const itemIds = sorted.map((item) => item.id);
+
+  const { setNodeRef } = useDroppable({ id: column.id });
 
   return (
-    <div style={{
-      width: 280,
-      flexShrink: 0,
-      background: '#f5f5f5',
-      borderRadius: 8,
-      display: 'flex',
-      flexDirection: 'column',
-      maxHeight: '100%',
-    }}>
+    <div
+      ref={setNodeRef}
+      style={{
+        width: 280,
+        flexShrink: 0,
+        background: '#f5f5f5',
+        borderRadius: 8,
+        display: 'flex',
+        flexDirection: 'column',
+        maxHeight: '100%',
+      }}
+    >
       <div style={{
         padding: '10px 12px',
         display: 'flex',
@@ -38,11 +46,13 @@ export function Column({ column, items, onCardClick, onNewItem }: Props) {
           +
         </button>
       </div>
-      <div style={{ flex: 1, overflowY: 'auto', padding: 8, display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {sorted.map((item) => (
-          <Card key={item.id} item={item} onClick={() => onCardClick(item)} />
-        ))}
-      </div>
+      <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: 8, display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {sorted.map((item) => (
+            <Card key={item.id} item={item} onClick={() => onCardClick(item)} />
+          ))}
+        </div>
+      </SortableContext>
     </div>
   );
 }

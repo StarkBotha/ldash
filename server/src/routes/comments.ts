@@ -3,6 +3,8 @@ import type { CommentService } from '../services/comments.js';
 import type { ItemService } from '../services/items.js';
 import type { ActivityService } from '../services/activity.js';
 import { EventTypes } from '../types.js';
+import { eventBus as defaultBus } from '../events/bus.js';
+import type { EventBus } from '../events/bus.js';
 
 function makeError(msg: string, status: number): Error {
   const err = new Error(msg) as Error & { status: number };
@@ -13,7 +15,8 @@ function makeError(msg: string, status: number): Error {
 export function commentsRouter(
   commentService: CommentService,
   itemService: ItemService,
-  activityService: ActivityService
+  activityService: ActivityService,
+  bus: EventBus = defaultBus
 ): Hono {
   const app = new Hono();
 
@@ -50,6 +53,13 @@ export function commentsRouter(
       item_id,
       event_type: EventTypes.COMMENT_CREATED,
       payload: { comment_id: comment.id, author: comment.author },
+    });
+
+    bus.emit({
+      type: 'comment.created',
+      projectId: item.project_id,
+      entityId: comment.id,
+      data: { comment },
     });
 
     return c.json(comment, 201);

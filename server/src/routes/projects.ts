@@ -2,6 +2,8 @@ import { Hono } from 'hono';
 import type { ProjectService } from '../services/projects.js';
 import type { ActivityService } from '../services/activity.js';
 import { EventTypes } from '../types.js';
+import { eventBus as defaultBus } from '../events/bus.js';
+import type { EventBus } from '../events/bus.js';
 
 function makeError(msg: string, status: number): Error {
   const err = new Error(msg) as Error & { status: number };
@@ -11,7 +13,8 @@ function makeError(msg: string, status: number): Error {
 
 export function projectsRouter(
   projectService: ProjectService,
-  activityService: ActivityService
+  activityService: ActivityService,
+  bus: EventBus = defaultBus
 ): Hono {
   const app = new Hono();
 
@@ -38,6 +41,13 @@ export function projectsRouter(
       project_id: project.id,
       event_type: EventTypes.PROJECT_CREATED,
       payload: { name: project.name },
+    });
+
+    bus.emit({
+      type: 'project.created',
+      projectId: project.id,
+      entityId: project.id,
+      data: { project },
     });
 
     return c.json(project, 201);
@@ -98,6 +108,13 @@ export function projectsRouter(
       payload: { fields: { old: oldFields, new: newFields } },
     });
 
+    bus.emit({
+      type: 'project.updated',
+      projectId: id,
+      entityId: id,
+      data: { project: updated },
+    });
+
     return c.json(updated);
   });
 
@@ -118,6 +135,14 @@ export function projectsRouter(
     });
 
     projectService.delete(id);
+
+    bus.emit({
+      type: 'project.deleted',
+      projectId: id,
+      entityId: id,
+      data: { projectId: id, name: existing.name },
+    });
+
     return new Response(null, { status: 204 });
   });
 

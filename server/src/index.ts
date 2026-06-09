@@ -15,6 +15,8 @@ import { commentsRouter, itemCommentsRouter } from './routes/comments.js';
 import { projectActivityRouter, itemActivityRouter } from './routes/activity.js';
 import { onError } from './middleware/error.js';
 import { createMcpRouter } from './routes/mcp.js';
+import { createSseRouter } from './routes/sse.js';
+import { eventBus } from './events/bus.js';
 import type { Services } from './types.js';
 
 const DB_PATH = process.env.DB_PATH ?? './ldash.db';
@@ -48,9 +50,10 @@ const services: Services = {
 const app = new Hono();
 
 // 6. Register routes
-app.route('/api/columns', columnsRouter(columnService, activityService));
-app.route('/api/projects', projectsRouter(projectService, activityService));
-app.route('/api/items', itemsRouter(itemService, projectService, columnService, activityService));
+app.route('/', createSseRouter(eventBus));
+app.route('/api/columns', columnsRouter(columnService, activityService, eventBus));
+app.route('/api/projects', projectsRouter(projectService, activityService, eventBus));
+app.route('/api/items', itemsRouter(itemService, projectService, columnService, activityService, eventBus));
 
 // Nested routes under /api/projects/:projectId
 const projectNestedApp = new Hono();
@@ -64,10 +67,10 @@ itemNestedApp.route('/comments', itemCommentsRouter(commentService, itemService)
 itemNestedApp.route('/activity', itemActivityRouter(activityService, itemService));
 app.route('/api/items/:itemId', itemNestedApp);
 
-app.route('/api/comments', commentsRouter(commentService, itemService, activityService));
+app.route('/api/comments', commentsRouter(commentService, itemService, activityService, eventBus));
 
 // MCP server
-app.route('/mcp', createMcpRouter(services));
+app.route('/mcp', createMcpRouter(services, eventBus));
 
 // 7. Register error middleware
 app.onError(onError);

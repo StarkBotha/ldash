@@ -1,3 +1,5 @@
+import { useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import type { Item } from '../types';
 
 interface Props {
@@ -12,8 +14,20 @@ const TYPE_COLORS: Record<string, string> = {
 };
 
 export function Card({ item, onClick }: Props) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: item.id });
+
   return (
     <div
+      ref={setNodeRef}
+      {...attributes}
+      {...listeners}
       onClick={onClick}
       style={{
         background: '#fff',
@@ -22,6 +36,9 @@ export function Card({ item, onClick }: Props) {
         padding: 10,
         cursor: 'pointer',
         position: 'relative',
+        opacity: isDragging ? 0.4 : 1,
+        transform: CSS.Transform.toString(transform),
+        transition,
       }}
     >
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>

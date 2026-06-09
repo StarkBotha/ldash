@@ -1,6 +1,6 @@
 # ldash
 
-A local-first, Trello-like project planning board for a single developer. Phase 1 delivers the core kanban board: create and manage projects, epics, stories, and tasks across status columns, with comments and a full activity log.
+A local-first, Trello-like project planning board for a single developer. The board supports real-time live updates via SSE — any change made through the HTTP API or via the MCP tools (e.g. from Claude Code) appears on an open board within 2 seconds without a page reload. Cards can be dragged between columns with instant optimistic feedback.
 
 ## What's here
 
@@ -91,6 +91,14 @@ claude mcp add ldash --transport http http://127.0.0.1:3000/mcp
 
 Claude Code will connect to the ldash MCP endpoint and discover nine tools: `ldash_list_projects` to browse available projects, `ldash_list_items` to view board items with optional filters, `ldash_get_item` to read the full detail of an item including comments and recent activity, `ldash_create_item` to file new tasks or stories directly from a session, `ldash_update_item_fields` to revise a title or description, `ldash_update_item_status` to move an item between columns (accepts a column name or id), `ldash_add_comment` to leave a note on an item, `ldash_flag_item` to mark an item for human review, and `ldash_block_item` to record a blocker and the reason for it. All write operations record an activity entry with `actor_type: "claude"` so every change the agent makes is visible in the board's activity feed.
 
+## Features
+
+- Kanban board with projects, epics, stories, and tasks across configurable status columns
+- Real-time board updates via Server-Sent Events — changes from the API or MCP tools appear live without page reload
+- Drag-and-drop between columns with optimistic UI and automatic rollback on failure
+- MCP server at `/mcp` for Claude Code integration — all write operations also fire SSE events so the board stays in sync
+- Comments and activity log per item
+
 ## Phases
 
-Phase 1 (this): core board. Phase 2: MCP server. Phase 3: realtime SSE. Phase 4: LLM chat. Phase 5: planning mode + markdown export.
+Phase 1: core board. Phase 2: MCP server. Phase 3 (current): realtime SSE + drag-and-drop. Phase 4: LLM chat. Phase 5: planning mode + markdown export.
