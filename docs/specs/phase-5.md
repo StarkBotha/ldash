@@ -2,9 +2,11 @@
 
 ## Decisions made in this spec
 
+**Reconciled with delivered Phase 4 contract.** The following renames apply throughout this spec: the adapter interface is `ChatAdapter` (not `LLMAdapter`); the plain-chat streaming method is `streamChat` (not `call`); `GatewayChunk` text variant uses `{ type: 'text'; text: string }` (not `content`); the tool_call variant is flat `{ type: 'tool_call'; id: string; name: string; args: string }` (not a nested `call` object; `args` is a JSON string); `GatewayChunk` includes a fourth variant `{ type: 'error'; message: string }` that the tool loop must handle by terminating and surfacing the error; the gateway accessor is `getAdapter(settings: SettingsService): ChatAdapter` (not `getGateway()`); `ToolHandler` is defined in `loop.ts` (not in `types.ts`); the migration for the planning actor is `002_planning_actor` added explicitly to the static `MIGRATIONS` array in `migrationRunner.ts` (not `004`, and not auto-discovered); `ClaudeAdapter.callWithTools` is implemented in Phase 5 using the Anthropic Messages API directly (see decision below).
+
 **Apply model: live tool execution.** When the LLM calls a planning tool during a conversation, the tool executes immediately against the service layer. The board updates in realtime via the existing SSE stream. There is no separate "review and apply" step. This decision is made for three reasons: (1) the realtime board is already the audit trail — every action appears in the activity log with `actor_type: 'llm'`, so the user sees exactly what happened; (2) a batch-apply model requires the LLM to produce a complete, parseable "plan object" before anything is written, which adds complexity and makes partial execution of multi-step plans difficult; (3) the undo story for batch-apply is no better than for live execution — if you want to undo you delete the created items either way. The cost of live execution is that the board mutates while the LLM is mid-response; the benefit is that the user watches it happen rather than receiving a blob to review.
 
-**Tool-calling abstraction: a single `callWithTools` interface on the LLM gateway.** Both adapters (Claude Agent SDK and OpenAI-compatible) must implement a `callWithTools` method alongside the existing streaming `call` method. The gateway never exposes provider-specific tool call shapes to callers. The loop is run server-side: the gateway returns either a `TextChunk` or a `ToolCallRequest`, the planning route handler executes the tool call, sends the result back to the gateway, and the gateway continues — this is the tool-calling loop contract. The UI only sees streamed text and tool-call indicator events over SSE; it never participates in the tool loop.
+**Tool-calling abstraction: a single `callWithTools` interface on the LLM gateway.** Both adapters (`ClaudeAdapter` and `OpenAIAdapter`) implement `callWithTools` alongside the existing `streamChat` method — both satisfy the `ChatAdapter` interface defined in `server/src/gateway/types.ts`. The gateway never exposes provider-specific tool call shapes to callers. The loop is run server-side: the gateway returns `GatewayChunk` values — either `{ type: 'text'; text: string }`, `{ type: 'tool_call'; id: string; name: string; args: string }`, `{ type: 'error'; message: string }`, or `{ type: 'done' }` — the planning route handler executes tool calls, sends results back to the gateway, and the gateway continues. The UI only sees streamed text and tool-call indicator events over SSE; it never participates in the tool loop.
 
 **Planning tools are internal-only; they mirror the service layer, not the MCP endpoint.** The three planning tools (`create_item`, `update_item`, `list_items`) call the service layer directly with `actor_type: 'llm'`. They are not exposed via MCP and are not registered on the MCP server. They exist only inside the planning tool loop in the LLM gateway.
 
@@ -14,9 +16,11 @@
 
 **Markdown export scope: items only.** Conversations and activity are excluded from the export. The export is a snapshot of the planning output — what was decided — not the history of how it was decided. The architecture doc notes this as an open question; items-only is the conservative answer.
 
-**`actor_type` extension: add `'llm'` to the allowed values.** The Phase 1 schema constrains `actor_type` to `'user' | 'claude'`. Phase 5 introduces a third actor: the planning LLM acting autonomously during a planning conversation. This is distinct from Claude Code (`'claude'`) acting as an MCP client. A schema migration adds `'llm'` to the allowed set. The `actor_id` for planning tool calls is `'planning-llm'`.
+**`actor_type` extension: add `'llm'` to the allowed values.** The Phase 1 schema constrains `actor_type` to `'user' | 'claude'`. Phase 5 introduces a third actor: the planning LLM acting autonomously during a planning conversation. This is distinct from Claude Code (`'claude'`) acting as an MCP client. A schema migration (`002_planning_actor`) adds `'llm'` to the allowed set. The `actor_id` for planning tool calls is `'planning-llm'`.
 
 **No per-conversation model override in this spec.** The architecture doc mentions "per-conversation model override" as part of Phase 5. This spec defers it — it requires a settings UI and conversation metadata that is more cleanly done as a standalone addition. The planning conversation uses whatever provider/model is currently configured in the gateway settings. This is noted so an implementer does not add it.
+
+**`ClaudeAdapter.callWithTools` implementation: use the Anthropic Messages API directly via `fetch`.** The Agent SDK's `query` function (used by `streamChat`) is a higher-level agentic abstraction that does not accept Anthropic-native tool definitions. For `callWithTools`, the Claude adapter must bypass `query` and POST to `https://api.anthropic.com/v1/messages` with `stream: true` using `fetch`, the same pattern as `OpenAIAdapter`. When `authMode === 'subscription'`, use the environment variable `CLAUDE_CODE_OAUTH_TOKEN` as a Bearer token in the `Authorization` header and set `anthropic-beta: oauth-2023-05-03` (or whatever beta header the subscription endpoint requires — check the Anthropic docs at implementation time). When `authMode === 'api-key'`, use `x-api-key: <apiKey>`. Tool definitions map to Anthropic's native tools format (`name`, `description`, `input_schema` — see section 4). The `GatewayChunk` output contract is identical for both adapters. Planning mode is not restricted to any provider — both adapters implement `callWithTools` fully in Phase 5.
 
 **Export is always triggered manually.** There is no automatic export on project change. A "Export to Markdown" button on the project board header triggers the export. The backend generates the files synchronously, writes them to `exports/<project-slug>/`, and returns the export directory path to the UI. The UI shows the path in a small toast.
 
@@ -24,7 +28,7 @@
 
 ## Schema migration
 
-**File path:** `server/src/db/migrations/004_planning_actor.ts`
+**File path:** `server/src/db/migrations/002_planning_actor.ts`
 
 Add `'llm'` to the `actor_type` check constraint on the `activity` table. SQLite does not support `ALTER COLUMN` with a new constraint, so this requires a table recreation. The migration:
 
@@ -34,7 +38,16 @@ Add `'llm'` to the `actor_type` check constraint on the `activity` table. SQLite
 4. Drops `activity_old`.
 5. Recreates the three indexes on the new table.
 
-All steps run in a single transaction. The migration runner (introduced in Phase 4 and assumed to exist) executes this on startup before the app starts serving requests.
+All steps run in a single transaction. The delivered migration runner (`server/src/db/migrationRunner.ts`) uses a static `MIGRATIONS` array — migrations are NOT auto-discovered from the filesystem. After creating `002_planning_actor.ts`, add it to that array explicitly:
+
+```ts
+import * as migration001 from './migrations/001_initial_conversations.js';
+import * as migration002 from './migrations/002_planning_actor.js';
+
+const MIGRATIONS = [migration001, migration002];
+```
+
+The `conversations` and `messages` tables and the `type: 'planning'` conversation type were already delivered in Phase 4 — no additional migration is needed for those.
 
 Update `server/src/types.ts`: change `ActorType = 'user' | 'claude'` to `ActorType = 'user' | 'claude' | 'llm'`.
 
@@ -49,9 +62,9 @@ server/
   src/
     db/
       migrations/
-        004_planning_actor.ts     [new] — adds 'llm' to actor_type constraint
+        002_planning_actor.ts     [new] — adds 'llm' to actor_type constraint
     gateway/
-      types.ts                    [new] — LLM gateway interface including tool-calling types
+      types.ts                    [exists, delivered in Phase 4 — do not recreate; interface is ChatAdapter, not LLMAdapter]
       loop.ts                     [new] — tool-calling loop runner
       adapters/
         claude.ts                 [modified] — add callWithTools implementation
@@ -93,65 +106,62 @@ ui/
 
 **File path:** `server/src/gateway/types.ts`
 
-**Purpose:** Defines the unified LLM gateway interface, including the tool-calling extension.
+**Status: DELIVERED in Phase 4. Do not recreate or modify this file in Phase 5.** This section documents the actual contract that Phase 5 code must consume.
+
+**Purpose:** Defines the unified LLM gateway interface, including all message and chunk types.
 
 **Dependencies:** None (pure types).
 
-**Public interface:**
+**Actual delivered interface (authoritative):**
 
 ```ts
-// Existing types assumed from Phase 4 (do not redefine if already present):
+export type MessageRole = 'user' | 'assistant' | 'tool' | 'system';
+
 export interface ChatMessage {
-  role: 'user' | 'assistant' | 'system' | 'tool';
+  role: MessageRole;
   content: string;
-  tool_call_id?: string;   // present when role === 'tool' (tool result)
-  tool_calls?: ToolCallRequest[];  // present when role === 'assistant' with pending calls
+  tool_call_id?: string;        // present when role === 'tool' (tool result)
+  tool_calls?: ToolCallRequest[]; // present when role === 'assistant' with pending calls
 }
 
-// New types for tool calling:
 export interface ToolDefinition {
   name: string;
   description: string;
-  parameters: Record<string, unknown>;  // JSON Schema object for the tool's input parameters
+  parameters: Record<string, unknown>; // JSON Schema object
 }
 
 export interface ToolCallRequest {
-  id: string;          // opaque call id, must be echoed back in the tool result message
-  name: string;        // which tool the LLM wants to call
-  arguments: string;   // JSON string of the arguments
+  id: string;        // opaque call id — must be echoed back in the tool result message
+  name: string;      // which tool the LLM wants to call
+  arguments: string; // JSON string of the arguments
 }
 
 export type GatewayChunk =
-  | { type: 'text'; content: string }
-  | { type: 'tool_call'; call: ToolCallRequest }
-  | { type: 'done' };
-
-// The adapter interface (assumed from Phase 4, extended here):
-export interface LLMAdapter {
-  // Phase 4 streaming method (already exists):
-  call(messages: ChatMessage[], options?: CallOptions): AsyncIterable<GatewayChunk>;
-
-  // Phase 5 addition — same streaming contract but accepts tool definitions:
-  callWithTools(
-    messages: ChatMessage[],
-    tools: ToolDefinition[],
-    options?: CallOptions
-  ): AsyncIterable<GatewayChunk>;
-}
+  | { type: 'text'; text: string }           // NOTE: field is 'text', not 'content'
+  | { type: 'tool_call'; id: string; name: string; args: string }  // flat, not nested; args is a JSON string
+  | { type: 'done' }
+  | { type: 'error'; message: string };      // must be handled by the tool loop
 
 export interface CallOptions {
   model?: string;
   maxTokens?: number;
 }
-```
 
-**Behaviour:** Types only; no runtime logic.
+export interface ChatAdapter {
+  streamChat(messages: ChatMessage[], opts?: CallOptions): AsyncIterable<GatewayChunk>;
+  callWithTools(
+    messages: ChatMessage[],
+    tools: ToolDefinition[],
+    opts?: CallOptions
+  ): AsyncIterable<GatewayChunk>;
+}
+```
 
 **Data contracts:**
 
-`ToolDefinition.parameters` must be a valid JSON Schema object (type `object` with a `properties` key). The `callWithTools` implementer passes this directly to the provider's function/tool calling API.
+`ToolDefinition.parameters` must be a valid JSON Schema object (type `object` with a `properties` key). The `callWithTools` implementer passes this directly to the provider's tool calling API.
 
-`GatewayChunk` is a discriminated union. A `tool_call` chunk signals that the LLM has requested a tool invocation. A `text` chunk is a token of streamed response text. A `done` chunk signals the end of one LLM turn (the loop may not be done — there may be further turns after tool results are submitted).
+`GatewayChunk` is a discriminated union. A `tool_call` chunk signals that the LLM has requested a tool invocation — its `args` field is a raw JSON string that the loop must `JSON.parse`. A `text` chunk is a streamed response token. An `error` chunk signals an adapter-level failure; the loop must terminate immediately on receiving one. A `done` chunk signals the end of one LLM turn (the outer loop may continue if there are pending tool results).
 
 ---
 
@@ -162,19 +172,26 @@ export interface CallOptions {
 **Purpose:** Runs the tool-calling loop — submits messages to the adapter, executes any tool calls via registered handlers, feeds results back, and streams text chunks to a caller-supplied sink.
 
 **Dependencies:**
-- `./types` — `LLMAdapter`, `ChatMessage`, `ToolDefinition`, `ToolCallRequest`, `GatewayChunk`
+- `./types` — `ChatAdapter`, `ChatMessage`, `ToolDefinition`, `GatewayChunk`
 
 **Public interface:**
 
 ```ts
+// ToolCallRequest shape for use within the loop (mirrors the flat GatewayChunk tool_call fields):
+export interface PendingToolCall {
+  id: string;
+  name: string;
+  args: string; // raw JSON string from the chunk
+}
+
 export type ToolHandler = (name: string, args: Record<string, unknown>) => Promise<string>;
 
 export type TextSink = (chunk: string) => void;
 
-export type ToolCallSink = (call: ToolCallRequest) => void;
+export type ToolCallSink = (call: PendingToolCall) => void;
 
 export async function runToolLoop(
-  adapter: LLMAdapter,
+  adapter: ChatAdapter,
   messages: ChatMessage[],
   tools: ToolDefinition[],
   toolHandler: ToolHandler,
@@ -190,22 +207,24 @@ export async function runToolLoop(
 2. Maintain a mutable `history: ChatMessage[]` initialised as a shallow copy of `messages`.
 3. Loop up to `maxTurns` times:
    a. Call `adapter.callWithTools(history, tools, options)` to get a `GatewayChunk` async iterable.
-   b. Iterate over chunks:
-      - On `{ type: 'text' }`: call `textSink(chunk.content)`.
-      - On `{ type: 'tool_call' }`: append the call to a `pendingCalls: ToolCallRequest[]` list; call `toolCallSink(chunk.call)` so the UI can show an indicator.
+   b. Maintain `pendingCalls: PendingToolCall[] = []` for this turn.
+   c. Iterate over chunks:
+      - On `{ type: 'text' }`: call `textSink(chunk.text)`. Note: the field is `text`, not `content`.
+      - On `{ type: 'tool_call' }`: construct `{ id: chunk.id, name: chunk.name, args: chunk.args }` and append to `pendingCalls`; call `toolCallSink(pendingCall)` so the UI can show an indicator.
+      - On `{ type: 'error' }`: terminate the loop immediately by throwing `new Error(chunk.message)`. The route handler catches this and surfaces it to the client stream.
       - On `{ type: 'done' }`: break the inner iteration.
-   c. If `pendingCalls` is empty (no tool calls this turn), break the outer loop — the LLM has finished.
-   d. Build the assistant message: `{ role: 'assistant', content: '', tool_calls: pendingCalls }`. Append to `history`.
-   e. For each call in `pendingCalls`, in order:
-      - Parse `call.arguments` as JSON. If parsing fails, use `{}` as the arguments.
+   d. If `pendingCalls` is empty (no tool calls this turn), break the outer loop — the LLM has finished.
+   e. Build the assistant message with the pending tool calls. The `ChatMessage` shape uses `tool_calls: ToolCallRequest[]` where each `ToolCallRequest` has `{ id, name, arguments }` — note `arguments` not `args`. Map accordingly: `{ id: pc.id, name: pc.name, arguments: pc.args }`. The assembled message is `{ role: 'assistant', content: '', tool_calls: mappedCalls }`. Append to `history`.
+   f. For each call in `pendingCalls`, in order:
+      - Parse `call.args` as JSON. If parsing fails, use `{}` as the arguments.
       - Call `await toolHandler(call.name, parsedArgs)`. If the handler throws, the result string is `'Error: ' + error.message`.
       - Append a `{ role: 'tool', content: resultString, tool_call_id: call.id }` message to `history`.
-   f. Clear `pendingCalls` and continue the outer loop.
+   g. Clear `pendingCalls` and continue the outer loop.
 4. Return the final `history` array (all messages including assistant turns and tool results).
 
 **Edge cases:**
 - If `maxTurns` is exhausted without the LLM finishing, stop the loop and append a final `{ role: 'assistant', content: '[Planning loop reached maximum turns]' }` to history. This is a safety valve — in practice a well-prompted LLM will not hit it.
-- If `adapter.callWithTools` throws, propagate the error. The route handler is responsible for catching and surfacing it to the client.
+- If `adapter.callWithTools` throws synchronously (not an error chunk), propagate the error. The route handler is responsible for catching and surfacing it to the client.
 
 **Do NOT implement:** The adapter-specific tool call format translation. That lives in `adapters/claude.ts` and `adapters/openai.ts`.
 
@@ -218,7 +237,7 @@ export async function runToolLoop(
 **Purpose:** OpenAI-compatible adapter extended with `callWithTools`.
 
 **Dependencies:**
-- `../types` — `LLMAdapter`, `ChatMessage`, `ToolDefinition`, `GatewayChunk`, `CallOptions`
+- `../types` — `ChatAdapter`, `ChatMessage`, `ToolDefinition`, `GatewayChunk`, `CallOptions`
 
 **Public interface addition:**
 
@@ -226,7 +245,7 @@ export async function runToolLoop(
 async *callWithTools(
   messages: ChatMessage[],
   tools: ToolDefinition[],
-  options?: CallOptions
+  opts?: CallOptions
 ): AsyncGenerator<GatewayChunk>
 ```
 
@@ -246,8 +265,9 @@ async *callWithTools(
 2. Map `messages` to the OpenAI messages format. Messages with `role: 'tool'` map to OpenAI `role: 'tool'` with `tool_call_id`. Messages with `tool_calls` on an assistant message map to OpenAI's `tool_calls` array format where each element has `type: 'function'`, `id`, and `function: { name, arguments }`.
 3. Send a POST to `<baseUrl>/chat/completions` with `stream: true`, `model`, `messages`, `tools`, and `tool_choice: 'auto'`.
 4. Parse the SSE stream. For each `data:` line (excluding `[DONE]`):
-   - If the delta contains `content`, yield `{ type: 'text', content: delta.content }`.
-   - If the delta contains `tool_calls`, accumulate the chunks (tool call arguments arrive in fragments across multiple SSE events) until the finish reason is `tool_calls`. Then yield one `{ type: 'tool_call', call: { id, name, arguments } }` per tool call.
+   - If the delta contains `content`, yield `{ type: 'text', text: delta.content }`. Note: the field is `text`, not `content`.
+   - If the delta contains `tool_calls`, accumulate the chunks (tool call arguments arrive in fragments across multiple SSE events) until the finish reason is `tool_calls`. Then yield one `{ type: 'tool_call', id, name, args: accumulatedArgumentsString }` per tool call. The fields are flat on the chunk — not nested under a `call` object. `args` is the raw JSON string (do not parse it here).
+   - On a network or parse error, yield `{ type: 'error', message: err.message }` and return.
 5. After the stream ends, yield `{ type: 'done' }`.
 
 **Tool call argument accumulation:** OpenAI streams tool call arguments as delta strings across multiple events, each identified by an index. Maintain a `Map<number, { id: string; name: string; argumentsBuffer: string }>`. When the final `finish_reason: 'tool_calls'` or `finish_reason: 'stop'` is received, flush all buffered calls.
@@ -258,51 +278,67 @@ async *callWithTools(
 
 **File path:** `server/src/gateway/adapters/claude.ts`
 
-**Purpose:** Claude Agent SDK adapter extended with `callWithTools`.
+**Purpose:** Claude adapter extended with a real `callWithTools` implementation.
 
 **Dependencies:**
-- `@anthropic-ai/claude-code` (or the Agent SDK package assumed from Phase 4) — the client instance
-- `../types` — `LLMAdapter`, `ChatMessage`, `ToolDefinition`, `GatewayChunk`, `CallOptions`
+- `@anthropic-ai/claude-agent-sdk` — already imported for `streamChat`; do not add a separate Anthropic SDK package
+- `../types` — `ChatAdapter`, `ChatMessage`, `ToolDefinition`, `GatewayChunk`, `CallOptions`
 
-**Public interface addition:**
+**Public interface addition (replaces the Phase 4 stub that throws):**
 
 ```ts
 async *callWithTools(
   messages: ChatMessage[],
   tools: ToolDefinition[],
-  options?: CallOptions
+  opts?: CallOptions
 ): AsyncGenerator<GatewayChunk>
 ```
 
 **Behaviour:**
 
-The Claude Agent SDK uses Anthropic's native tool use format, which differs from OpenAI's. The adapter translates:
+The Agent SDK's `query` function used by `streamChat` does not support Anthropic-native tool definitions. `callWithTools` must bypass `query` and call the Anthropic Messages API directly using `fetch`. This is the same pattern already used by `OpenAIAdapter`.
 
-1. Map `tools` to Anthropic's `tools` array format:
+1. Determine the auth header:
+   - If `authMode === 'subscription'`: use `Authorization: Bearer ${process.env.CLAUDE_CODE_OAUTH_TOKEN}`. Also include the header `anthropic-beta: oauth-2023-05-03` (verify the exact beta header value at implementation time against Anthropic's documentation — it may change).
+   - If `authMode === 'api-key'`: use `x-api-key: ${this.options.apiKey}`.
+   - In both cases include `anthropic-version: 2023-06-01` and `content-type: application/json`.
+
+2. Map `tools` to Anthropic's native format:
+   ```json
+   { "name": tool.name, "description": tool.description, "input_schema": tool.parameters }
+   ```
+
+3. Map `messages`. Separate system messages first (same pattern as `streamChat`):
+   - System messages (`role === 'system'`) are concatenated and passed as the top-level `"system"` field, not in the messages array.
+   - `ChatMessage` with `role: 'tool'` maps to an Anthropic `user` message with a `tool_result` content block: `{ "role": "user", "content": [{ "type": "tool_result", "tool_use_id": msg.tool_call_id, "content": msg.content }] }`.
+   - `ChatMessage` with `tool_calls` on an assistant turn maps to an Anthropic `assistant` message with `tool_use` content blocks: `{ "role": "assistant", "content": [{ "type": "tool_use", "id": call.id, "name": call.name, "input": JSON.parse(call.arguments) }] }`. If `JSON.parse` fails, use `{}`.
+   - Regular user/assistant messages map as strings: `{ "role": msg.role, "content": msg.content }`.
+
+4. POST to `https://api.anthropic.com/v1/messages` with body:
    ```json
    {
-     "name": tool.name,
-     "description": tool.description,
-     "input_schema": tool.parameters
+     "model": "<model>",
+     "max_tokens": <maxTokens or 8096>,
+     "stream": true,
+     "tools": <mapped tools>,
+     "tool_choice": { "type": "auto" },
+     "messages": <mapped messages>,
+     "system": "<system string if present>"
    }
    ```
-2. Map `messages`. `ChatMessage` with `role: 'tool'` maps to Anthropic's `user` message containing a `tool_result` content block:
-   ```json
-   { "role": "user", "content": [{ "type": "tool_result", "tool_use_id": msg.tool_call_id, "content": msg.content }] }
-   ```
-   `ChatMessage` with `tool_calls` (assistant pending calls) maps to Anthropic's `assistant` message containing `tool_use` content blocks:
-   ```json
-   { "role": "assistant", "content": [{ "type": "tool_use", "id": call.id, "name": call.name, "input": JSON.parse(call.arguments) }] }
-   ```
-3. Call the Claude API with streaming enabled, passing `tools` and `tool_choice: { type: 'auto' }`.
-4. Process streaming events. Anthropic's event stream uses `content_block_start`, `content_block_delta`, and `content_block_stop` events:
-   - Text block deltas (`input_json_delta` type for tool input, `text_delta` for text): yield `{ type: 'text', content }` for text deltas.
-   - `content_block_start` with `type: 'tool_use'`: record the new tool call being constructed.
-   - `content_block_delta` with `type: 'input_json_delta'`: accumulate into the current tool call's argument buffer.
-   - `content_block_stop` when the current block is a tool call: yield `{ type: 'tool_call', call: { id, name, arguments: accumulatedJson } }`.
-   - `message_stop` event: yield `{ type: 'done' }`.
 
-**Conservative decision on SDK version:** This spec assumes the Anthropic SDK exposes streaming messages with tool use via `client.messages.stream(...)` and events accessible via `.on('contentBlockDelta', ...)` or similar. If the Agent SDK wraps this differently (e.g. via an Agent abstraction), the implementer must adapt, but the `GatewayChunk` output contract does not change.
+5. Parse the SSE stream from the response body. Anthropic's streaming uses `content_block_start`, `content_block_delta`, and `content_block_stop` events:
+   - On `content_block_start` with `type: 'text'`: record that the current block is a text block.
+   - On `content_block_start` with `type: 'tool_use'`: record `{ index, id, name }` as the current tool call being accumulated.
+   - On `content_block_delta` with `type: 'text_delta'`: yield `{ type: 'text', text: delta.text }`. Note: the field is `text`, not `content`.
+   - On `content_block_delta` with `type: 'input_json_delta'`: append `delta.partial_json` to the current tool call's argument buffer.
+   - On `content_block_stop`: if the stopped block was a tool call, yield `{ type: 'tool_call', id: call.id, name: call.name, args: call.argumentBuffer }`. The fields are flat — not nested under a `call` object. `args` is the raw JSON string — do not parse it.
+   - On `message_stop` event: yield `{ type: 'done' }` and return.
+   - On `error` event in the stream: yield `{ type: 'error', message: event.error.message }` and return.
+
+6. On network error (fetch throws): yield `{ type: 'error', message: err.message }` and return.
+
+**Note on the Phase 4 stub:** The delivered `callWithTools` in `claude.ts` currently throws `'callWithTools not implemented for claude-subscription in Phase 4'`. Phase 5 replaces this body entirely with the implementation above. The method signature is already correct — only the body changes.
 
 ---
 
@@ -313,7 +349,8 @@ The Claude Agent SDK uses Anthropic's native tool use format, which differs from
 **Purpose:** Defines the three planning tools (`create_item`, `update_item`, `list_items`) as `ToolDefinition` objects and provides handlers that execute them against the service layer.
 
 **Dependencies:**
-- `../gateway/types` — `ToolDefinition`, `ToolHandler`
+- `../gateway/types` — `ToolDefinition`
+- `../gateway/loop` — `ToolHandler` (defined there, not in `types.ts`)
 - `../types` — `Services`, `ItemType`
 
 **Public interface:**
@@ -576,17 +613,18 @@ Replace `{{PROJECT_CONTEXT}}` with the assembled context string.
 **Dependencies:**
 - `hono` — `Hono`, `streamText`
 - `../types` — `Services`
+- `../services/settings` — `SettingsService`
 - `../events/bus` — `EventBus`
 - `../planning/tools` — `getPlanningToolDefinitions`, `createPlanningToolHandler`
 - `../planning/prompt` — `buildPlanningSystemPrompt`
 - `../gateway/loop` — `runToolLoop`
-- Phase 4 gateway singleton (assumed: `import { getGateway } from '../gateway/index'` or similar — do not implement, flag as Phase 4 dependency)
-- Phase 4 `ConversationService` (assumed: provides `getOrCreatePlanningConversation`, `appendMessage`, `getMessages` — do not implement)
+- `../gateway/index` — `getAdapter` (the delivered gateway accessor — signature is `getAdapter(settings: SettingsService): ChatAdapter`)
+- Phase 4 `ConversationService` (assumed: provides `getOrCreatePlanningConversation`, `appendMessage`, `getMessages`, `clearMessages` — do not implement)
 
 **Public interface:**
 
 ```ts
-export function createPlanningRouter(services: Services, bus: EventBus): Hono
+export function createPlanningRouter(services: Services, settingsService: SettingsService, bus: EventBus): Hono
 ```
 
 **Endpoints:**
@@ -621,14 +659,14 @@ export type PlanningStreamEvent =
 4. Append the user message to the conversation via `ConversationService.appendMessage({ role: 'user', content })`.
 5. Fetch the full message history for this conversation via `ConversationService.getMessages(conversationId)`. Map to `ChatMessage[]`.
 6. Build the system prompt: `buildPlanningSystemPrompt(services, projectId)`. Prepend it as `{ role: 'system', content: systemPrompt }` to the message array.
-7. Get the LLM gateway via Phase 4's gateway accessor.
+7. Get the adapter by calling `getAdapter(settingsService)`. If it throws (no provider configured), catch and return a `400` or `503` response with `{ error: err.message }` before opening the stream.
 8. Build the planning tools: `getPlanningToolDefinitions()`.
 9. Build the tool handler: `createPlanningToolHandler(services, projectId, bus)`.
 10. Set response headers for SSE: `Content-Type: text/event-stream`, `Cache-Control: no-cache`.
 11. Use Hono's `streamText` to open an SSE stream.
 12. Call `runToolLoop(adapter, messages, tools, toolHandler, textSink, toolCallSink)`:
-    - `textSink`: write `PlanningStreamEvent { type: 'text', content }` to the stream.
-    - `toolCallSink`: write `PlanningStreamEvent { type: 'tool_call', toolName: call.name, label: buildToolCallLabel(call.name, call.arguments) }` to the stream. (See label builder below.)
+    - `textSink`: write `PlanningStreamEvent { type: 'text', content: chunk }` to the stream.
+    - `toolCallSink`: write `PlanningStreamEvent { type: 'tool_call', toolName: call.name, label: buildToolCallLabel(call.name, call.args) }` to the stream. Note: `call.args` is the raw JSON string from the flat `GatewayChunk` tool_call. (See label builder below.)
 13. When `runToolLoop` resolves, write `PlanningStreamEvent { type: 'done' }`.
 14. Persist the assistant's final text response and all tool turns from the returned history to the conversation via `ConversationService.appendMessage` for each new message in the returned history that is not already persisted.
 15. On any error during the loop: write `PlanningStreamEvent { type: 'error', message: err.message }` and close the stream.
@@ -895,9 +933,11 @@ Add two new route registrations in the startup sequence, after the existing rout
 import { createPlanningRouter } from './routes/planning.js';
 import { createExportRouter } from './routes/export.js';
 
-app.route('/', createPlanningRouter(services, eventBus));
+app.route('/', createPlanningRouter(services, settingsService, eventBus));
 app.route('/', createExportRouter(services));
 ```
+
+The `settingsService` instance is the same one already constructed during Phase 4's startup sequence and passed to `getAdapter`.
 
 No other changes to `index.ts`.
 
@@ -1095,16 +1135,16 @@ No other changes to `Board.tsx`.
 - `../../src/events/bus` — `EventBus` (class)
 - `../../src/planning/tools` — `getPlanningToolDefinitions`, `createPlanningToolHandler`
 - `../../src/gateway/loop` — `runToolLoop`
-- `../../src/gateway/types` — `LLMAdapter`, `GatewayChunk`
+- `../../src/gateway/types` — `ChatAdapter`, `GatewayChunk`
 
 **Setup:** Each test opens a fresh `:memory:` database, runs schema and seed, creates a project via `ProjectService.create`, and creates a fresh `EventBus`.
 
 **Mocked adapter factory:**
 
 ```ts
-function mockAdapter(chunks: GatewayChunk[]): LLMAdapter {
+function mockAdapter(chunks: GatewayChunk[]): ChatAdapter {
   return {
-    call: async function*() {},
+    streamChat: async function*() {},
     callWithTools: async function*() { yield* chunks; }
   };
 }
@@ -1112,21 +1152,23 @@ function mockAdapter(chunks: GatewayChunk[]): LLMAdapter {
 
 **Required test cases:**
 
-1. `text-only response emits text chunks and returns history` — adapter yields `[{ type: 'text', content: 'Hello' }, { type: 'done' }]`. Call `runToolLoop`. Assert `textSink` called once with `'Hello'`. Assert returned history has an assistant message with `content === 'Hello'`.
+1. `text-only response emits text chunks and returns history` — adapter yields `[{ type: 'text', text: 'Hello' }, { type: 'done' }]`. Call `runToolLoop`. Assert `textSink` called once with `'Hello'`. Assert returned history has an assistant message with `content === 'Hello'`. Note: the `GatewayChunk` text field is `text`, not `content`.
 
-2. `create_item tool call creates an item in the database` — adapter yields `[{ type: 'tool_call', call: { id: '1', name: 'create_item', arguments: JSON.stringify({ type: 'task', title: 'Test task', column_id: '<backlogColumnId>' }) } }, { type: 'done' }]`, then on the second turn yields `[{ type: 'text', content: 'Done' }, { type: 'done' }]`. Call `runToolLoop`. Assert `ItemService.listByProject(projectId)` returns one item with `title === 'Test task'`.
+2. `create_item tool call creates an item in the database` — adapter yields `[{ type: 'tool_call', id: '1', name: 'create_item', args: JSON.stringify({ type: 'task', title: 'Test task', column_id: '<backlogColumnId>' }) }, { type: 'done' }]`, then on the second turn yields `[{ type: 'text', text: 'Done' }, { type: 'done' }]`. Call `runToolLoop`. Assert `ItemService.listByProject(projectId)` returns one item with `title === 'Test task'`. Note: the tool_call chunk fields are flat (`id`, `name`, `args`) — not a nested `call` object.
 
 3. `update_item tool call updates an existing item` — create an item in setup, then run loop with `update_item` call. Assert item title is updated.
 
 4. `list_items tool call returns existing items` — create two items, run loop with `list_items` call that returns a result, then text response. Assert `toolHandler` was called and returned a JSON string containing both item ids.
 
-5. `unknown tool returns error string without throwing` — adapter yields a `tool_call` with `name: 'nonexistent_tool'`. Assert the loop completes without throwing, and the tool result message in the returned history contains `'Error: unknown tool'`.
+5. `unknown tool returns error string without throwing` — adapter yields `{ type: 'tool_call', id: '1', name: 'nonexistent_tool', args: '{}' }` then `{ type: 'done' }`. Assert the loop completes without throwing, and the tool result message in the returned history contains `'Error: unknown tool'`.
 
-6. `maxTurns exceeded appends safety message` — adapter always yields a `tool_call` then `done` (never terminates naturally). Pass `maxTurns: 3`. Assert loop terminates after 3 turns and the final assistant message contains `'maximum turns'`.
+6. `error chunk terminates the loop and throws` — adapter yields `{ type: 'error', message: 'provider failure' }`. Assert `runToolLoop` throws an error with message `'provider failure'`. (The route handler catches this and writes a `PlanningStreamEvent { type: 'error' }` to the SSE stream.)
 
-7. `activity entry is written with actor_type llm` — run loop with a `create_item` call. After the loop, query `ActivityService.listByItem(createdItemId, { limit: 1 })`. Assert the entry has `actor_type === 'llm'` and `actor_id === 'planning-llm'`.
+7. `maxTurns exceeded appends safety message` — adapter always yields `{ type: 'tool_call', id: '1', name: 'create_item', args: '{}' }` then `{ type: 'done' }` (never terminates naturally). Pass `maxTurns: 3`. Assert loop terminates after 3 turns and the final assistant message contains `'maximum turns'`.
 
-8. `eventBus emits item.created on create_item tool call` — subscribe to a fresh `EventBus`. Run loop with `create_item` call. Assert the bus emitted one `BoardEvent` with `type === 'item.created'`.
+8. `activity entry is written with actor_type llm` — run loop with a `create_item` call. After the loop, query `ActivityService.listByItem(createdItemId, { limit: 1 })`. Assert the entry has `actor_type === 'llm'` and `actor_id === 'planning-llm'`.
+
+9. `eventBus emits item.created on create_item tool call` — subscribe to a fresh `EventBus`. Run loop with `create_item` call. Assert the bus emitted one `BoardEvent` with `type === 'item.created'`.
 
 ---
 
@@ -1187,7 +1229,7 @@ The following behaviours must be verifiable after running `pnpm dev`:
 ### Automated tests
 
 17. `pnpm --filter server test` exits with code 0.
-18. `loop.test.ts` — all 8 tests pass, including the `create_item` test confirming the item exists in the database after the loop.
+18. `loop.test.ts` — all 9 tests pass, including the `create_item` test confirming the item exists in the database after the loop, and the error chunk test confirming `runToolLoop` throws on an `{ type: 'error' }` chunk.
 19. `generator.test.ts` — all 8 tests pass.
 
 ---
@@ -1196,7 +1238,9 @@ The following behaviours must be verifiable after running `pnpm dev`:
 
 These are items this spec assumes Phase 4 has delivered. If any of these are missing, Phase 5 cannot be built without resolving them first.
 
-- `ConversationService` with methods: `getOrCreatePlanningConversation(projectId)`, `appendMessage(conversationId, message)`, `getMessages(conversationId)`, `clearMessages(conversationId)`. The planning conversation type is `'planning'` and is scoped to a project (not an item).
-- A gateway accessor (`getGateway()` or similar) that returns the configured `LLMAdapter` instance.
-- The `conversations` and `messages` tables in SQLite (with the `type` field on `conversations` supporting `'planning'`).
-- The `LLMAdapter` interface with its Phase 4 `call` method already implemented on both adapters.
+- `ConversationService` with methods: `getOrCreatePlanningConversation(projectId)`, `appendMessage(conversationId, message)`, `getMessages(conversationId)`, `clearMessages(conversationId)`. The planning conversation type is `'planning'` and is scoped to a project (not an item). All four methods are confirmed in the Phase 4 spec.
+- `getAdapter(settings: SettingsService): ChatAdapter` in `server/src/gateway/index.ts` — the delivered gateway accessor. Throws if no provider is configured.
+- `SettingsService` in `server/src/services/settings.ts` — provides `getGatewaySettings()` and is already instantiated in `server/src/index.ts`.
+- The `conversations` and `messages` tables in SQLite (with `type IN ('item', 'planning')` on `conversations` and `tool_calls TEXT` on `messages`). Delivered in Phase 4.
+- The `ChatAdapter` interface (delivered in `server/src/gateway/types.ts`) with `streamChat` implemented on both adapters. `ClaudeAdapter.callWithTools` is a stub that throws — Phase 5 replaces the body. `OpenAIAdapter.callWithTools` is fully implemented in Phase 4.
+- The migration runner at `server/src/db/migrationRunner.ts` with its static `MIGRATIONS` array — Phase 5 adds `migration002` to that array.
