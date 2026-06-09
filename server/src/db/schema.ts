@@ -1,8 +1,5 @@
 import type Database from 'better-sqlite3';
 
-// NOTE: conversations and messages tables are deferred to Phase 4.
-// Do not create them here.
-
 const SQL = `
 -- Columns (board statuses). Order is explicit.
 CREATE TABLE IF NOT EXISTS columns (
@@ -67,6 +64,35 @@ CREATE TABLE IF NOT EXISTS activity (
 CREATE INDEX IF NOT EXISTS idx_activity_item    ON activity(item_id);
 CREATE INDEX IF NOT EXISTS idx_activity_project ON activity(project_id);
 CREATE INDEX IF NOT EXISTS idx_activity_created ON activity(created_at);
+
+-- Provider settings. A single JSON blob stored under key 'gateway'.
+CREATE TABLE IF NOT EXISTS settings (
+  key        TEXT PRIMARY KEY,
+  value      TEXT NOT NULL,
+  updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+
+-- Conversations. Scoped to a project; optionally scoped to a single item.
+CREATE TABLE IF NOT EXISTS conversations (
+  id         TEXT PRIMARY KEY,
+  project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  item_id    TEXT REFERENCES items(id) ON DELETE CASCADE,
+  type       TEXT NOT NULL CHECK (type IN ('item', 'planning')),
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+CREATE INDEX IF NOT EXISTS idx_conversations_project ON conversations(project_id);
+CREATE INDEX IF NOT EXISTS idx_conversations_item    ON conversations(item_id);
+
+-- Messages in a conversation.
+CREATE TABLE IF NOT EXISTS messages (
+  id              TEXT PRIMARY KEY,
+  conversation_id TEXT NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+  role            TEXT NOT NULL CHECK (role IN ('user', 'assistant', 'tool')),
+  content         TEXT NOT NULL DEFAULT '',
+  tool_calls      TEXT,
+  created_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages(conversation_id);
 `;
 
 export function runSchema(db: Database.Database): void {

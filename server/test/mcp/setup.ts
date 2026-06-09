@@ -11,6 +11,8 @@ import { ColumnService } from '../../src/services/columns.js';
 import { ItemService } from '../../src/services/items.js';
 import { CommentService } from '../../src/services/comments.js';
 import { ActivityService } from '../../src/services/activity.js';
+import { ConversationService } from '../../src/services/conversations.js';
+import { SettingsService } from '../../src/services/settings.js';
 import { projectsRouter } from '../../src/routes/projects.js';
 import { columnsRouter } from '../../src/routes/columns.js';
 import { itemsRouter, projectItemsRouter } from '../../src/routes/items.js';
@@ -50,12 +52,17 @@ export async function createTestContext(): Promise<TestContext> {
   const commentService = new CommentService(db);
   const activityService = new ActivityService(db);
 
+  const conversationService = new ConversationService(db);
+  const settingsService = new SettingsService(db);
+
   const services: Services = {
     projects: projectService,
     items: itemService,
     columns: columnService,
     comments: commentService,
     activity: activityService,
+    conversations: conversationService,
+    settings: settingsService,
   };
 
   // 4. Build the Hono app

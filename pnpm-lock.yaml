@@ -10,6 +10,9 @@ importers:
 
   server:
     dependencies:
+      '@anthropic-ai/claude-agent-sdk':
+        specifier: ^0.3.0
+        version: 0.3.170(@anthropic-ai/sdk@0.104.0(zod@4.4.3))(@modelcontextprotocol/sdk@1.29.0(zod@4.4.3))(zod@4.4.3)
       '@hono/node-server':
         specifier: ^1.13.7
         version: 1.19.14(hono@4.12.25)
@@ -92,6 +95,67 @@ importers:
         version: 3.2.6(@types/node@22.19.20)(jsdom@26.1.0)(tsx@4.22.4)
 
 packages:
+
+  '@anthropic-ai/claude-agent-sdk-darwin-arm64@0.3.170':
+    resolution: {integrity: sha512-rwfgArIa5WI0QPNqFsRBgvtSI0mrtpynUm0oK6+l6/KX4hcgnYGEzciZR1bOeD9/7sSZlTdIgt+T9alKeZmXcg==}
+    cpu: [arm64]
+    os: [darwin]
+
+  '@anthropic-ai/claude-agent-sdk-darwin-x64@0.3.170':
+    resolution: {integrity: sha512-0e58h8UQMtsQxLGIv9r4foxfBFWKZ7NeDtoplLhuD7EwQonehomw1sBXCch77t/IfUS+q5vQ5zv+fOGmap5nLQ==}
+    cpu: [x64]
+    os: [darwin]
+
+  '@anthropic-ai/claude-agent-sdk-linux-arm64-musl@0.3.170':
+    resolution: {integrity: sha512-SRYfQcsXlOq+CD/FqkQBTSHbaD++w73GnnO+NUV9adLYrca3kfetRwWT1iguY1cNS0l34dCR3rlzCPq78vg1Jg==}
+    cpu: [arm64]
+    os: [linux]
+    libc: [musl]
+
+  '@anthropic-ai/claude-agent-sdk-linux-arm64@0.3.170':
+    resolution: {integrity: sha512-gLbaFqcGppFJQd4DLNV4IXoeahejT/p2/M8bSSvRDbla9GOsBr1AxV5XLRyBn1e7xFGozZIAIQr3+1chp7NJgQ==}
+    cpu: [arm64]
+    os: [linux]
+    libc: [glibc]
+
+  '@anthropic-ai/claude-agent-sdk-linux-x64-musl@0.3.170':
+    resolution: {integrity: sha512-m4+I0qBEk7cxRKS+pL+eoWXbXTFOAo83fQ0tQvap4z/mDMm06IWJtEPoYTaMBwsp32GJWLkHWKbZSBCHZnp2DQ==}
+    cpu: [x64]
+    os: [linux]
+    libc: [musl]
+
+  '@anthropic-ai/claude-agent-sdk-linux-x64@0.3.170':
+    resolution: {integrity: sha512-Xl/m7TaSC3T5IDBdHrZQ9fCQYyDmPELN34CL+MoyPIf7uSmuZnjE9fUOqDh2Rv26JxWssi1M6X+BBvVuKd6Cpg==}
+    cpu: [x64]
+    os: [linux]
+    libc: [glibc]
+
+  '@anthropic-ai/claude-agent-sdk-win32-arm64@0.3.170':
+    resolution: {integrity: sha512-IG+8isJNNJKbnnhO7m+PGhfVCg+XoQ/MDxGde5eigFI0WsEfitjuWSWwx82bT9ghxI1aa6qNvI+UPgPcZuo5Fg==}
+    cpu: [arm64]
+    os: [win32]
+
+  '@anthropic-ai/claude-agent-sdk-win32-x64@0.3.170':
+    resolution: {integrity: sha512-7cuqSKbHVItPGVwRbd3A0BEJwcNtc7Fhoh6qHN4C6yrmjSrvdYYx3MLvq/VI768/RoG7mAMDxb+j7WfEfoP9BA==}
+    cpu: [x64]
+    os: [win32]
+
+  '@anthropic-ai/claude-agent-sdk@0.3.170':
+    resolution: {integrity: sha512-pAvhfk+iTodXZ6RF18Kz7BEUWFjL7EcR3tKuhUNdPpE1NAYCR3mSHGbafi72JsrNwKEDIs7FU31z3fqhwy8QzA==}
+    engines: {node: '>=18.0.0'}
+    peerDependencies:
+      '@anthropic-ai/sdk': '>=0.93.0'
+      '@modelcontextprotocol/sdk': ^1.29.0
+      zod: ^4.0.0
+
+  '@anthropic-ai/sdk@0.104.0':
+    resolution: {integrity: sha512-ppxCBQkDgzm1/Y6BEtEN+Lx7ejwFwKHDu7lh9W0iMxtjb1MdicbqrSRCXecKL9ZMsXwT/hAvdsddORtBzKE2UQ==}
+    hasBin: true
+    peerDependencies:
+      zod: ^3.25.0 || ^4.0.0
+    peerDependenciesMeta:
+      zod:
+        optional: true
 
   '@asamuzakjp/css-color@3.2.0':
     resolution: {integrity: sha512-K1A6z8tS3XsmCMM86xoWdn7Fkdn9m6RSVtocUrJYIwZnFVkng/PvkEoWtOWmP+Scc6saYWHWZYbndEEXxl24jw==}
@@ -718,6 +782,9 @@ packages:
     cpu: [x64]
     os: [win32]
 
+  '@stablelib/base64@1.0.1':
+    resolution: {integrity: sha512-1bnPQqSxSuc3Ii6MhBysoWCg58j97aUjuCSZrGSmDxNqtytIi0k8utUenAwTZN4V5mXXYGsVUI9zeBqy+jBOSQ==}
+
   '@tanstack/query-core@5.101.0':
     resolution: {integrity: sha512-cQetA74EB+seWySv1TTKr828TnP0u39m6LykwDXIo84SNortpDkp30TMEjkqtYCNP9c40uT/iwl6MLiufEt0Ow==}
 
@@ -1081,6 +1148,9 @@ packages:
   fast-deep-equal@3.1.3:
     resolution: {integrity: sha512-f3qQ9oQy9j2AhBe/H9VC91wLmKBCCU/gDOnKNAYG5hswO7BLKj09Hc5HYNz9cGI++xlpDCIgDaitVs03ATR84Q==}
 
+  fast-sha256@1.3.0:
+    resolution: {integrity: sha512-n11RGP/lrWEFI/bWdygLxhI+pVeo1ZYIVwvvPkW7azl/rOy+F3HYRZ2K5zeE9mmkhQppyv9sQFx0JM9UabnpPQ==}
+
   fast-uri@3.1.2:
     resolution: {integrity: sha512-rVjf7ArG3LTk+FS6Yw81V1DLuZl1bRbNrev6Tmd/9RaroeeRRJhAt7jg/6YFxbvAQXUCavSoZhPPj6oOx+5KjQ==}
 
@@ -1222,6 +1292,10 @@ packages:
     resolution: {integrity: sha512-/sM3dO2FOzXjKQhJuo0Q173wf2KOo8t4I8vHy6lF9poUp7bKT0/NHE8fPX23PwfhnykfqnC2xRxOnVw5XuGIaA==}
     engines: {node: '>=6'}
     hasBin: true
+
+  json-schema-to-ts@3.1.1:
+    resolution: {integrity: sha512-+DWg8jCJG2TEnpy7kOm/7/AxaYoaRbjVB4LFZLySZlWn8exGs3A4OLJR966cVvU26N7X9TWxl+Jsw7dzAqKT6g==}
+    engines: {node: '>=16'}
 
   json-schema-traverse@1.0.0:
     resolution: {integrity: sha512-NM8/P9n3XjXhIZn1lLhkFaACTOURQXjWhV4BA/RnOv8xvgqtqpAX9IO4mRQxSx1Rlo4tqzeqb0sOlruaOy3dug==}
@@ -1508,6 +1582,9 @@ packages:
   stackback@0.0.2:
     resolution: {integrity: sha512-1XMJE5fQo1jGH6Y/7ebnwPOBEkIEnT4QF32d5R1+VXdXveM0IBMJt8zfaxX1P3QhVwrYe+576+jkANtSS2mBbw==}
 
+  standardwebhooks@1.0.0:
+    resolution: {integrity: sha512-BbHGOQK9olHPMvQNHWul6MYlrRTAOKn03rOe4A8O3CLWhNf4YHBqq2HJKKC+sfqpxiBY52pNeesD6jIiLDz8jg==}
+
   statuses@2.0.2:
     resolution: {integrity: sha512-DvEy55V3DB7uknRo+4iOGT5fP1slR8wQohVdknigZPMpMstaKJQWhwiYBACJE3Ul2pTnATihhBYnRhZQHGBiRw==}
     engines: {node: '>= 0.8'}
@@ -1575,6 +1652,9 @@ packages:
   tr46@5.1.1:
     resolution: {integrity: sha512-hdF5ZgjTqgAntKkklYw0R03MG2x/bSzTtkxmIRw/sTNV8YXsCJ1tfLAX23lhxhHJlEf3CRCOCGGWw3vI3GaSPw==}
     engines: {node: '>=18'}
+
+  ts-algebra@2.0.0:
+    resolution: {integrity: sha512-FPAhNPFMrkwz76P7cdjdmiShwMynZYN6SgOujD1urY4oNm80Ou9oMdmbR45LotcKOXoy7wSmHkRFE6Mxbrhefw==}
 
   tslib@2.8.1:
     resolution: {integrity: sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w==}
@@ -1754,6 +1834,52 @@ packages:
     resolution: {integrity: sha512-ytENFjIJFl2UwYglde2jchW2Hwm4GJFLDiSXWdTrJQBIN9Fcyp7n4DhxJEiWNAJMV1/BqWfW/kkg71UDcHJyTQ==}
 
 snapshots:
+
+  '@anthropic-ai/claude-agent-sdk-darwin-arm64@0.3.170':
+    optional: true
+
+  '@anthropic-ai/claude-agent-sdk-darwin-x64@0.3.170':
+    optional: true
+
+  '@anthropic-ai/claude-agent-sdk-linux-arm64-musl@0.3.170':
+    optional: true
+
+  '@anthropic-ai/claude-agent-sdk-linux-arm64@0.3.170':
+    optional: true
+
+  '@anthropic-ai/claude-agent-sdk-linux-x64-musl@0.3.170':
+    optional: true
+
+  '@anthropic-ai/claude-agent-sdk-linux-x64@0.3.170':
+    optional: true
+
+  '@anthropic-ai/claude-agent-sdk-win32-arm64@0.3.170':
+    optional: true
+
+  '@anthropic-ai/claude-agent-sdk-win32-x64@0.3.170':
+    optional: true
+
+  '@anthropic-ai/claude-agent-sdk@0.3.170(@anthropic-ai/sdk@0.104.0(zod@4.4.3))(@modelcontextprotocol/sdk@1.29.0(zod@4.4.3))(zod@4.4.3)':
+    dependencies:
+      '@anthropic-ai/sdk': 0.104.0(zod@4.4.3)
+      '@modelcontextprotocol/sdk': 1.29.0(zod@4.4.3)
+      zod: 4.4.3
+    optionalDependencies:
+      '@anthropic-ai/claude-agent-sdk-darwin-arm64': 0.3.170
+      '@anthropic-ai/claude-agent-sdk-darwin-x64': 0.3.170
+      '@anthropic-ai/claude-agent-sdk-linux-arm64': 0.3.170
+      '@anthropic-ai/claude-agent-sdk-linux-arm64-musl': 0.3.170
+      '@anthropic-ai/claude-agent-sdk-linux-x64': 0.3.170
+      '@anthropic-ai/claude-agent-sdk-linux-x64-musl': 0.3.170
+      '@anthropic-ai/claude-agent-sdk-win32-arm64': 0.3.170
+      '@anthropic-ai/claude-agent-sdk-win32-x64': 0.3.170
+
+  '@anthropic-ai/sdk@0.104.0(zod@4.4.3)':
+    dependencies:
+      json-schema-to-ts: 3.1.1
+      standardwebhooks: 1.0.0
+    optionalDependencies:
+      zod: 4.4.3
 
   '@asamuzakjp/css-color@3.2.0':
     dependencies:
@@ -2200,6 +2326,8 @@ snapshots:
   '@rollup/rollup-win32-x64-msvc@4.61.1':
     optional: true
 
+  '@stablelib/base64@1.0.1': {}
+
   '@tanstack/query-core@5.101.0': {}
 
   '@tanstack/react-query@5.101.0(react@19.2.7)':
@@ -2635,6 +2763,8 @@ snapshots:
 
   fast-deep-equal@3.1.3: {}
 
+  fast-sha256@1.3.0: {}
+
   fast-uri@3.1.2: {}
 
   fdir@6.5.0(picomatch@4.0.4):
@@ -2781,6 +2911,11 @@ snapshots:
       - utf-8-validate
 
   jsesc@3.1.0: {}
+
+  json-schema-to-ts@3.1.1:
+    dependencies:
+      '@babel/runtime': 7.29.7
+      ts-algebra: 2.0.0
 
   json-schema-traverse@1.0.0: {}
 
@@ -3080,6 +3215,11 @@ snapshots:
 
   stackback@0.0.2: {}
 
+  standardwebhooks@1.0.0:
+    dependencies:
+      '@stablelib/base64': 1.0.1
+      fast-sha256: 1.3.0
+
   statuses@2.0.2: {}
 
   std-env@3.10.0: {}
@@ -3141,6 +3281,8 @@ snapshots:
   tr46@5.1.1:
     dependencies:
       punycode: 2.3.1
+
+  ts-algebra@2.0.0: {}
 
   tslib@2.8.1: {}
 

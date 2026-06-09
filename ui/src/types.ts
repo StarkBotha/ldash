@@ -52,6 +52,45 @@ export interface ActivityEntry {
   created_at: string;
 }
 
+export type ConversationType = 'item' | 'planning';
+
+export interface Conversation {
+  id: string;
+  project_id: string;
+  item_id: string | null;
+  type: ConversationType;
+  created_at: string;
+}
+
+export interface Message {
+  id: string;
+  conversation_id: string;
+  role: 'user' | 'assistant' | 'tool';
+  content: string;
+  tool_calls: unknown[] | null;
+  created_at: string;
+}
+
+export type ProviderType = 'claude-subscription' | 'openai-compatible';
+
+export interface ProviderConfig {
+  name: string;
+  type: ProviderType;
+  model: string;
+  baseUrl?: string;
+  apiKey?: string;
+}
+
+export interface GatewaySettings {
+  providers: ProviderConfig[];
+  activeProvider: string | null;
+}
+
+export type ChatStreamEvent =
+  | { type: 'text'; text: string }
+  | { type: 'done' }
+  | { type: 'error'; message: string };
+
 export type BoardEventType =
   | 'item.created'
   | 'item.updated'

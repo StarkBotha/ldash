@@ -73,12 +73,53 @@ export const EventTypes = {
 
 export type EventType = typeof EventTypes[keyof typeof EventTypes];
 
+// Re-export ToolCallRequest from gateway types so callers don't need to import from gateway module
+export type { ToolCallRequest } from './gateway/types.js';
+
+export type ConversationType = 'item' | 'planning';
+
+export interface Conversation {
+  id: string;
+  project_id: string;
+  item_id: string | null;
+  type: ConversationType;
+  created_at: string;
+}
+
+import type { ToolCallRequest } from './gateway/types.js';
+
+export interface Message {
+  id: string;
+  conversation_id: string;
+  role: 'user' | 'assistant' | 'tool';
+  content: string;
+  tool_calls: ToolCallRequest[] | null;
+  created_at: string;
+}
+
+export type ProviderType = 'claude-subscription' | 'openai-compatible';
+
+export interface ProviderConfig {
+  name: string;
+  type: ProviderType;
+  model: string;
+  baseUrl?: string;
+  apiKey?: string;
+}
+
+export interface GatewaySettings {
+  providers: ProviderConfig[];
+  activeProvider: string | null;
+}
+
 // Services bundle used by the MCP server
 import type { ProjectService } from './services/projects.js';
 import type { ItemService } from './services/items.js';
 import type { ColumnService } from './services/columns.js';
 import type { CommentService } from './services/comments.js';
 import type { ActivityService } from './services/activity.js';
+import type { ConversationService } from './services/conversations.js';
+import type { SettingsService } from './services/settings.js';
 
 export interface Services {
   projects: ProjectService;
@@ -86,4 +127,6 @@ export interface Services {
   columns: ColumnService;
   comments: CommentService;
   activity: ActivityService;
+  conversations: ConversationService;
+  settings: SettingsService;
 }

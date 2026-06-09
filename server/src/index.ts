@@ -2,12 +2,15 @@ import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
 import { openDatabase } from './db/connection.js';
 import { runSchema } from './db/schema.js';
+import { runMigrations } from './db/migrationRunner.js';
 import { seedColumns } from './db/seed.js';
 import { ProjectService } from './services/projects.js';
 import { ColumnService } from './services/columns.js';
 import { ItemService } from './services/items.js';
 import { CommentService } from './services/comments.js';
 import { ActivityService } from './services/activity.js';
+import { ConversationService } from './services/conversations.js';
+import { SettingsService } from './services/settings.js';
 import { projectsRouter } from './routes/projects.js';
 import { columnsRouter } from './routes/columns.js';
 import { itemsRouter, projectItemsRouter } from './routes/items.js';
@@ -16,6 +19,8 @@ import { projectActivityRouter, itemActivityRouter } from './routes/activity.js'
 import { onError } from './middleware/error.js';
 import { createMcpRouter } from './routes/mcp.js';
 import { createSseRouter } from './routes/sse.js';
+import { createConversationsRouter } from './routes/conversations.js';
+import { createSettingsRouter } from './routes/settings.js';
 import { eventBus } from './events/bus.js';
 import type { Services } from './types.js';
 
@@ -28,6 +33,9 @@ const db = openDatabase(DB_PATH);
 // 2. Run schema
 runSchema(db);
 
+// 2a. Run migrations
+runMigrations(db);
+
 // 3. Seed default columns
 seedColumns(db);
 
@@ -38,12 +46,21 @@ const itemService = new ItemService(db);
 const commentService = new CommentService(db);
 const activityService = new ActivityService(db);
 
+// 4a. Instantiate settings service
+const settingsService = new SettingsService(db);
+
+// 4b. Instantiate conversation service
+const conversationService = new ConversationService(db);
+
+// 4c. Extend services object
 const services: Services = {
   projects: projectService,
   items: itemService,
   columns: columnService,
   comments: commentService,
   activity: activityService,
+  conversations: conversationService,
+  settings: settingsService,
 };
 
 // 5. Create Hono app
@@ -71,6 +88,10 @@ app.route('/api/comments', commentsRouter(commentService, itemService, activityS
 
 // MCP server
 app.route('/mcp', createMcpRouter(services, eventBus));
+
+// Conversations and settings routes
+app.route('/', createConversationsRouter(services, conversationService, settingsService));
+app.route('/', createSettingsRouter(settingsService));
 
 // 7. Register error middleware
 app.onError(onError);
