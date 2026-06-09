@@ -16,12 +16,12 @@ export function createSseRouter(
       return c.json({ error: 'projectId query param required' }, 400);
     }
 
-    return streamText(c, async (stream) => {
-      // Set SSE headers
-      c.header('Cache-Control', 'no-cache');
-      c.header('Connection', 'keep-alive');
-      c.header('X-Accel-Buffering', 'no');
+    // Set SSE headers before the response starts streaming
+    c.header('Cache-Control', 'no-cache');
+    c.header('Connection', 'keep-alive');
+    c.header('X-Accel-Buffering', 'no');
 
+    return streamText(c, async (stream) => {
       // Write initial connected comment
       await stream.write(': connected\n\n');
 

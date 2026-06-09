@@ -22,12 +22,12 @@ function invalidateForEvent(
     case 'item.blocked':
     case 'item.unblocked':
       queryClient.invalidateQueries({ queryKey: ['items', projectId] });
-      queryClient.invalidateQueries({ queryKey: ['items', entityId] });
+      queryClient.invalidateQueries({ queryKey: ['item', entityId] });
       break;
 
     case 'item.moved':
       queryClient.invalidateQueries({ queryKey: ['items', projectId] });
-      queryClient.invalidateQueries({ queryKey: ['items', entityId] });
+      queryClient.invalidateQueries({ queryKey: ['item', entityId] });
       queryClient.invalidateQueries({ queryKey: ['activity', 'item', entityId] });
       break;
 
