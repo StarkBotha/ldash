@@ -1,5 +1,8 @@
 import type Database from 'better-sqlite3';
 import type { GatewaySettings, ProviderConfig } from '../types.js';
+import { createLogger } from '../logger.js';
+
+const logger = createLogger('db');
 
 function maskApiKey(key: string): string {
   if (key.length <= 8) return '***';
@@ -22,7 +25,7 @@ export class SettingsService {
     try {
       return JSON.parse(row.value) as GatewaySettings;
     } catch {
-      console.error('Settings: failed to parse gateway settings, returning defaults');
+      logger.error('failed to parse gateway settings, returning defaults');
       return { providers: [], activeProvider: null };
     }
   }

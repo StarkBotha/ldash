@@ -6,6 +6,10 @@ import type { SettingsService } from '../services/settings.js';
 import { getAdapter } from '../gateway/index.js';
 import { buildItemChatContext } from '../gateway/context.js';
 import type { ChatMessage } from '../gateway/types.js';
+import { createLogger } from '../logger.js';
+
+const logger = createLogger('chat');
+const gatewayLogger = createLogger('gateway');
 
 export function createConversationsRouter(
   services: Services,
@@ -40,10 +44,12 @@ export function createConversationsRouter(
         return c.json({ error: 'Item not found in this project' }, 404);
       }
       const conversation = conversations.getOrCreateItemConversation(projectId, itemId);
+      logger.info('conversation fetched', { conversationId: conversation.id, type: 'item', itemId });
       return c.json(conversation);
     }
 
     const conversation = conversations.getOrCreatePlanningConversation(projectId);
+    logger.info('conversation fetched', { conversationId: conversation.id, type: 'planning', projectId });
     return c.json(conversation);
   });
 
@@ -87,7 +93,8 @@ export function createConversationsRouter(
     }
 
     // Persist user message
-    conversations.appendMessage(id, { role: 'user', content });
+    const userMsg = conversations.appendMessage(id, { role: 'user', content });
+    logger.info('user message persisted', { conversationId: id, messageId: userMsg.id });
 
     // Fetch full history
     const allMessages = conversations.getMessages(id);
@@ -100,29 +107,52 @@ export function createConversationsRouter(
     }));
 
     // Prepend system prompt for item conversations
+    let systemPrompt: string | undefined;
     if (conversation.type === 'item' && conversation.item_id) {
       try {
-        const systemPrompt = buildItemChatContext(services, conversation.item_id);
+        systemPrompt = buildItemChatContext(services, conversation.item_id);
         chatMessages.unshift({ role: 'system', content: systemPrompt });
       } catch {
         // If context assembly fails, continue without system prompt
       }
     }
 
+    // Log adapter selection and system prompt debug
+    const gatewaySettings = settings.getGatewaySettings();
+    const providerName = gatewaySettings.activeProvider ?? 'unknown';
+    const activeProvider = gatewaySettings.providers.find(p => p.name === providerName);
+    gatewayLogger.info('stream start', {
+      provider: providerName,
+      type: activeProvider?.type ?? 'unknown',
+      model: activeProvider?.model ?? 'unknown',
+      conversationId: id,
+    });
+    if (systemPrompt) {
+      gatewayLogger.debug('system prompt', { preview: systemPrompt.slice(0, 200) });
+    }
+    const lastUserMsg = chatMessages.filter(m => m.role === 'user').at(-1);
+    if (lastUserMsg) {
+      gatewayLogger.debug('user message', { preview: lastUserMsg.content.slice(0, 200) });
+    }
+
     return streamText(c, async (stream) => {
       let assistantBuffer = '';
       let completed = false;
+      let chunkCount = 0;
+      const streamStart = Date.now();
 
       try {
         for await (const chunk of adapter.streamChat(chatMessages)) {
           if (chunk.type === 'text') {
             assistantBuffer += chunk.text;
+            chunkCount++;
             await stream.write(`data: ${JSON.stringify({ type: 'text', text: chunk.text })}\n\n`);
           } else if (chunk.type === 'done') {
             await stream.write(`data: ${JSON.stringify({ type: 'done' })}\n\n`);
             completed = true;
             break;
           } else if (chunk.type === 'error') {
+            gatewayLogger.error('stream error chunk', { message: chunk.message, conversationId: id });
             await stream.write(`data: ${JSON.stringify({ type: 'error', message: chunk.message })}\n\n`);
             return;
           } else if (chunk.type === 'tool_call') {
@@ -130,12 +160,25 @@ export function createConversationsRouter(
           }
         }
       } catch {
+        logger.info('stream aborted', { conversationId: id });
         await stream.write(`data: ${JSON.stringify({ type: 'error', message: 'Stream interrupted' })}\n\n`);
         return;
       }
 
       if (completed) {
-        conversations.appendMessage(id, { role: 'assistant', content: assistantBuffer });
+        const assistantMsg = conversations.appendMessage(id, { role: 'assistant', content: assistantBuffer });
+        logger.info('assistant message persisted', {
+          conversationId: id,
+          messageId: assistantMsg.id,
+          length: assistantBuffer.length,
+        });
+        gatewayLogger.info('stream complete', {
+          conversationId: id,
+          chunks: chunkCount,
+          text_length: assistantBuffer.length,
+          tool_call_count: 0,
+          duration_ms: Date.now() - streamStart,
+        });
       }
     });
   });

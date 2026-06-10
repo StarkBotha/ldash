@@ -9,6 +9,7 @@ import { runToolLoop } from '../gateway/loop.js';
 import type { PendingToolCall } from '../gateway/loop.js';
 import { getAdapter } from '../gateway/index.js';
 import type { ChatMessage } from '../gateway/types.js';
+import { createLogger } from '../logger.js';
 
 export type PlanningStreamEvent =
   | { type: 'text'; content: string }
@@ -41,6 +42,9 @@ function buildToolCallLabel(toolName: string, argumentsJson: string): string {
   }
   return 'Calling ' + toolName;
 }
+
+const planningLogger = createLogger('planning');
+const gatewayLogger = createLogger('gateway');
 
 export function createPlanningRouter(
   services: Services,
@@ -102,10 +106,29 @@ export function createPlanningRouter(
     // Track messages already persisted (count before loop)
     const persistedCount = storedMessages.length;
 
+    // Log adapter selection + debug info
+    const gatewaySettings = settingsService.getGatewaySettings();
+    const providerName = gatewaySettings.activeProvider ?? 'unknown';
+    const activeProvider = gatewaySettings.providers.find(p => p.name === providerName);
+    gatewayLogger.info('stream start', {
+      provider: providerName,
+      type: activeProvider?.type ?? 'unknown',
+      model: activeProvider?.model ?? 'unknown',
+      conversationId: conversation.id,
+    });
+    gatewayLogger.debug('system prompt', { preview: systemPrompt.slice(0, 200) });
+    gatewayLogger.debug('user message', { preview: content.slice(0, 200) });
+
     return streamText(c, async (stream) => {
       async function writePlanningEvent(event: PlanningStreamEvent): Promise<void> {
         await stream.write(JSON.stringify(event) + '\n');
       }
+
+      let turn = 0;
+      let totalChunks = 0;
+      let totalTextLength = 0;
+      let totalToolCalls = 0;
+      const streamStart = Date.now();
 
       try {
         const finalHistory = await runToolLoop(
@@ -114,15 +137,23 @@ export function createPlanningRouter(
           tools,
           async (name, args) => {
             // Wrap tool handler to emit tool_result event
+            planningLogger.debug('tool args', { tool: name, args });
+            const toolStart = Date.now();
             const result = await toolHandler(name, args);
             const success = !result.startsWith('Error:');
+            planningLogger.info('tool executed', { tool: name, ok: success, duration_ms: Date.now() - toolStart });
             await writePlanningEvent({ type: 'tool_result', toolName: name, success });
             return result;
           },
           async (chunk) => {
+            totalChunks++;
+            totalTextLength += chunk.length;
             await writePlanningEvent({ type: 'text', content: chunk });
           },
           async (call: PendingToolCall) => {
+            totalToolCalls++;
+            turn++;
+            planningLogger.info('tool loop turn', { turn, tool: call.name });
             const label = buildToolCallLabel(call.name, call.args);
             await writePlanningEvent({ type: 'tool_call', toolName: call.name, label });
           }
@@ -133,6 +164,15 @@ export function createPlanningRouter(
         // finalHistory = [system, ...storedMessages (persistedCount), ...newMessages]
         // new messages start at index persistedCount + 1 (skip system)
         const newMessages = finalHistory.slice(persistedCount + 1); // +1 for system message
+
+        // Determine termination reason
+        const lastMsg = finalHistory[finalHistory.length - 1];
+        const terminationReason =
+          lastMsg?.content === '[Planning loop reached maximum turns]'
+            ? 'max_turns'
+            : 'llm_done';
+        planningLogger.info('loop terminated', { reason: terminationReason });
+
         for (const msg of newMessages) {
           if (msg.role === 'assistant' || msg.role === 'tool') {
             services.conversations.appendMessage(conversation.id, {
@@ -143,9 +183,18 @@ export function createPlanningRouter(
           }
         }
 
+        gatewayLogger.info('stream complete', {
+          conversationId: conversation.id,
+          chunks: totalChunks,
+          text_length: totalTextLength,
+          tool_call_count: totalToolCalls,
+          duration_ms: Date.now() - streamStart,
+        });
+
         await writePlanningEvent({ type: 'done' });
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
+        gatewayLogger.error('stream error chunk', { message: msg, conversationId: conversation.id });
         await writePlanningEvent({ type: 'error', message: msg });
       }
     });

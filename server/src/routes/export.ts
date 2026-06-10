@@ -5,6 +5,9 @@ import type { Services } from '../types.js';
 import { generateExport } from '../export/generator.js';
 import { writeExport } from '../export/writer.js';
 import { slugify } from '../utils/slugify.js';
+import { createLogger } from '../logger.js';
+
+const logger = createLogger('export');
 
 export function createExportRouter(services: Services): Hono {
   const app = new Hono();
@@ -16,6 +19,8 @@ export function createExportRouter(services: Services): Hono {
     if (!project) {
       return c.json({ error: 'Project not found' }, 404);
     }
+
+    logger.info('export requested', { projectId });
 
     const slugifiedName = slugify(project.name);
     const outputDir = resolve(cwd(), 'exports', slugifiedName);
@@ -34,6 +39,10 @@ export function createExportRouter(services: Services): Hono {
       const msg = err instanceof Error ? err.message : String(err);
       return c.json({ error: msg }, 500);
     }
+
+    const paths = files.map(f => f.relativePath);
+    logger.info('files written', { projectId, count: files.length });
+    logger.debug('written paths', { paths });
 
     return c.json({ outputDir, fileCount: files.length });
   });

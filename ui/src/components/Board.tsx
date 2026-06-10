@@ -14,6 +14,7 @@ import { PlanView } from './PlanView';
 import { api } from '../api/client';
 import { triggerExport } from '../api/export';
 import type { Item } from '../types';
+import { logClientError } from '../clientLog';
 
 interface Props {
   projectId: string;
@@ -101,6 +102,7 @@ export function Board({ projectId, onBack }: Props) {
       queryClient.invalidateQueries({ queryKey: ['items', projectId] });
     } catch (err) {
       console.error('Failed to move item:', err);
+      logClientError('Failed to move item', { error: err instanceof Error ? err.message : String(err) });
     } finally {
       setDragOverride(null);
     }

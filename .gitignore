@@ -5,4 +5,5 @@ dist/
 *.db-wal
 *.db-shm
 exports/
+logs/
 .env

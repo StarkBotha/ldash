@@ -80,6 +80,30 @@ ldash/
 |----------|---------|-------------|
 | `PORT` | `3000` | Server listen port |
 | `DB_PATH` | `./ldash.db` | SQLite database file path |
+| `LOG_LEVEL` | `info` | Log verbosity: `debug`, `info`, `warn`, `error`, or `silent` |
+| `LOG_DIR` | `<cwd>/logs` | Directory for the `ldash.log` file |
+
+## Logging & troubleshooting
+
+The server writes every log entry to two places simultaneously: a human-readable line to stdout and a structured NDJSON line appended to `logs/ldash.log` (relative to the server's working directory). The log file alone is enough to reconstruct what happened during a manual test session.
+
+**Log file location:** `logs/ldash.log` by default. Set `LOG_DIR` to override.
+
+**Full debug trail:** set `LOG_LEVEL=debug` before starting the server. This adds bus emissions, MCP tool arguments, system prompt previews, and user message previews to the log.
+
+**Client errors are captured too.** The browser installs a global `window.onerror` and `unhandledrejection` handler on startup. Any uncaught JS error in the UI is POSTed to `POST /api/client-log` and logged under scope `client`. You'll find these in the same `ldash.log` file.
+
+**What each scope covers:**
+- `http` — every HTTP request (method, path, status, duration_ms)
+- `sse` — SSE client connect/disconnect with active connection count
+- `events` — every event bus emission (debug level)
+- `mcp` — every MCP tool call (args at debug, outcome + duration_ms at info, errors at warn)
+- `gateway` — LLM adapter selection, per-stream summary, error chunks
+- `planning` — tool-loop turns and tool executions
+- `chat` — conversation create/fetch, user/assistant message persistence
+- `export` — export requests and files written
+- `db` — migration runs and startup banner (listening URL, DB path, log file path)
+- `client` — uncaught UI errors forwarded from the browser
 
 ## Connect Claude Code
 

@@ -25,9 +25,12 @@ import { createPlanningRouter } from './routes/planning.js';
 import { createExportRouter } from './routes/export.js';
 import { eventBus } from './events/bus.js';
 import type { Services } from './types.js';
+import { createLogger, logFilePath } from './logger.js';
+import { httpLoggerMiddleware } from './middleware/httpLogger.js';
 
 const DB_PATH = process.env.DB_PATH ?? './ldash.db';
 const PORT = parseInt(process.env.PORT ?? '3000', 10);
+const dbLogger = createLogger('db');
 
 // 1. Open database
 const db = openDatabase(DB_PATH);
@@ -68,6 +71,9 @@ const services: Services = {
 // 5. Create Hono app
 const app = new Hono();
 
+// Register HTTP logging middleware (runs before all routes)
+app.use('*', httpLoggerMiddleware);
+
 // 6. Register routes
 app.route('/', createSseRouter(eventBus));
 app.route('/api/columns', columnsRouter(columnService, activityService, eventBus));
@@ -99,6 +105,27 @@ app.route('/', createSettingsRouter(settingsService));
 app.route('/', createPlanningRouter(services, settingsService, eventBus));
 app.route('/', createExportRouter(services));
 
+// Client error reporter
+const clientLogger = createLogger('client');
+app.post('/api/client-log', async (c) => {
+  let body: { level?: string; message?: string; stack?: string; url?: string };
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ ok: false }, 400);
+  }
+  const { level, message = '', stack, url } = body;
+  const fields: Record<string, unknown> = {};
+  if (stack) fields.stack = stack;
+  if (url) fields.url = url;
+  if (level === 'error') {
+    clientLogger.error(message, fields);
+  } else {
+    clientLogger.warn(message, fields);
+  }
+  return c.json({ ok: true });
+});
+
 // 7. Register error middleware
 app.onError(onError);
 
@@ -106,4 +133,5 @@ app.onError(onError);
 serve({ fetch: app.fetch, hostname: '127.0.0.1', port: PORT });
 
 // 9. Log startup
-console.log(`ldash listening on http://127.0.0.1:${PORT}`);
+const listenUrl = `http://127.0.0.1:${PORT}`;
+dbLogger.info('server started', { url: listenUrl, db: DB_PATH, log_file: logFilePath });

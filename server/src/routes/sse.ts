@@ -1,6 +1,10 @@
 import { Hono } from 'hono';
 import { stream } from 'hono/streaming';
 import type { EventBus } from '../events/bus.js';
+import { createLogger } from '../logger.js';
+
+const logger = createLogger('sse');
+let activeConnections = 0;
 
 export function createSseRouter(
   bus: EventBus,
@@ -24,6 +28,9 @@ export function createSseRouter(
     c.header('X-Accel-Buffering', 'no');
 
     return stream(c, async (stream) => {
+      activeConnections++;
+      logger.info('client connected', { projectId, active_connections: activeConnections });
+
       // Write initial connected comment
       await stream.write(': connected\n\n');
 
@@ -50,6 +57,8 @@ export function createSseRouter(
       } finally {
         unsubscribe();
         clearInterval(heartbeat);
+        activeConnections--;
+        logger.info('client disconnected', { projectId, active_connections: activeConnections });
       }
     });
   });
