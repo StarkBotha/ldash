@@ -53,7 +53,7 @@ export function ProjectList({ onSelectProject }: Props) {
             <div>
               <strong>{project.name}</strong>
               {project.description && (
-                <p style={{ margin: '4px 0 0', color: '#666', fontSize: 14 }}>{project.description}</p>
+                <p style={{ margin: '4px 0 0', color: '#666', fontSize: 15 }}>{project.description}</p>
               )}
             </div>
             <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>

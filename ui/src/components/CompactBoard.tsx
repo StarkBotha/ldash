@@ -18,7 +18,7 @@ function TypeBadge({ type }: { type: Item['type'] }) {
         display: 'inline-block',
         padding: '0 6px',
         borderRadius: 4,
-        fontSize: 10,
+        fontSize: 11,
         fontWeight: 600,
         background: colors[type] ?? '#888',
         color: '#fff',
@@ -63,7 +63,7 @@ export function CompactBoard({ projectId }: CompactBoardProps) {
             <div key={col.id} style={{ minWidth: 200, flex: 1 }}>
               <div
                 style={{
-                  fontSize: 12,
+                  fontSize: 13,
                   fontWeight: 600,
                   color: '#666',
                   marginBottom: 6,
@@ -78,7 +78,7 @@ export function CompactBoard({ projectId }: CompactBoardProps) {
                     background: '#e5e7eb',
                     borderRadius: 10,
                     padding: '0 6px',
-                    fontSize: 11,
+                    fontSize: 12,
                   }}
                 >
                   {colItems.length}
@@ -96,7 +96,7 @@ export function CompactBoard({ projectId }: CompactBoardProps) {
                         background: '#fff',
                         border: '1px solid #e5e7eb',
                         borderRadius: 4,
-                        fontSize: 12,
+                        fontSize: 13,
                         display: 'flex',
                         alignItems: 'center',
                       }}

@@ -95,7 +95,7 @@ export function ItemDetailPanel({ item, columns, projectId, onClose, onEdit, onD
     border: 'none',
     borderBottom: activeTab === tab ? '2px solid #3b82f6' : '2px solid transparent',
     cursor: 'pointer',
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: activeTab === tab ? 600 : 400,
     color: activeTab === tab ? '#1d4ed8' : '#6b7280',
   });
@@ -114,7 +114,7 @@ export function ItemDetailPanel({ item, columns, projectId, onClose, onEdit, onD
           <div style={{ flex: 1 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
               <span style={{
-                fontSize: 11, fontWeight: 600, color: '#fff',
+                fontSize: 12, fontWeight: 600, color: '#fff',
                 background: item.type === 'epic' ? '#8b5cf6' : item.type === 'story' ? '#3b82f6' : '#10b981',
                 borderRadius: 4, padding: '1px 6px',
               }}>
@@ -141,7 +141,7 @@ export function ItemDetailPanel({ item, columns, projectId, onClose, onEdit, onD
           {activeTab === 'details' && (
             <>
               <div style={sectionStyle}>
-                <label style={{ display: 'block', marginBottom: 6, fontWeight: 600, fontSize: 13 }}>Status</label>
+                <label style={{ display: 'block', marginBottom: 6, fontWeight: 600, fontSize: 14 }}>Status</label>
                 <select
                   value={item.column_id}
                   onChange={handleStatusChange}
@@ -170,7 +170,7 @@ export function ItemDetailPanel({ item, columns, projectId, onClose, onEdit, onD
 
               {showBlockReason && (
                 <div style={sectionStyle}>
-                  <label style={{ display: 'block', marginBottom: 6, fontSize: 13 }}>Block reason *</label>
+                  <label style={{ display: 'block', marginBottom: 6, fontSize: 14 }}>Block reason *</label>
                   <textarea
                     value={blockReason}
                     onChange={(e) => setBlockReason(e.target.value)}
@@ -186,15 +186,15 @@ export function ItemDetailPanel({ item, columns, projectId, onClose, onEdit, onD
 
               {item.blocked && item.blocked_reason && (
                 <div style={{ ...sectionStyle, background: '#fef2f2' }}>
-                  <strong style={{ fontSize: 13 }}>Blocked:</strong>{' '}
-                  <span style={{ fontSize: 13, color: '#991b1b' }}>{item.blocked_reason}</span>
+                  <strong style={{ fontSize: 14 }}>Blocked:</strong>{' '}
+                  <span style={{ fontSize: 14, color: '#991b1b' }}>{item.blocked_reason}</span>
                 </div>
               )}
 
               {item.description && (
                 <div style={sectionStyle}>
-                  <label style={{ display: 'block', marginBottom: 4, fontWeight: 600, fontSize: 13 }}>Description</label>
-                  <p style={{ margin: 0, whiteSpace: 'pre-wrap', fontSize: 14 }}>{item.description}</p>
+                  <label style={{ display: 'block', marginBottom: 4, fontWeight: 600, fontSize: 14 }}>Description</label>
+                  <p style={{ margin: 0, whiteSpace: 'pre-wrap', fontSize: 15 }}>{item.description}</p>
                 </div>
               )}
 
@@ -209,12 +209,12 @@ export function ItemDetailPanel({ item, columns, projectId, onClose, onEdit, onD
           {activeTab === 'comments' && (
             <>
               <div style={sectionStyle}>
-                <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, fontSize: 13 }}>Comments</label>
+                <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, fontSize: 14 }}>Comments</label>
                 <CommentBox itemId={item.id} />
               </div>
 
               <div style={sectionStyle}>
-                <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, fontSize: 13 }}>Activity</label>
+                <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, fontSize: 14 }}>Activity</label>
                 <ActivityFeed itemId={item.id} />
               </div>
             </>

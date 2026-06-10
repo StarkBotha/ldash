@@ -39,11 +39,11 @@ function MessageBubble({ message }: { message: Message }) {
           borderRadius: 12,
           background: isUser ? '#3b82f6' : '#f3f4f6',
           color: isUser ? '#fff' : '#1f2937',
-          fontSize: 14,
+          fontSize: 15,
         }}
       >
         <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{message.content}</div>
-        <div style={{ fontSize: 11, opacity: 0.6, marginTop: 4, textAlign: isUser ? 'right' : 'left' }}>
+        <div style={{ fontSize: 12, opacity: 0.6, marginTop: 4, textAlign: isUser ? 'right' : 'left' }}>
           {formatRelativeTime(message.created_at)}
         </div>
       </div>
@@ -76,7 +76,7 @@ export function ChatPanel({ projectId, itemId, providerLabel }: ChatPanelProps) 
 
   if (!conversation) {
     return (
-      <div style={{ padding: 20, color: '#6b7280', fontSize: 14 }}>Loading...</div>
+      <div style={{ padding: 20, color: '#6b7280', fontSize: 15 }}>Loading...</div>
     );
   }
 
@@ -90,7 +90,7 @@ export function ChatPanel({ projectId, itemId, providerLabel }: ChatPanelProps) 
         <span
           style={{
             display: 'inline-block',
-            fontSize: 11,
+            fontSize: 12,
             fontWeight: 600,
             color: '#fff',
             background: badgeColor,
@@ -117,7 +117,7 @@ export function ChatPanel({ projectId, itemId, providerLabel }: ChatPanelProps) 
                 borderRadius: 12,
                 background: '#f3f4f6',
                 color: '#1f2937',
-                fontSize: 14,
+                fontSize: 15,
               }}
             >
               <span style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{streamingText}</span>
@@ -135,7 +135,7 @@ export function ChatPanel({ projectId, itemId, providerLabel }: ChatPanelProps) 
         )}
 
         {isStreaming && !streamingText && (
-          <div style={{ color: '#9ca3af', fontSize: 13, padding: '4px 12px' }}>Thinking...</div>
+          <div style={{ color: '#9ca3af', fontSize: 14, padding: '4px 12px' }}>Thinking...</div>
         )}
 
         <div ref={bottomRef} />
@@ -154,7 +154,7 @@ export function ChatPanel({ projectId, itemId, providerLabel }: ChatPanelProps) 
             gap: 8,
           }}
         >
-          <span style={{ color: '#991b1b', fontSize: 13 }}>{error}</span>
+          <span style={{ color: '#991b1b', fontSize: 14 }}>{error}</span>
           <button
             onClick={dismissError}
             style={{
@@ -163,7 +163,7 @@ export function ChatPanel({ projectId, itemId, providerLabel }: ChatPanelProps) 
               cursor: 'pointer',
               color: '#991b1b',
               fontWeight: 600,
-              fontSize: 13,
+              fontSize: 14,
               flexShrink: 0,
             }}
           >
@@ -184,7 +184,7 @@ export function ChatPanel({ projectId, itemId, providerLabel }: ChatPanelProps) 
           style={{
             flex: 1,
             padding: '6px 10px',
-            fontSize: 13,
+            fontSize: 14,
             borderRadius: 6,
             border: '1px solid #d1d5db',
             resize: 'none',
@@ -201,7 +201,7 @@ export function ChatPanel({ projectId, itemId, providerLabel }: ChatPanelProps) 
             border: 'none',
             borderRadius: 6,
             cursor: isStreaming ? 'not-allowed' : 'pointer',
-            fontSize: 13,
+            fontSize: 14,
             alignSelf: 'flex-end',
           }}
         >

@@ -27,8 +27,8 @@ export function CommentBox({ itemId }: Props) {
     <div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
         {(comments ?? []).map((c: Comment) => (
-          <div key={c.id} style={{ background: '#f9f9f9', borderRadius: 6, padding: 10, fontSize: 14 }}>
-            <div style={{ fontSize: 12, color: '#888', marginBottom: 4 }}>
+          <div key={c.id} style={{ background: '#f9f9f9', borderRadius: 6, padding: 10, fontSize: 15 }}>
+            <div style={{ fontSize: 13, color: '#888', marginBottom: 4 }}>
               {c.author} · {new Date(c.created_at).toLocaleString()}
             </div>
             <div style={{ whiteSpace: 'pre-wrap' }}>{c.body}</div>
@@ -43,7 +43,7 @@ export function CommentBox({ itemId }: Props) {
         rows={3}
         style={{ width: '100%', padding: 8, boxSizing: 'border-box', resize: 'vertical' }}
       />
-      {error && <p style={{ color: 'red', fontSize: 13 }}>{error}</p>}
+      {error && <p style={{ color: 'red', fontSize: 14 }}>{error}</p>}
       <button
         onClick={handlePost}
         disabled={!body.trim() || createComment.isPending}

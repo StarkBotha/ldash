@@ -249,42 +249,42 @@ export function SettingsPage({ onClose }: SettingsPageProps) {
               {!provider.editing ? (
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
-                    <div style={{ fontWeight: 600, fontSize: 14 }}>{provider.name}</div>
-                    <div style={{ fontSize: 12, color: '#6b7280' }}>
+                    <div style={{ fontWeight: 600, fontSize: 15 }}>{provider.name}</div>
+                    <div style={{ fontSize: 13, color: '#6b7280' }}>
                       {provider.type} · {provider.model || 'default (sonnet)'}
                       {provider.baseUrl ? ` · ${provider.baseUrl}` : ''}
                       {provider.apiKey ? ` · key: ${provider.apiKey}` : ''}
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: 6 }}>
-                    <button onClick={() => openEdit(index)} style={{ fontSize: 12 }}>Edit</button>
-                    <button onClick={() => removeProvider(index)} style={{ fontSize: 12, color: 'red' }}>Delete</button>
+                    <button onClick={() => openEdit(index)} style={{ fontSize: 13 }}>Edit</button>
+                    <button onClick={() => removeProvider(index)} style={{ fontSize: 13, color: 'red' }}>Delete</button>
                   </div>
                 </div>
               ) : (
                 <div>
                   <div style={{ marginBottom: 8 }}>
-                    <label style={{ display: 'block', fontSize: 12, marginBottom: 3 }}>Name *</label>
+                    <label style={{ display: 'block', fontSize: 13, marginBottom: 3 }}>Name *</label>
                     <input
                       type="text"
                       value={provider.name}
                       onChange={(e) => updateProvider(index, { name: e.target.value })}
-                      style={{ width: '100%', padding: '4px 8px', fontSize: 13, boxSizing: 'border-box' }}
+                      style={{ width: '100%', padding: '4px 8px', fontSize: 14, boxSizing: 'border-box' }}
                     />
                   </div>
                   <div style={{ marginBottom: 8 }}>
-                    <label style={{ display: 'block', fontSize: 12, marginBottom: 3 }}>Type</label>
+                    <label style={{ display: 'block', fontSize: 13, marginBottom: 3 }}>Type</label>
                     <select
                       value={provider.type}
                       onChange={(e) => handleTypeChange(index, e.target.value as ProviderType)}
-                      style={{ width: '100%', padding: '4px 8px', fontSize: 13 }}
+                      style={{ width: '100%', padding: '4px 8px', fontSize: 14 }}
                     >
                       <option value="claude-subscription">claude-subscription</option>
                       <option value="openai-compatible">openai-compatible</option>
                     </select>
                   </div>
                   <div style={{ marginBottom: 8 }}>
-                    <label style={{ display: 'block', fontSize: 12, marginBottom: 3 }}>
+                    <label style={{ display: 'block', fontSize: 13, marginBottom: 3 }}>
                       Model
                       {provider.type === 'claude-subscription' && (
                         <span style={{ color: '#9ca3af', fontWeight: 'normal' }}> (empty = Default / Sonnet)</span>
@@ -305,39 +305,39 @@ export function SettingsPage({ onClose }: SettingsPageProps) {
                       value={provider.model ?? ''}
                       onChange={(e) => updateProvider(index, { model: e.target.value })}
                       placeholder={provider.type === 'claude-subscription' ? 'Default (Sonnet)' : 'e.g. gpt-4o, llama3'}
-                      style={{ width: '100%', padding: '4px 8px', fontSize: 13, boxSizing: 'border-box' }}
+                      style={{ width: '100%', padding: '4px 8px', fontSize: 14, boxSizing: 'border-box' }}
                     />
                     {modelHint && (
-                      <div style={{ fontSize: 11, color: '#6b7280', marginTop: 3 }}>{modelHint}</div>
+                      <div style={{ fontSize: 12, color: '#6b7280', marginTop: 3 }}>{modelHint}</div>
                     )}
                   </div>
                   {provider.type === 'openai-compatible' && (
                     <>
                       <div style={{ marginBottom: 8 }}>
-                        <label style={{ display: 'block', fontSize: 12, marginBottom: 3 }}>Base URL</label>
+                        <label style={{ display: 'block', fontSize: 13, marginBottom: 3 }}>Base URL</label>
                         <input
                           type="text"
                           value={provider.baseUrl ?? ''}
                           onChange={(e) => handleBaseUrlChange(index, e.target.value)}
                           placeholder="http://localhost:11434/v1"
-                          style={{ width: '100%', padding: '4px 8px', fontSize: 13, boxSizing: 'border-box' }}
+                          style={{ width: '100%', padding: '4px 8px', fontSize: 14, boxSizing: 'border-box' }}
                         />
                       </div>
                       <div style={{ marginBottom: 8 }}>
-                        <label style={{ display: 'block', fontSize: 12, marginBottom: 3 }}>API Key</label>
+                        <label style={{ display: 'block', fontSize: 13, marginBottom: 3 }}>API Key</label>
                         <input
                           type="password"
                           value={provider.apiKeyInput}
                           onChange={(e) => updateProvider(index, { apiKeyInput: e.target.value })}
                           placeholder={provider.apiKey ? 'Enter new key (leave blank to keep current)' : 'Enter API key'}
-                          style={{ width: '100%', padding: '4px 8px', fontSize: 13, boxSizing: 'border-box' }}
+                          style={{ width: '100%', padding: '4px 8px', fontSize: 14, boxSizing: 'border-box' }}
                         />
                       </div>
                     </>
                   )}
                   <button
                     onClick={() => updateProvider(index, { editing: false })}
-                    style={{ fontSize: 12, marginTop: 4 }}
+                    style={{ fontSize: 13, marginTop: 4 }}
                   >
                     Done
                   </button>
@@ -347,7 +347,7 @@ export function SettingsPage({ onClose }: SettingsPageProps) {
           );
         })}
 
-        <button onClick={addProvider} style={{ fontSize: 13, marginBottom: 20 }}>
+        <button onClick={addProvider} style={{ fontSize: 14, marginBottom: 20 }}>
           + Add provider
         </button>
 
@@ -355,7 +355,7 @@ export function SettingsPage({ onClose }: SettingsPageProps) {
         <select
           value={activeProvider ?? ''}
           onChange={(e) => setActiveProvider(e.target.value || null)}
-          style={{ width: '100%', padding: '4px 8px', fontSize: 13, marginBottom: 20 }}
+          style={{ width: '100%', padding: '4px 8px', fontSize: 14, marginBottom: 20 }}
         >
           <option value="">(none)</option>
           {providers.map((p, i) => (
@@ -364,14 +364,14 @@ export function SettingsPage({ onClose }: SettingsPageProps) {
         </select>
 
         {saveError && (
-          <div style={{ color: '#991b1b', fontSize: 13, marginBottom: 12, background: '#fef2f2', padding: '8px 10px', borderRadius: 4 }}>
+          <div style={{ color: '#991b1b', fontSize: 14, marginBottom: 12, background: '#fef2f2', padding: '8px 10px', borderRadius: 4 }}>
             {saveError}
           </div>
         )}
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, alignItems: 'center' }}>
           {saveStatus === 'saved' && (
-            <span style={{ color: '#059669', fontSize: 13, fontWeight: 600 }}>Saved</span>
+            <span style={{ color: '#059669', fontSize: 14, fontWeight: 600 }}>Saved</span>
           )}
           <button
             onClick={handleSave}
@@ -383,7 +383,7 @@ export function SettingsPage({ onClose }: SettingsPageProps) {
               border: 'none',
               borderRadius: 6,
               cursor: saveStatus === 'saving' ? 'not-allowed' : 'pointer',
-              fontSize: 14,
+              fontSize: 15,
             }}
           >
             {saveStatus === 'saving' ? 'Saving...' : 'Save'}

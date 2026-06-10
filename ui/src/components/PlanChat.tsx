@@ -44,10 +44,10 @@ export function PlanChat({ projectId }: PlanChatProps) {
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: '#fafafa' }}>
       {/* Header */}
       <div style={{ padding: '8px 16px', borderBottom: '1px solid #ddd', background: '#fff', display: 'flex', alignItems: 'center', gap: 8 }}>
-        <strong style={{ fontSize: 14 }}>Planning Chat</strong>
+        <strong style={{ fontSize: 15 }}>Planning Chat</strong>
         <button
           onClick={() => void handleClear()}
-          style={{ marginLeft: 'auto', fontSize: 12, padding: '2px 8px' }}
+          style={{ marginLeft: 'auto', fontSize: 13, padding: '2px 8px' }}
         >
           Clear history
         </button>
@@ -69,7 +69,7 @@ export function PlanChat({ projectId }: PlanChatProps) {
               border: msg.role === 'user' ? 'none' : '1px solid #ddd',
               borderRadius: 8,
               padding: '8px 12px',
-              fontSize: 14,
+              fontSize: 15,
               whiteSpace: 'pre-wrap',
             }}
           >
@@ -87,7 +87,7 @@ export function PlanChat({ projectId }: PlanChatProps) {
               border: '1px solid #ddd',
               borderRadius: 8,
               padding: '8px 12px',
-              fontSize: 14,
+              fontSize: 15,
               whiteSpace: 'pre-wrap',
             }}
           >
@@ -102,7 +102,7 @@ export function PlanChat({ projectId }: PlanChatProps) {
             {toolCallIndicators.map((indicator, i) => (
               <div
                 key={i}
-                style={{ fontSize: 12, color: '#666', display: 'flex', alignItems: 'center', gap: 4 }}
+                style={{ fontSize: 13, color: '#666', display: 'flex', alignItems: 'center', gap: 4 }}
               >
                 {indicator.status === 'pending' && <span>⟳</span>}
                 {indicator.status === 'done' && <span style={{ color: '#22c55e' }}>✓</span>}
@@ -125,7 +125,7 @@ export function PlanChat({ projectId }: PlanChatProps) {
             display: 'flex',
             alignItems: 'center',
             gap: 8,
-            fontSize: 13,
+            fontSize: 14,
           }}
         >
           <span style={{ flex: 1 }}>{displayError}</span>
@@ -152,7 +152,7 @@ export function PlanChat({ projectId }: PlanChatProps) {
             padding: '8px 12px',
             borderRadius: 6,
             border: '1px solid #ddd',
-            fontSize: 14,
+            fontSize: 15,
             minHeight: 60,
             fontFamily: 'inherit',
           }}
@@ -168,7 +168,7 @@ export function PlanChat({ projectId }: PlanChatProps) {
             border: 'none',
             borderRadius: 6,
             cursor: isStreaming || !inputValue.trim() ? 'not-allowed' : 'pointer',
-            fontSize: 14,
+            fontSize: 15,
             alignSelf: 'flex-end',
           }}
         >

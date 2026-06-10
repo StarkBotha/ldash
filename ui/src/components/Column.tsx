@@ -37,7 +37,7 @@ export function Column({ column, items, onCardClick, onNewItem }: Props) {
         borderBottom: '1px solid #e0e0e0',
       }}>
         <span style={{ fontWeight: 600 }}>{column.name}</span>
-        <span style={{ color: '#888', fontSize: 13 }}>{items.length}</span>
+        <span style={{ color: '#888', fontSize: 14 }}>{items.length}</span>
         <button
           onClick={onNewItem}
           style={{ marginLeft: 8, padding: '2px 8px', fontSize: 16, cursor: 'pointer' }}

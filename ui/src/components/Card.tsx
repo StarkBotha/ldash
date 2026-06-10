@@ -43,7 +43,7 @@ export function Card({ item, onClick }: Props) {
     >
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
         <span style={{
-          fontSize: 11,
+          fontSize: 12,
           fontWeight: 600,
           color: '#fff',
           background: TYPE_COLORS[item.type] ?? '#888',
@@ -53,17 +53,17 @@ export function Card({ item, onClick }: Props) {
         }}>
           {item.type}
         </span>
-        <span style={{ fontSize: 14, flex: 1 }}>{item.title}</span>
+        <span style={{ fontSize: 15, flex: 1 }}>{item.title}</span>
       </div>
 
       <div style={{ marginTop: 6, display: 'flex', gap: 6 }}>
         {item.flagged && (
-          <span title="Flagged" style={{ fontSize: 14 }}>🚩</span>
+          <span title="Flagged" style={{ fontSize: 15 }}>🚩</span>
         )}
         {item.blocked && (
           <span
             style={{
-              fontSize: 11,
+              fontSize: 12,
               color: '#fff',
               background: '#ef4444',
               borderRadius: 4,

@@ -36,19 +36,19 @@ function relativeTime(iso: string): string {
 export function ActivityFeed({ itemId }: Props) {
   const { data, isLoading } = useItemActivity(itemId);
 
-  if (isLoading) return <div style={{ fontSize: 13, color: '#888' }}>Loading activity…</div>;
+  if (isLoading) return <div style={{ fontSize: 14, color: '#888' }}>Loading activity…</div>;
 
   // API returns newest-first; reverse for chronological display in UI
   const entries = [...(data?.entries ?? [])].reverse();
 
   if (entries.length === 0) {
-    return <div style={{ fontSize: 13, color: '#888' }}>No activity yet.</div>;
+    return <div style={{ fontSize: 14, color: '#888' }}>No activity yet.</div>;
   }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
       {entries.map((entry) => (
-        <div key={entry.id} style={{ fontSize: 13, display: 'flex', gap: 8, alignItems: 'baseline' }}>
+        <div key={entry.id} style={{ fontSize: 14, display: 'flex', gap: 8, alignItems: 'baseline' }}>
           <span style={{ color: '#888', flexShrink: 0 }}>{relativeTime(entry.created_at)}</span>
           <span>{humaniseEvent(entry)}</span>
         </div>

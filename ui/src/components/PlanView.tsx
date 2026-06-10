@@ -26,7 +26,7 @@ export function PlanView({ projectId, onClose }: PlanViewProps) {
           style={{
             marginLeft: 'auto',
             padding: '4px 12px',
-            fontSize: 12,
+            fontSize: 13,
             background: '#fff',
             border: '1px solid #ddd',
             borderRadius: 4,
@@ -44,7 +44,7 @@ export function PlanView({ projectId, onClose }: PlanViewProps) {
 
       {/* Compact board — flex 2 */}
       <div style={{ flex: 2, overflow: 'hidden', background: '#f9fafb' }}>
-        <div style={{ padding: '6px 16px', fontSize: 12, fontWeight: 600, color: '#888', borderBottom: '1px solid #e5e7eb' }}>
+        <div style={{ padding: '6px 16px', fontSize: 13, fontWeight: 600, color: '#888', borderBottom: '1px solid #e5e7eb' }}>
           Board (live)
         </div>
         <div style={{ height: 'calc(100% - 29px)', overflow: 'auto' }}>

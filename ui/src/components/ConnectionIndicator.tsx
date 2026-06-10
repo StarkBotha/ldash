@@ -22,7 +22,7 @@ export function ConnectionIndicator({ status }: ConnectionIndicatorProps): React
         color: '#fff',
         padding: '6px 14px',
         borderRadius: 6,
-        fontSize: 13,
+        fontSize: 14,
         fontWeight: 600,
         pointerEvents: 'none',
         zIndex: 9999,
