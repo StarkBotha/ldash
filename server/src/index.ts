@@ -28,6 +28,7 @@ import { eventBus } from './events/bus.js';
 import type { Services } from './types.js';
 import { createLogger, logFilePath } from './logger.js';
 import { httpLoggerMiddleware } from './middleware/httpLogger.js';
+import { reconcileAllOnStartup } from './services/rollup.js';
 
 const DB_PATH = process.env.DB_PATH ?? './ldash.db';
 const PORT = parseInt(process.env.PORT ?? '3000', 10);
@@ -45,6 +46,9 @@ runMigrations(db);
 // 3. Seed default columns
 seedColumns(db);
 
+// 3a. One-time rollup reconciliation (after migrations/seed, before requests)
+// Deferred until after services are instantiated — see below.
+
 // 4. Instantiate services
 const projectService = new ProjectService(db);
 const columnService = new ColumnService(db);
@@ -58,7 +62,10 @@ const settingsService = new SettingsService(db);
 // 4b. Instantiate conversation service
 const conversationService = new ConversationService(db);
 
-// 4c. Extend services object
+// 4c. Startup rollup reconciliation — recompute all story/epic columns silently
+reconcileAllOnStartup(db, itemService, activityService, columnService, eventBus);
+
+// 4d. Extend services object
 const services: Services = {
   projects: projectService,
   items: itemService,
@@ -79,7 +86,7 @@ app.use('*', httpLoggerMiddleware);
 app.route('/', createSseRouter(eventBus));
 app.route('/api/columns', columnsRouter(columnService, activityService, eventBus));
 app.route('/api/projects', projectsRouter(projectService, activityService, eventBus));
-app.route('/api/items', itemsRouter(itemService, projectService, columnService, activityService, eventBus));
+app.route('/api/items', itemsRouter(itemService, projectService, columnService, activityService, eventBus, db));
 
 // Nested routes under /api/projects/:projectId
 const projectNestedApp = new Hono();
@@ -96,7 +103,7 @@ app.route('/api/items/:itemId', itemNestedApp);
 app.route('/api/comments', commentsRouter(commentService, itemService, activityService, eventBus));
 
 // MCP server
-app.route('/mcp', createMcpRouter(services, eventBus));
+app.route('/mcp', createMcpRouter(services, eventBus, db));
 
 // Conversations, settings, and models routes
 app.route('/', createConversationsRouter(services, conversationService, settingsService));

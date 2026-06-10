@@ -73,3 +73,72 @@ The ARTIFACT CONVENTIONS section of `server/src/planning/prompt.ts` was rewritte
 ### 14. Board UI — epic filter and parent breadcrumb (2026-06-10)
 
 Added an epic filter `<select>` to the board header (in `Board.tsx`). The select lists "All items" as default plus every item of type `epic` in the loaded project. When an epic is selected, the board computes the transitive descendant set from the already-loaded items array (the selected epic, its direct story children by `parent_id`, and tasks whose `parent_id` is one of those stories) — no new API calls. A `useEffect` resets the filter to "All items" when `projectId` changes. Column item counts reflect the filtered set because the filtered array is passed directly as `items` to each Column. The `Column` component was updated to accept `allItems` (the unfiltered array) and passes each card's parent title (looked up by `parent_id`) to `Card`. `Card` was updated to accept an optional `parentTitle` prop and renders it as a small muted one-line breadcrumb ("↳ Title") beneath the item title, truncated with CSS `overflow: hidden; text-overflow: ellipsis; white-space: nowrap` to prevent long titles from expanding card height.
+
+---
+
+## 2026-06-11: Board as dashboard of fact — derived status for stories and epics
+
+### Model change
+
+Only tasks have directly-settable status. Stories and epics derive their column from the columns of their descendant tasks. Human drag-and-drop is removed from the board entirely. The status dropdown in the detail panel is only rendered for tasks; stories and epics show read-only column name plus the hint "derived from its tasks".
+
+### Migration 003\_system\_actor
+
+`server/src/db/migrations/003_system_actor.ts` — rebuilds the activity table CHECK constraint to allow actor\_type 'system' (same pattern as 002\_planning\_actor). Added to the static MIGRATIONS array in `server/src/db/migrationRunner.ts`. `ActorType` union in `server/src/types.ts` extended to `'user' | 'claude' | 'llm' | 'system'`.
+
+### Centralized guard in ItemService.move
+
+`server/src/services/items.ts` — `move()` now accepts an optional third argument `opts?: { internal?: boolean }`. Without the internal flag, moving an item whose type is not 'task' throws `Error('Status of a ' + type + ' is derived from its tasks and cannot be set directly')`. The internal flag is used only by the rollup module so derived moves bypass the guard. All callers surface this as their normal error path: HTTP route → 409 JSON, MCP tool → isError text result.
+
+### Rollup module
+
+`server/src/services/rollup.ts` exports:
+
+- `recomputeAncestors(taskId, db, itemService, activityService, columnService, bus, emitEvents?)` — after a task move/create, reads the task's parent chain and recomputes derived column for parent story (if any) then parent epic (if any). No recursion beyond story → epic (epic move does NOT re-trigger anything).
+- `recomputeAncestorsByParent(parentId, projectId, db, ...)` — same computation starting from a known parent id (used after task deletion where the task is already gone from DB).
+- `reconcileAllOnStartup(db, ...)` — one-time pass over all stories and epics in all projects. Activity entries are written; events are skipped at startup (no clients connected yet). This is a judgment call noted here.
+
+Column semantics by position: lowest position = not-started (first), highest position = done (last), index 1 = in-progress representative.
+
+Story rule: no tasks → don't touch. All tasks first → first. All tasks last → last. Otherwise → second.
+
+Epic rule: same rule over ALL descendant tasks (direct task children of epic + tasks of stories under epic).
+
+### Rollup wiring
+
+Rollup runs after every successful task move, create, and delete in: the HTTP move route (`PATCH /api/items/:id/move`), the HTTP create route (`POST /api/items`), the HTTP delete route (`DELETE /api/items`), and the MCP tool `ldash_update_item_status` and `ldash_create_item`. The `db` handle is threaded through `itemsRouter` → `createMcpRouter` → `createMcpHandler` → `createMcpServer` → `registerItemTools` as an optional parameter — callers that don't have db (tests using the old app builder) simply get no rollup, which is fine for tests that don't test rollup behavior.
+
+Task delete case: the task is deleted before rollup can read it. If siblings exist, rollup is triggered via a sibling's id. If no siblings exist, `recomputeAncestorsByParent` is called directly with the captured parent\_id.
+
+The planning `update_item` tool only changes title/description, never column — no rollup needed there.
+
+### MCP tool description update
+
+`ldash_update_item_status` description updated to say it applies to TASKS only; stories/epics derive status automatically.
+
+### Planning prompt update
+
+`server/src/planning/prompt.ts` ARTIFACT CONVENTIONS section now ends with: "Story and epic status (column) is DERIVED automatically from their tasks — never try to set the column of a story or epic directly."
+
+### UI: drag-and-drop removed
+
+`DndContext`, `useSensors`, `useSensor`, `PointerSensor`, `handleDragEnd`, and `dragOverride` state removed from `Board.tsx`. `useDroppable` and `SortableContext` removed from `Column.tsx`. `useSortable` and the `CSS.Transform` / `isDragging` style removed from `Card.tsx`. `@dnd-kit/core`, `@dnd-kit/sortable`, and `@dnd-kit/utilities` removed from `ui/package.json` and uninstalled via `pnpm install`. Cards keep their onClick → detail panel.
+
+### UI: ItemDetailPanel — status field
+
+Status section now renders a `<select>` dropdown only when `item.type === 'task'`. For story or epic, it renders the column name as plain text with a muted " derived from its tasks" hint.
+
+### SSE / frontend item.moved events
+
+The existing `useSSE` hook invalidates query keys on any `item.moved` event regardless of which entity triggered it. Derived moves emit the same `item.moved` bus event shape as normal moves, so the frontend correctly refreshes when rollup moves a story or epic.
+
+### Test counts
+
+- Before: 252 tests (24 files)
+- After: 275 tests (28 files)
+- New test files: `src/__tests__/rollup.test.ts` (14 tests), `src/__tests__/rollupRoute.test.ts` (3 tests), `src/__tests__/migration003.test.ts` (3 tests), `test/mcp/rollupGuard.test.ts` (3 tests)
+- Existing tests fixed: none needed — no existing tests directly moved stories or epics
+
+### Build status
+
+Server tsc: clean. UI tsc: clean. Vite build: clean. All 275 server tests pass. UI smoke test (1 test): pass.

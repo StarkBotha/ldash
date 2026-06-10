@@ -1,5 +1,6 @@
 import Database from 'better-sqlite3';
 import { runSchema } from '../db/schema.js';
+import { runMigrations } from '../db/migrationRunner.js';
 import { seedColumns } from '../db/seed.js';
 import { ProjectService } from '../services/projects.js';
 import { ColumnService } from '../services/columns.js';
@@ -20,6 +21,7 @@ export function createTestApp() {
   db.pragma('foreign_keys = ON');
 
   runSchema(db);
+  runMigrations(db);
   seedColumns(db);
 
   const projectService = new ProjectService(db);

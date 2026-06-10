@@ -142,15 +142,26 @@ export function ItemDetailPanel({ item, columns, projectId, onClose, onEdit, onD
             <>
               <div style={sectionStyle}>
                 <label style={{ display: 'block', marginBottom: 6, fontWeight: 600, fontSize: 14 }}>Status</label>
-                <select
-                  value={item.column_id}
-                  onChange={handleStatusChange}
-                  style={{ width: '100%', padding: 6 }}
-                >
-                  {columns.map((col) => (
-                    <option key={col.id} value={col.id}>{col.name}</option>
-                  ))}
-                </select>
+                {item.type === 'task' ? (
+                  <select
+                    value={item.column_id}
+                    onChange={handleStatusChange}
+                    style={{ width: '100%', padding: 6 }}
+                  >
+                    {columns.map((col) => (
+                      <option key={col.id} value={col.id}>{col.name}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <div>
+                    <span style={{ fontSize: 14 }}>
+                      {columns.find((col) => col.id === item.column_id)?.name ?? item.column_id}
+                    </span>
+                    <span style={{ fontSize: 12, color: '#9ca3af', marginLeft: 8 }}>
+                      derived from its tasks
+                    </span>
+                  </div>
+                )}
               </div>
 
               <div style={{ ...sectionStyle, display: 'flex', gap: 8 }}>

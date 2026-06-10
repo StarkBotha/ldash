@@ -4,8 +4,9 @@ import { createMcpServer } from './server.js';
 import type { Services } from '../types.js';
 import { eventBus as defaultBus } from '../events/bus.js';
 import type { EventBus } from '../events/bus.js';
+import type Database from 'better-sqlite3';
 
-export function createMcpHandler(services: Services, bus: EventBus = defaultBus): {
+export function createMcpHandler(services: Services, bus: EventBus = defaultBus, db?: Database.Database): {
   handlePost: (c: Context) => Promise<Response>;
   handleGet: (c: Context) => Promise<Response>;
 } {
@@ -18,7 +19,7 @@ export function createMcpHandler(services: Services, bus: EventBus = defaultBus)
     }
 
     // Stateless mode: create a new server + transport per request
-    const server = createMcpServer(services, bus);
+    const server = createMcpServer(services, bus, db);
     const transport = new WebStandardStreamableHTTPServerTransport({
       sessionIdGenerator: undefined,
     });
@@ -30,7 +31,7 @@ export function createMcpHandler(services: Services, bus: EventBus = defaultBus)
 
   const handleGet = async (c: Context): Promise<Response> => {
     // Stateless mode: create a new server + transport per request
-    const server = createMcpServer(services, bus);
+    const server = createMcpServer(services, bus, db);
     const transport = new WebStandardStreamableHTTPServerTransport({
       sessionIdGenerator: undefined,
     });

@@ -5,6 +5,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import type { AddressInfo } from 'node:net';
 import { runSchema } from '../../src/db/schema.js';
+import { runMigrations } from '../../src/db/migrationRunner.js';
 import { seedColumns } from '../../src/db/seed.js';
 import { ProjectService } from '../../src/services/projects.js';
 import { ColumnService } from '../../src/services/columns.js';
@@ -41,8 +42,9 @@ export async function createTestContext(): Promise<TestContext> {
   db.pragma('journal_mode = WAL');
   db.pragma('foreign_keys = ON');
 
-  // 2. Run schema and seed
+  // 2. Run schema, migrations, and seed
   runSchema(db);
+  runMigrations(db);
   seedColumns(db);
 
   // 3. Instantiate services
@@ -83,7 +85,7 @@ export async function createTestContext(): Promise<TestContext> {
   app.route('/api/items/:itemId', itemNestedApp);
 
   app.route('/api/comments', commentsRouter(commentService, itemService, activityService));
-  app.route('/mcp', createMcpRouter(services));
+  app.route('/mcp', createMcpRouter(services, undefined, db));
 
   app.onError(onError);
 

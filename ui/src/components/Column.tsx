@@ -1,5 +1,3 @@
-import { useDroppable } from '@dnd-kit/core';
-import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { Card } from './Card';
 import type { Column as ColumnType, Item } from '../types';
 
@@ -36,9 +34,6 @@ interface EpicGroup {
 }
 
 function buildGroups(columnItems: Item[], allItems: Item[]): EpicGroup[] {
-  // Map of all items for fast lookup
-  const byId = new Map(allItems.map((i) => [i.id, i]));
-
   // All epics in the entire project (not just this column), for ordering groups
   const allEpics = allItems
     .filter((i) => i.type === 'epic')
@@ -97,14 +92,8 @@ function buildGroups(columnItems: Item[], allItems: Item[]): EpicGroup[] {
 export function Column({ column, items, allItems, onCardClick, onNewItem }: Props) {
   const groups = buildGroups(items, allItems);
 
-  // SortableContext items list must match the render order across all groups
-  const itemIds = groups.flatMap((g) => g.orderedItems.map((i) => i.id));
-
-  const { setNodeRef } = useDroppable({ id: column.id });
-
   return (
     <div
-      ref={setNodeRef}
       style={{
         width: 280,
         flexShrink: 0,
@@ -132,55 +121,53 @@ export function Column({ column, items, allItems, onCardClick, onNewItem }: Prop
           +
         </button>
       </div>
-      <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
-        <div style={{ flex: 1, overflowY: 'auto', padding: 8, display: 'flex', flexDirection: 'column', gap: 0 }}>
-          {groups.map((group) => (
-            <div key={group.epicId ?? '__no_epic__'}>
-              {/* Epic group header — label only, not draggable */}
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                marginTop: 8,
-                marginBottom: 4,
+      <div style={{ flex: 1, overflowY: 'auto', padding: 8, display: 'flex', flexDirection: 'column', gap: 0 }}>
+        {groups.map((group) => (
+          <div key={group.epicId ?? '__no_epic__'}>
+            {/* Epic group header — label only */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              marginTop: 8,
+              marginBottom: 4,
+            }}>
+              <span style={{
+                fontSize: 11,
+                fontWeight: 600,
+                color: '#aaa',
+                textTransform: 'uppercase',
+                letterSpacing: '0.07em',
+                whiteSpace: 'nowrap',
+                flexShrink: 0,
               }}>
-                <span style={{
-                  fontSize: 11,
-                  fontWeight: 600,
-                  color: '#aaa',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.07em',
-                  whiteSpace: 'nowrap',
-                  flexShrink: 0,
-                }}>
-                  {group.epicTitle}
-                </span>
-                <div style={{ flex: 1, height: 1, background: '#e0e0e0' }} />
-              </div>
-
-              {/* Cards in this group */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 4 }}>
-                {group.orderedItems.map((item) => {
-                  const parent = item.parent_id ? allItems.find((i) => i.id === item.parent_id) : undefined;
-                  const isTask = item.type === 'task';
-                  return (
-                    <div
-                      key={item.id}
-                      style={isTask ? {
-                        marginLeft: 14,
-                        borderLeft: '2px solid #d0d0d0',
-                        paddingLeft: 6,
-                      } : undefined}
-                    >
-                      <Card item={item} parentTitle={parent?.title} onClick={() => onCardClick(item)} />
-                    </div>
-                  );
-                })}
-              </div>
+                {group.epicTitle}
+              </span>
+              <div style={{ flex: 1, height: 1, background: '#e0e0e0' }} />
             </div>
-          ))}
-        </div>
-      </SortableContext>
+
+            {/* Cards in this group */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 4 }}>
+              {group.orderedItems.map((item) => {
+                const parent = item.parent_id ? allItems.find((i) => i.id === item.parent_id) : undefined;
+                const isTask = item.type === 'task';
+                return (
+                  <div
+                    key={item.id}
+                    style={isTask ? {
+                      marginLeft: 14,
+                      borderLeft: '2px solid #d0d0d0',
+                      paddingLeft: 6,
+                    } : undefined}
+                  >
+                    <Card item={item} parentTitle={parent?.title} onClick={() => onCardClick(item)} />
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

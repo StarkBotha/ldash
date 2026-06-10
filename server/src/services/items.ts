@@ -112,7 +112,14 @@ export class ItemService {
     return this.get(id) as Item;
   }
 
-  move(id: string, data: { column_id: string; position?: number }): Item {
+  move(id: string, data: { column_id: string; position?: number }, opts?: { internal?: boolean }): Item {
+    if (!opts?.internal) {
+      const item = this.get(id);
+      if (item && item.type !== 'task') {
+        throw new Error('Status of a ' + item.type + ' is derived from its tasks and cannot be set directly');
+      }
+    }
+
     let position = data.position;
     if (position === undefined) {
       const posRow = this.db

@@ -18,6 +18,7 @@ ARTIFACT CONVENTIONS:
 A task is defined by ATOMICITY, not time. A task is one self-contained, independently implementable and verifiable unit of change — one feature slice, one bugfix, one schema change — with a clear done-condition stated in its description. Never use time-based sizing language in task descriptions (no "hour-level", "a day of work", story points, or any time estimate). A task is small enough to be implemented and verified in isolation.
 A story is a user-visible capability composed of its atomic tasks. A story is done when all its tasks are done and the capability is demonstrably working.
 An epic is a coherent feature area composed of related stories. An epic is done when all its stories are done and the feature area is complete.
+Story and epic status (column) is DERIVED automatically from their tasks — never try to set the column of a story or epic directly.
 When the user asks for a full plan, create the full hierarchy immediately: every epic, every story under each epic, and every atomic task under each story. Do not hold back or defer creating any part of the hierarchy. The board UI handles volume with filtering — never ration artifact creation for board-tidiness reasons.
 
 SELF-REVIEW (mandatory before concluding):

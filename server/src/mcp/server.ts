@@ -2,6 +2,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { Services } from '../types.js';
 import { eventBus as defaultBus } from '../events/bus.js';
 import type { EventBus } from '../events/bus.js';
+import type Database from 'better-sqlite3';
 import { registerProjectTools } from './tools/projects.js';
 import { registerItemTools } from './tools/items.js';
 import { registerCommentTools } from './tools/comments.js';
@@ -60,11 +61,11 @@ function wrapMcpServer(server: McpServer): McpServer {
   return server;
 }
 
-export function createMcpServer(services: Services, bus: EventBus = defaultBus): McpServer {
+export function createMcpServer(services: Services, bus: EventBus = defaultBus, db?: Database.Database): McpServer {
   const server = wrapMcpServer(new McpServer({ name: 'ldash', version: '1.0.0' }));
 
   registerProjectTools(server, services);
-  registerItemTools(server, services, bus);
+  registerItemTools(server, services, bus, db);
   registerCommentTools(server, services, bus);
   registerFlagTools(server, services, bus);
 

@@ -3,8 +3,10 @@ import { z } from 'zod';
 import type { Services } from '../../types.js';
 import { eventBus as defaultBus } from '../../events/bus.js';
 import type { EventBus } from '../../events/bus.js';
+import { recomputeAncestors, recomputeAncestorsByParent } from '../../services/rollup.js';
+import type Database from 'better-sqlite3';
 
-export function registerItemTools(server: McpServer, services: Services, bus: EventBus = defaultBus): void {
+export function registerItemTools(server: McpServer, services: Services, bus: EventBus = defaultBus, db?: Database.Database): void {
   // ldash_list_items
   server.tool(
     'ldash_list_items',
@@ -142,6 +144,11 @@ export function registerItemTools(server: McpServer, services: Services, bus: Ev
         data: { item },
       });
 
+      // Rollup: after a task is created, recompute ancestor story/epic status
+      if (item.type === 'task' && db) {
+        recomputeAncestors(item.id, db, services.items, services.activity, services.columns, bus);
+      }
+
       return { content: [{ type: 'text' as const, text: JSON.stringify(item, null, 2) }] };
     }
   );
@@ -202,7 +209,7 @@ export function registerItemTools(server: McpServer, services: Services, bus: Ev
   // ldash_update_item_status
   server.tool(
     'ldash_update_item_status',
-    'Move an item to a different status column. Use this to advance work through the board — for example, moving a task from "In Progress" to "Review" after completing the implementation. Accepts either a column id or a column name.',
+    'Move a TASK to a different status column. Use this to advance a task through the board — for example, moving a task from "In Progress" to "Review" after completing the implementation. Accepts either a column id or a column name. Stories and epics derive their status automatically from their tasks — do not call this tool on them.',
     {
       item_id: z.string().describe('The id of the item to move.'),
       column_id: z.string().describe('The target column. Accepts either a column id or a column name (case-insensitive match). Examples: "Done", "In Progress", or the raw id.'),
@@ -224,7 +231,15 @@ export function registerItemTools(server: McpServer, services: Services, bus: Ev
         return { content: [{ type: 'text' as const, text: `Error: column not found. Available columns: ${names}` }], isError: true };
       }
 
-      const movedItem = services.items.move(input.item_id, { column_id: resolvedColumn.id });
+      let movedItem;
+      try {
+        movedItem = services.items.move(input.item_id, { column_id: resolvedColumn.id });
+      } catch (err) {
+        if (err instanceof Error && err.message.startsWith('Status of a ')) {
+          return { content: [{ type: 'text' as const, text: 'Error: ' + err.message }], isError: true };
+        }
+        throw err;
+      }
 
       const fromColumn = cols.find(c => c.id === oldItem.column_id);
       const fromColumnName = fromColumn?.name ?? oldItem.column_id;
@@ -250,6 +265,11 @@ export function registerItemTools(server: McpServer, services: Services, bus: Ev
         entityId: input.item_id,
         data: { item: movedItem, fromColumnId: oldItem.column_id, toColumnId: resolvedColumn.id },
       });
+
+      // Rollup: after a successful task move, recompute ancestor story/epic status
+      if (oldItem.type === 'task' && db) {
+        recomputeAncestors(input.item_id, db, services.items, services.activity, services.columns, bus);
+      }
 
       return { content: [{ type: 'text' as const, text: JSON.stringify(movedItem, null, 2) }] };
     }

@@ -6,6 +6,8 @@ import type { ActivityService } from '../services/activity.js';
 import { EventTypes } from '../types.js';
 import { eventBus as defaultBus } from '../events/bus.js';
 import type { EventBus } from '../events/bus.js';
+import { recomputeAncestors, recomputeAncestorsByParent } from '../services/rollup.js';
+import type Database from 'better-sqlite3';
 
 const VALID_TYPES = new Set(['epic', 'story', 'task']);
 
@@ -20,7 +22,8 @@ export function itemsRouter(
   projectService: ProjectService,
   columnService: ColumnService,
   activityService: ActivityService,
-  bus: EventBus = defaultBus
+  bus: EventBus = defaultBus,
+  db?: Database.Database
 ): Hono {
   const app = new Hono();
 
@@ -107,6 +110,11 @@ export function itemsRouter(
       entityId: item.id,
       data: { item },
     });
+
+    // Rollup: after a task is created, recompute ancestor story/epic status
+    if (item.type === 'task' && db) {
+      recomputeAncestors(item.id, db, itemService, activityService, columnService, bus);
+    }
 
     return c.json(item, 201);
   });
@@ -213,10 +221,18 @@ export function itemsRouter(
 
     const fromColumn = columnService.get(existing.column_id);
 
-    const updated = itemService.move(id, {
-      column_id,
-      position: typeof position === 'number' ? position : undefined,
-    });
+    let updated;
+    try {
+      updated = itemService.move(id, {
+        column_id,
+        position: typeof position === 'number' ? position : undefined,
+      });
+    } catch (err) {
+      if (err instanceof Error && err.message.startsWith('Status of a ')) {
+        return c.json({ error: err.message }, 409);
+      }
+      throw err;
+    }
 
     activityService.append({
       project_id: existing.project_id,
@@ -236,6 +252,11 @@ export function itemsRouter(
       entityId: id,
       data: { item: updated, fromColumnId: existing.column_id, toColumnId: column_id },
     });
+
+    // Rollup: after a successful task move, recompute ancestor story/epic status
+    if (existing.type === 'task' && db) {
+      recomputeAncestors(id, db, itemService, activityService, columnService, bus);
+    }
 
     return c.json(updated);
   });
@@ -324,6 +345,10 @@ export function itemsRouter(
       throw makeError('Item not found', 404);
     }
 
+    // Capture parent_id before deletion for rollup
+    const deletedParentId = existing.type === 'task' ? existing.parent_id : null;
+    const deletedProjectId = existing.project_id;
+
     // Write activity BEFORE deletion
     activityService.append({
       project_id: existing.project_id,
@@ -340,6 +365,24 @@ export function itemsRouter(
       entityId: id,
       data: { itemId: id, title: existing.title, type: existing.type },
     });
+
+    // Rollup: after a task deletion, recompute ancestor story/epic status.
+    // We use a sibling task of the same parent (if any) as the proxy taskId.
+    // If no siblings exist, use recomputeAncestors with a synthetic approach:
+    // create a proxy item lookup by parent.
+    if (existing.type === 'task' && deletedParentId && db) {
+      const siblings = itemService.listFiltered({
+        project_id: deletedProjectId,
+        type: 'task',
+        parent_id: deletedParentId,
+      });
+      if (siblings.length > 0) {
+        recomputeAncestors(siblings[0].id, db, itemService, activityService, columnService, bus);
+      } else {
+        // No sibling tasks — recompute parent using recomputeAncestorsByParent
+        recomputeAncestorsByParent(deletedParentId, deletedProjectId, db, itemService, activityService, columnService, bus);
+      }
+    }
 
     return new Response(null, { status: 204 });
   });
