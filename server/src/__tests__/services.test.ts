@@ -7,6 +7,7 @@ import { ColumnService } from '../services/columns.js';
 import { ItemService } from '../services/items.js';
 import { CommentService } from '../services/comments.js';
 import { ActivityService } from '../services/activity.js';
+import { SettingsService } from '../services/settings.js';
 
 function makeDb() {
   const db = new Database(':memory:');
@@ -231,5 +232,62 @@ describe('ActivityService', () => {
 
     const entries = actSvc.listByProject(projectId, { limit: 50, before: middle.created_at });
     expect(entries.every((e) => e.created_at < middle.created_at)).toBe(true);
+  });
+});
+
+describe('SettingsService', () => {
+  let db: Database.Database;
+  let svc: SettingsService;
+
+  beforeEach(() => {
+    db = new Database(':memory:');
+    db.pragma('journal_mode = WAL');
+    runSchema(db);
+    svc = new SettingsService(db);
+  });
+
+  it('returns empty settings when none saved', () => {
+    const s = svc.getGatewaySettings();
+    expect(s.providers).toEqual([]);
+    expect(s.activeProvider).toBeNull();
+  });
+
+  it('claude-subscription with no model is valid', () => {
+    expect(() =>
+      svc.setGatewaySettings({
+        providers: [{ name: 'Claude', type: 'claude-subscription' }],
+        activeProvider: 'Claude',
+      })
+    ).not.toThrow();
+
+    const saved = svc.getGatewaySettings();
+    expect(saved.providers[0].model).toBeUndefined();
+  });
+
+  it('claude-subscription with explicit model saves it', () => {
+    svc.setGatewaySettings({
+      providers: [{ name: 'Claude', type: 'claude-subscription', model: 'claude-opus-4-8' }],
+      activeProvider: 'Claude',
+    });
+    const saved = svc.getGatewaySettings();
+    expect(saved.providers[0].model).toBe('claude-opus-4-8');
+  });
+
+  it('openai-compatible without model is rejected', () => {
+    expect(() =>
+      svc.setGatewaySettings({
+        providers: [{ name: 'OAI', type: 'openai-compatible', baseUrl: 'http://localhost:11434/v1', apiKey: 'k' }],
+        activeProvider: 'OAI',
+      })
+    ).toThrow(/must have a model/);
+  });
+
+  it('openai-compatible with model saves correctly', () => {
+    svc.setGatewaySettings({
+      providers: [{ name: 'OAI', type: 'openai-compatible', baseUrl: 'http://localhost:11434/v1', apiKey: 'mykey', model: 'llama3' }],
+      activeProvider: 'OAI',
+    });
+    const saved = svc.getGatewaySettings();
+    expect(saved.providers[0].model).toBe('llama3');
   });
 });

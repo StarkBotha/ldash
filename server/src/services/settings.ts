@@ -51,7 +51,7 @@ export class SettingsService {
       if (!['claude-subscription', 'openai-compatible'].includes(provider.type)) {
         throw new Error(`Provider type must be 'claude-subscription' or 'openai-compatible'`);
       }
-      if (!provider.model || typeof provider.model !== 'string') {
+      if (provider.type === 'openai-compatible' && (!provider.model || typeof provider.model !== 'string')) {
         throw new Error(`Provider '${provider.name}' must have a model`);
       }
       if (names.has(provider.name)) {
@@ -83,12 +83,15 @@ export class SettingsService {
           apiKey,
         });
       } else {
-        // claude-subscription: strip baseUrl and apiKey
-        normalizedProviders.push({
+        // claude-subscription: strip baseUrl and apiKey; model is optional
+        const entry: ProviderConfig = {
           name: provider.name,
           type: provider.type,
-          model: provider.model,
-        });
+        };
+        if (provider.model && provider.model.trim() !== '') {
+          entry.model = provider.model.trim();
+        }
+        normalizedProviders.push(entry);
       }
     }
 

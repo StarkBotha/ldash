@@ -37,7 +37,8 @@ export function ItemDetailPanel({ item, columns, projectId, onClose, onEdit, onD
     if (!settings || !settings.activeProvider) return '';
     const active = settings.providers.find((p) => p.name === settings.activeProvider);
     if (!active) return '';
-    return `${active.name} / ${active.model}`;
+    const modelPart = active.model || 'sonnet';
+    return `${active.name} / ${modelPart}`;
   })();
 
   async function handleStatusChange(e: React.ChangeEvent<HTMLSelectElement>) {

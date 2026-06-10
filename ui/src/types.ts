@@ -76,7 +76,7 @@ export type ProviderType = 'claude-subscription' | 'openai-compatible';
 export interface ProviderConfig {
   name: string;
   type: ProviderType;
-  model: string;
+  model?: string;
   baseUrl?: string;
   apiKey?: string;
 }

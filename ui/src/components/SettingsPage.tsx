@@ -128,7 +128,7 @@ export function SettingsPage({ onClose }: SettingsPageProps) {
                 <div>
                   <div style={{ fontWeight: 600, fontSize: 14 }}>{provider.name}</div>
                   <div style={{ fontSize: 12, color: '#6b7280' }}>
-                    {provider.type} · {provider.model}
+                    {provider.type} · {provider.model || 'default (sonnet)'}
                     {provider.baseUrl ? ` · ${provider.baseUrl}` : ''}
                     {provider.apiKey ? ` · key: ${provider.apiKey}` : ''}
                   </div>
@@ -153,7 +153,14 @@ export function SettingsPage({ onClose }: SettingsPageProps) {
                   <label style={{ display: 'block', fontSize: 12, marginBottom: 3 }}>Type</label>
                   <select
                     value={provider.type}
-                    onChange={(e) => updateProvider(index, { type: e.target.value as ProviderType })}
+                    onChange={(e) => {
+                      const newType = e.target.value as ProviderType;
+                      const updates: Partial<ExtendedProvider> = { type: newType };
+                      if (newType === 'claude-subscription') {
+                        updates.model = '';
+                      }
+                      updateProvider(index, updates);
+                    }}
                     style={{ width: '100%', padding: '4px 8px', fontSize: 13 }}
                   >
                     <option value="claude-subscription">claude-subscription</option>
@@ -161,14 +168,27 @@ export function SettingsPage({ onClose }: SettingsPageProps) {
                   </select>
                 </div>
                 <div style={{ marginBottom: 8 }}>
-                  <label style={{ display: 'block', fontSize: 12, marginBottom: 3 }}>Model *</label>
-                  <input
-                    type="text"
-                    value={provider.model}
-                    onChange={(e) => updateProvider(index, { model: e.target.value })}
-                    placeholder="e.g. claude-sonnet-4-6, gpt-4o, llama3"
-                    style={{ width: '100%', padding: '4px 8px', fontSize: 13, boxSizing: 'border-box' }}
-                  />
+                  <label style={{ display: 'block', fontSize: 12, marginBottom: 3 }}>Model</label>
+                  {provider.type === 'claude-subscription' ? (
+                    <select
+                      value={provider.model ?? ''}
+                      onChange={(e) => updateProvider(index, { model: e.target.value })}
+                      style={{ width: '100%', padding: '4px 8px', fontSize: 13 }}
+                    >
+                      <option value="">Default (Sonnet)</option>
+                      <option value="claude-sonnet-4-6">Sonnet — balanced (recommended)</option>
+                      <option value="claude-opus-4-8">Opus — most capable</option>
+                      <option value="claude-haiku-4-5">Haiku — fastest</option>
+                    </select>
+                  ) : (
+                    <input
+                      type="text"
+                      value={provider.model ?? ''}
+                      onChange={(e) => updateProvider(index, { model: e.target.value })}
+                      placeholder="e.g. gpt-4o, llama3"
+                      style={{ width: '100%', padding: '4px 8px', fontSize: 13, boxSizing: 'border-box' }}
+                    />
+                  )}
                 </div>
                 {provider.type === 'openai-compatible' && (
                   <>
