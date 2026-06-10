@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { DndContext, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import type { DragEndEvent } from '@dnd-kit/core';
 import { useQueryClient } from '@tanstack/react-query';
@@ -32,11 +32,17 @@ export function Board({ projectId, onBack }: Props) {
   const [showProjectForm, setShowProjectForm] = useState(false);
   const [dragOverride, setDragOverride] = useState<{ itemId: string; toColumnId: string } | null>(null);
   const [isPlanningMode, setIsPlanningMode] = useState(false);
+  const [epicFilter, setEpicFilter] = useState<string>('all');
   const queryClient = useQueryClient();
   const { status } = useSSE(projectId);
   // Require 8px of movement before a drag starts, so plain clicks on cards
   // still fire onClick instead of being swallowed as zero-distance drags.
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
+
+  // Reset epic filter when switching projects
+  useEffect(() => {
+    setEpicFilter('all');
+  }, [projectId]);
 
   if (isPlanningMode) {
     return <PlanView projectId={projectId} onClose={() => setIsPlanningMode(false)} />;
@@ -54,6 +60,19 @@ export function Board({ projectId, onBack }: Props) {
     }
     return item;
   });
+
+  // Compute filtered items based on epic filter selection
+  const epics = allItems.filter((item) => item.type === 'epic');
+  const visibleItems: Item[] = (() => {
+    if (epicFilter === 'all') return distributedItems;
+    // Include the selected epic, its direct story children, and tasks whose parent is one of those stories
+    const epicItem = allItems.find((i) => i.id === epicFilter);
+    if (!epicItem) return distributedItems;
+    const storyIds = new Set(allItems.filter((i) => i.parent_id === epicFilter).map((i) => i.id));
+    return distributedItems.filter(
+      (i) => i.id === epicFilter || storyIds.has(i.id) || (i.parent_id != null && storyIds.has(i.parent_id))
+    );
+  })();
 
   function openNewItemForm(colId: string) {
     setItemFormColId(colId);
@@ -121,6 +140,16 @@ export function Board({ projectId, onBack }: Props) {
         <button onClick={onBack}>← Back</button>
         <h1 style={{ margin: 0, fontSize: 20 }}>{project?.name}</h1>
         <button onClick={() => setShowProjectForm(true)}>Edit</button>
+        <select
+          value={epicFilter}
+          onChange={(e) => setEpicFilter(e.target.value)}
+          style={{ marginLeft: 8 }}
+        >
+          <option value="all">All items</option>
+          {epics.map((epic) => (
+            <option key={epic.id} value={epic.id}>{epic.title}</option>
+          ))}
+        </select>
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
           <button onClick={() => setIsPlanningMode(true)}>Plan</button>
           <button
@@ -147,7 +176,8 @@ export function Board({ projectId, onBack }: Props) {
             <Column
               key={col.id}
               column={col}
-              items={distributedItems.filter((item) => item.column_id === col.id)}
+              items={visibleItems.filter((item) => item.column_id === col.id)}
+              allItems={allItems}
               onCardClick={(item) => setSelectedItem(item)}
               onNewItem={() => openNewItemForm(col.id)}
             />

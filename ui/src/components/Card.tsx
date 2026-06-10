@@ -4,6 +4,7 @@ import type { Item } from '../types';
 
 interface Props {
   item: Item;
+  parentTitle?: string;
   onClick: () => void;
 }
 
@@ -13,7 +14,7 @@ const TYPE_COLORS: Record<string, string> = {
   task: '#10b981',
 };
 
-export function Card({ item, onClick }: Props) {
+export function Card({ item, parentTitle, onClick }: Props) {
   const {
     attributes,
     listeners,
@@ -55,6 +56,18 @@ export function Card({ item, onClick }: Props) {
         </span>
         <span style={{ fontSize: 15, flex: 1 }}>{item.title}</span>
       </div>
+      {parentTitle && (
+        <div style={{
+          marginTop: 3,
+          fontSize: 12,
+          color: '#999',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+        }}>
+          ↳ {parentTitle}
+        </div>
+      )}
 
       <div style={{ marginTop: 6, display: 'flex', gap: 6 }}>
         {item.flagged && (

@@ -6,11 +6,12 @@ import type { Column as ColumnType, Item } from '../types';
 interface Props {
   column: ColumnType;
   items: Item[];
+  allItems: Item[];
   onCardClick: (item: Item) => void;
   onNewItem: () => void;
 }
 
-export function Column({ column, items, onCardClick, onNewItem }: Props) {
+export function Column({ column, items, allItems, onCardClick, onNewItem }: Props) {
   const sorted = [...items].sort((a, b) => a.position - b.position);
   const itemIds = sorted.map((item) => item.id);
 
@@ -48,9 +49,12 @@ export function Column({ column, items, onCardClick, onNewItem }: Props) {
       </div>
       <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
         <div style={{ flex: 1, overflowY: 'auto', padding: 8, display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {sorted.map((item) => (
-            <Card key={item.id} item={item} onClick={() => onCardClick(item)} />
-          ))}
+          {sorted.map((item) => {
+            const parent = item.parent_id ? allItems.find((i) => i.id === item.parent_id) : undefined;
+            return (
+              <Card key={item.id} item={item} parentTitle={parent?.title} onClick={() => onCardClick(item)} />
+            );
+          })}
         </div>
       </SortableContext>
     </div>
