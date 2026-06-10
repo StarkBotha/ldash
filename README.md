@@ -5,7 +5,7 @@ A local-first, Trello-like project planning board for a single developer. The bo
 ## What's here
 
 - **server** — Hono HTTP API backed by SQLite (better-sqlite3). Listens on `127.0.0.1:3000`.
-- **ui** — React 19 + Vite SPA. Runs on `localhost:5173` in dev, proxies `/api` to the server.
+- **ui** — React 19 + Vite SPA. Runs on `localhost:5273` in dev, proxies `/api` to the server.
 - Shared TypeScript types in both packages (identical copies; no cross-package dependency needed for Phase 1).
 
 ## Running in development
@@ -20,7 +20,7 @@ pnpm install
 pnpm dev
 ```
 
-The board is at http://localhost:5173. The API is at http://127.0.0.1:3000.
+The board is at http://localhost:5273. The API is at http://127.0.0.1:3000.
 
 The SQLite database file is created at `./ldash.db` in the working directory when you first start the server. Change the path with the `DB_PATH` env var.
 
