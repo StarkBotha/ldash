@@ -51,3 +51,38 @@ The spec requires that when a PUT body omits `apiKey` for an existing openai-com
 ### 10. Context assembly - `item.parent_id` as `null` vs `undefined`
 
 `listFiltered` with `parent_id: itemId` passes the itemId string as a parameter, which SQLite matches against `parent_id = ?`. SQLite's `parent_id IS NULL` branch in `listFiltered` is only triggered when `opts.parent_id === 'null'` (string). This is correct behavior.
+
+---
+
+## Dynamic model selection (added in Phase 5 follow-up)
+
+### Step 0 — SDK investigation
+
+The `@anthropic-ai/claude-agent-sdk` package does not export any model-listing function or `supportedModels` constant. The `ModelInfo` type appears in `sdk.d.ts` (fields: `value`, `displayName`, `description`, `supportsEffort`, etc.) but is only a type definition — there is no runtime API to retrieve available models from the SDK.
+
+The correct path for `claude-subscription` is Anthropic's REST `GET https://api.anthropic.com/v1/models`:
+- With `CLAUDE_CODE_OAUTH_TOKEN` set: `Authorization: Bearer <token>` + `anthropic-beta: oauth-2025-04-20`
+- With `ANTHROPIC_API_KEY` set: `x-api-key: <key>` (no beta header needed)
+- With neither: return the static fallback list immediately without any network call
+
+### Implementation
+
+**Server — `src/services/modelsService.ts`**
+
+Contains all fetch logic with a 5s timeout, 10-minute in-memory cache keyed by `type|baseUrl`, and `clearModelsCache()` exported for tests. Redaction of API keys in log fields is handled by the existing `redact` helper in the logger (the logger's `REDACT_KEYS` set includes `apikey` and `authorization`). Logs under scope `models`.
+
+**Server — `src/routes/models.ts`**
+
+`POST /api/models` accepts `{ type, baseUrl?, apiKey?, providerName? }`. When `apiKey` is omitted and `providerName` matches a saved provider, the service reads the stored key from `SettingsService.getGatewaySettings()`.
+
+**UI — `src/components/SettingsPage.tsx`**
+
+Model field is now `<input type="text" list={datalistId}>` backed by a `<datalist>`. Free text is always allowed. A per-provider `ModelFetchState` tracks `{ models, source, loading, error }`. Models are fetched on edit open, on type change, and on baseUrl change (600ms debounce for baseUrl). The hint line reads: "N models loaded from provider" / "Couldn't fetch models — type the model id" (openai-compatible failure) / "Showing defaults" (claude fallback).
+
+**UI — `src/api/settings.ts`**
+
+Added `fetchModels(req: FetchModelsRequest): Promise<ModelsResponse>` alongside existing `getSettings`/`updateSettings`.
+
+### Deviations from spec
+
+None. The spec allowed `source: 'fallback'` for both claude-subscription and openai-compatible failure cases. The hint wording "couldn't fetch models — type the model id" is used only for openai-compatible with an error; claude fallback shows "Showing defaults" as specified.

@@ -123,7 +123,9 @@ Each item's detail panel has a Chat tab. The assistant has read-only context abo
 
 Click the gear icon (top-right corner) to open Settings. Add one or more providers, set one as active, and click Save.
 
-**Claude subscription** — authenticates via your existing Claude Code login (reads the `claude` CLI session). No API key needed.
+The model field is a free-text input backed by an autocomplete list. When you open a provider for editing, the server fetches the available models directly from that provider and populates the dropdown suggestions. You can always type any model id by hand — the autocomplete is optional. A hint line below the field shows how many models were loaded, or a note to type the id manually if the fetch failed.
+
+**Claude subscription** — authenticates via your existing Claude Code login (reads the `claude` CLI session). No API key needed. Available models are fetched from `api.anthropic.com/v1/models` when a `CLAUDE_CODE_OAUTH_TOKEN` or `ANTHROPIC_API_KEY` env var is present; otherwise a built-in list is shown.
 
 ```
 Name:  My Claude
