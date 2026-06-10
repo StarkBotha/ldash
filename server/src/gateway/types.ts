@@ -28,9 +28,12 @@ export type GatewayChunk =
 export interface CallOptions {
   model?: string;
   maxTokens?: number;
+  executeTool?: (name: string, args: string) => Promise<string>;
 }
 
 export interface ChatAdapter {
+  readonly executesToolsInternally?: boolean;
+
   streamChat(
     messages: ChatMessage[],
     opts?: CallOptions

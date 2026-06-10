@@ -41,3 +41,9 @@ The route handler wraps the `toolHandler` call to emit `tool_result` events befo
 ### 10. No conflict found between phase-5.md and delivered Phase 4 code
 
 The `gateway/types.ts`, `gateway/index.ts`, `services/conversations.ts` all match the Phase 5 spec's documented contract exactly. No authoritative-code deviations needed.
+
+### 11. ClaudeAdapter.callWithTools — refactored to Agent SDK (2026-06-10)
+
+The original `callWithTools` posted directly to `https://api.anthropic.com/v1/messages` with a Bearer OAuth token. This bypassed the sanctioned Claude-subscription path and was auth-unverified. It was replaced so all claude-subscription traffic goes through `@anthropic-ai/claude-agent-sdk`.
+
+Design: `CallOptions` gained `executeTool?: (name, argsJson) => Promise<string>`. `ChatAdapter` gained a readonly `executesToolsInternally?: boolean` capability flag. `ClaudeAdapter` sets `executesToolsInternally = true` and rewrites `callWithTools` to build an in-process MCP server (`createSdkMcpServer` + `tool()`) whose handlers wrap each incoming `ToolDefinition`, then calls `query()` with `mcpServers` and `allowedTools` restricted to those tools only. A small `jsonSchemaToZod` helper converts the flat JSON Schema subset (string/number/boolean/enum, required[]) used by planning tools to Zod. `runToolLoop` in `loop.ts` detects `executesToolsInternally` and takes a single-call path (no multi-round management), forwarding chunks to sinks and appending tool messages to history. The existing multi-round path for the OpenAI adapter is unchanged.

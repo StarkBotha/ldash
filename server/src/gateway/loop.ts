@@ -21,8 +21,81 @@ export async function runToolLoop(
   toolCallSink: ToolCallSink,
   options?: { maxTurns?: number }
 ): Promise<ChatMessage[]> {
-  const maxTurns = options?.maxTurns ?? 10;
   const history: ChatMessage[] = [...messages];
+
+  // ---------------------------------------------------------------------------
+  // Internal-execution path (e.g. ClaudeAdapter via Agent SDK)
+  // The adapter handles all tool round-trips internally. We provide executeTool
+  // and forward chunks to the sinks; no multi-round management needed.
+  // ---------------------------------------------------------------------------
+  if (adapter.executesToolsInternally) {
+    // executeTool wraps the toolHandler and also appends tool messages to history
+    const executeTool = async (name: string, argsStr: string): Promise<string> => {
+      let parsedArgs: Record<string, unknown>;
+      try {
+        parsedArgs = JSON.parse(argsStr) as Record<string, unknown>;
+      } catch {
+        parsedArgs = {};
+      }
+
+      let resultStr: string;
+      try {
+        resultStr = await toolHandler(name, parsedArgs);
+      } catch (err: unknown) {
+        resultStr = 'Error: ' + (err instanceof Error ? err.message : String(err));
+      }
+
+      return resultStr;
+    };
+
+    for await (const chunk of adapter.callWithTools(history, tools, { executeTool })) {
+      if (chunk.type === 'text') {
+        textSink(chunk.text);
+      } else if (chunk.type === 'tool_call') {
+        const pending: PendingToolCall = { id: chunk.id, name: chunk.name, args: chunk.args };
+        toolCallSink(pending);
+
+        // Append the assistant tool_call message and tool result to history
+        history.push({
+          role: 'assistant',
+          content: '',
+          tool_calls: [{ id: chunk.id, name: chunk.name, arguments: chunk.args }],
+        });
+
+        // Execute the tool and record the result
+        let parsedArgs: Record<string, unknown>;
+        try {
+          parsedArgs = JSON.parse(chunk.args) as Record<string, unknown>;
+        } catch {
+          parsedArgs = {};
+        }
+
+        let resultStr: string;
+        try {
+          resultStr = await toolHandler(chunk.name, parsedArgs);
+        } catch (err: unknown) {
+          resultStr = 'Error: ' + (err instanceof Error ? err.message : String(err));
+        }
+
+        history.push({
+          role: 'tool',
+          content: resultStr,
+          tool_call_id: chunk.id,
+        });
+      } else if (chunk.type === 'error') {
+        throw new Error(chunk.message);
+      } else if (chunk.type === 'done') {
+        break;
+      }
+    }
+
+    return history;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Multi-round path (e.g. OpenAIAdapter) — unchanged
+  // ---------------------------------------------------------------------------
+  const maxTurns = options?.maxTurns ?? 10;
 
   for (let turn = 0; turn < maxTurns; turn++) {
     const pendingCalls: PendingToolCall[] = [];
