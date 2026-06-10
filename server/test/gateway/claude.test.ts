@@ -54,15 +54,16 @@ beforeEach(() => {
 });
 
 // ---------------------------------------------------------------------------
-// streamChat tests (unchanged behaviour)
+// streamChat tests
 // ---------------------------------------------------------------------------
 
 describe('ClaudeAdapter.streamChat', () => {
-  it('yields text chunks from SDK response', async () => {
+  it('yields text chunks from SDK response (whole-message fallback, no deltas)', async () => {
     mockQuery.mockReturnValue(
       makeAsyncIterable([
         {
           type: 'assistant',
+          uuid: 'msg-1',
           message: {
             content: [{ type: 'text', text: 'Hello' }],
           },
@@ -86,7 +87,82 @@ describe('ClaudeAdapter.streamChat', () => {
     expect(chunks).toContainEqual({ type: 'done' });
   });
 
-  it('calls query with allowedTools: []', async () => {
+  it('yields incremental text chunks from stream_event partial deltas', async () => {
+    mockQuery.mockReturnValue(
+      makeAsyncIterable([
+        {
+          type: 'stream_event',
+          uuid: 'msg-2',
+          event: { type: 'content_block_delta', delta: { type: 'text_delta', text: 'Hel' } },
+        },
+        {
+          type: 'stream_event',
+          uuid: 'msg-2',
+          event: { type: 'content_block_delta', delta: { type: 'text_delta', text: 'lo' } },
+        },
+        {
+          type: 'assistant',
+          uuid: 'msg-2',
+          message: { content: [{ type: 'text', text: 'Hello' }] },
+        },
+        {
+          type: 'result',
+          subtype: 'success',
+          result: 'Hello',
+          is_error: false,
+        },
+      ])
+    );
+
+    const adapter = new ClaudeAdapter({ authMode: 'subscription' });
+    const chunks: unknown[] = [];
+    for await (const chunk of adapter.streamChat([{ role: 'user', content: 'Hi' }])) {
+      chunks.push(chunk);
+    }
+
+    // Incremental deltas arrive
+    expect(chunks).toContainEqual({ type: 'text', text: 'Hel' });
+    expect(chunks).toContainEqual({ type: 'text', text: 'lo' });
+    // Whole-message text is NOT duplicated — 'Hello' must not appear as a text chunk
+    const textChunks = chunks.filter((c) => (c as { type: string }).type === 'text') as { type: string; text: string }[];
+    expect(textChunks.every((c) => c.text !== 'Hello')).toBe(true);
+    expect(chunks).toContainEqual({ type: 'done' });
+  });
+
+  it('does not duplicate text when deltas and whole-message both present', async () => {
+    mockQuery.mockReturnValue(
+      makeAsyncIterable([
+        {
+          type: 'stream_event',
+          uuid: 'msg-3',
+          event: { type: 'content_block_delta', delta: { type: 'text_delta', text: 'A' } },
+        },
+        {
+          type: 'stream_event',
+          uuid: 'msg-3',
+          event: { type: 'content_block_delta', delta: { type: 'text_delta', text: 'B' } },
+        },
+        {
+          // Whole-message arrives after deltas — must be skipped
+          type: 'assistant',
+          uuid: 'msg-3',
+          message: { content: [{ type: 'text', text: 'AB' }] },
+        },
+        { type: 'result', subtype: 'success', result: '', is_error: false },
+      ])
+    );
+
+    const adapter = new ClaudeAdapter({ authMode: 'subscription' });
+    const textChunks: string[] = [];
+    for await (const chunk of adapter.streamChat([{ role: 'user', content: 'Hi' }])) {
+      if (chunk.type === 'text') textChunks.push(chunk.text);
+    }
+
+    // Only the two incremental delta texts arrive — 'AB' whole-message is suppressed
+    expect(textChunks).toEqual(['A', 'B']);
+  });
+
+  it('calls query with allowedTools: [] and includePartialMessages: true', async () => {
     mockQuery.mockReturnValue(
       makeAsyncIterable([
         { type: 'result', subtype: 'success', result: '', is_error: false },
@@ -99,8 +175,9 @@ describe('ClaudeAdapter.streamChat', () => {
     }
 
     expect(mockQuery).toHaveBeenCalledOnce();
-    const callArg = mockQuery.mock.calls[0][0] as { options?: { allowedTools?: unknown[] } };
+    const callArg = mockQuery.mock.calls[0][0] as { options?: { allowedTools?: unknown[]; includePartialMessages?: boolean } };
     expect(callArg.options?.allowedTools).toEqual([]);
+    expect(callArg.options?.includePartialMessages).toBe(true);
   });
 
   it('does not set ANTHROPIC_API_KEY when authMode is subscription', () => {
@@ -313,6 +390,88 @@ describe('ClaudeAdapter.callWithTools', () => {
   it('sets executesToolsInternally = true', () => {
     const adapter = new ClaudeAdapter({ authMode: 'subscription' });
     expect(adapter.executesToolsInternally).toBe(true);
+  });
+
+  it('yields incremental text from stream_event deltas in callWithTools', async () => {
+    mockQuery.mockReturnValue(
+      makeAsyncIterable([
+        {
+          type: 'stream_event',
+          uuid: 'msg-ct-1',
+          event: { type: 'content_block_delta', delta: { type: 'text_delta', text: 'Part1' } },
+        },
+        {
+          type: 'stream_event',
+          uuid: 'msg-ct-1',
+          event: { type: 'content_block_delta', delta: { type: 'text_delta', text: 'Part2' } },
+        },
+        {
+          type: 'assistant',
+          uuid: 'msg-ct-1',
+          message: { content: [{ type: 'text', text: 'Part1Part2' }] },
+        },
+        { type: 'result', subtype: 'success', result: '', is_error: false },
+      ])
+    );
+
+    const executeTool = vi.fn();
+    const adapter = new ClaudeAdapter({ authMode: 'subscription' });
+    const textChunks: string[] = [];
+    for await (const chunk of adapter.callWithTools(
+      [{ role: 'user', content: 'hi' }],
+      [],
+      { executeTool }
+    )) {
+      if (chunk.type === 'text') textChunks.push(chunk.text);
+    }
+
+    // Incremental deltas arrive; whole-message text is not duplicated
+    expect(textChunks).toEqual(['Part1', 'Part2']);
+  });
+
+  it('callWithTools whole-message fallback when no deltas arrive (old SDK behavior)', async () => {
+    mockQuery.mockReturnValue(
+      makeAsyncIterable([
+        {
+          type: 'assistant',
+          uuid: 'msg-ct-2',
+          message: { content: [{ type: 'text', text: 'FallbackText' }] },
+        },
+        { type: 'result', subtype: 'success', result: '', is_error: false },
+      ])
+    );
+
+    const executeTool = vi.fn();
+    const adapter = new ClaudeAdapter({ authMode: 'subscription' });
+    const textChunks: string[] = [];
+    for await (const chunk of adapter.callWithTools(
+      [{ role: 'user', content: 'hi' }],
+      [],
+      { executeTool }
+    )) {
+      if (chunk.type === 'text') textChunks.push(chunk.text);
+    }
+
+    expect(textChunks).toEqual(['FallbackText']);
+  });
+
+  it('sets includePartialMessages: true on the query options in callWithTools', async () => {
+    mockQuery.mockReturnValue(
+      makeAsyncIterable([
+        { type: 'result', subtype: 'success', result: '', is_error: false },
+      ])
+    );
+
+    const executeTool = vi.fn();
+    const adapter = new ClaudeAdapter({ authMode: 'subscription' });
+    for await (const _c of adapter.callWithTools(
+      [{ role: 'user', content: 'hi' }],
+      [],
+      { executeTool }
+    )) { /* consume */ }
+
+    const callArg = mockQuery.mock.calls[0][0] as { options?: { includePartialMessages?: boolean } };
+    expect(callArg.options?.includePartialMessages).toBe(true);
   });
 
   it('SDK flow calling the tool handler mid-stream exercises executeTool exactly once', async () => {

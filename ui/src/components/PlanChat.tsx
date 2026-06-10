@@ -11,14 +11,32 @@ export function PlanChat({ projectId }: PlanChatProps) {
   const [inputValue, setInputValue] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
   const [localError, setLocalError] = useState<string | null>(null);
+  const isNearBottomRef = useRef(true);
 
   const displayError = error ?? localError;
 
+  // Track whether the user is near the bottom so we don't fight manual scroll-up.
+  function handleScroll() {
+    const el = scrollRef.current;
+    if (!el) return;
+    isNearBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight <= 80;
+  }
+
+  // Snap back to bottom when a new message starts (isStreaming flips true) so the
+  // user always sees the beginning of a new response, regardless of near-bottom state.
+  const wasStreamingRef = useRef(false);
   useEffect(() => {
-    if (scrollRef.current) {
+    const justStarted = isStreaming && !wasStreamingRef.current;
+    wasStreamingRef.current = isStreaming;
+    if (justStarted && scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      isNearBottomRef.current = true;
+      return;
+    }
+    if (isNearBottomRef.current && scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages, streamingContent]);
+  }, [messages.length, streamingContent, toolCallIndicators.length, isStreaming]);
 
   async function handleSubmit() {
     const text = inputValue.trim();
@@ -56,6 +74,7 @@ export function PlanChat({ projectId }: PlanChatProps) {
       {/* Message list */}
       <div
         ref={scrollRef}
+        onScroll={handleScroll}
         style={{ flex: 1, overflowY: 'auto', padding: 16, display: 'flex', flexDirection: 'column', gap: 8 }}
       >
         {messages

@@ -55,10 +55,23 @@ export function ChatPanel({ projectId, itemId, providerLabel }: ChatPanelProps) 
   const { conversation, messages, streamingText, isStreaming, error, stallNotice, sendMessage, dismissError, dismissStallNotice } = useChat(projectId, itemId);
   const [inputValue, setInputValue] = useState('');
   const bottomRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const isNearBottomRef = useRef(true);
 
+  function handleScroll() {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    isNearBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight <= 80;
+  }
+
+  const wasStreamingRef = useRef(false);
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages.length, streamingText]);
+    const justStarted = isStreaming && !wasStreamingRef.current;
+    wasStreamingRef.current = isStreaming;
+    if (justStarted || isNearBottomRef.current) {
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages.length, streamingText, isStreaming]);
 
   async function handleSubmit() {
     const text = inputValue.trim();
@@ -103,7 +116,7 @@ export function ChatPanel({ projectId, itemId, providerLabel }: ChatPanelProps) 
       </div>
 
       {/* Message list */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '12px' }}>
+      <div ref={scrollContainerRef} onScroll={handleScroll} style={{ flex: 1, overflowY: 'auto', padding: '12px' }}>
         {messages
           .filter(
             (msg) =>

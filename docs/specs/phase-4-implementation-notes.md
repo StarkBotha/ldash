@@ -86,3 +86,37 @@ Added `fetchModels(req: FetchModelsRequest): Promise<ModelsResponse>` alongside 
 ### Deviations from spec
 
 None. The spec allowed `source: 'fallback'` for both claude-subscription and openai-compatible failure cases. The hint wording "couldn't fetch models — type the model id" is used only for openai-compatible with an error; claude fallback shows "Showing defaults" as specified.
+
+---
+
+## Incremental streaming + PlanChat auto-scroll (2026-06-11)
+
+### Step 0 — SDK investigation findings
+
+`includePartialMessages` is a real `Options` field (confirmed in `sdk.d.ts` line 1596). When `true`, the SDK emits `SDKPartialAssistantMessage` messages with `type: 'stream_event'`. That message carries a `BetaRawMessageStreamEvent` in its `event` field and a per-message `uuid`. The event type of interest is `content_block_delta` with `delta.type === 'text_delta'` and `delta.text: string`. The full assistant message (`type: 'assistant'`) still arrives afterwards with the same `uuid`.
+
+### Fix 1 — Incremental text streaming (server/src/gateway/adapters/claude.ts)
+
+Both `streamChat` and `callWithTools` now set `includePartialMessages: true` in the query options. The message loop handles `type === 'stream_event'` first: if the event is a `content_block_delta / text_delta`, the delta text is yielded immediately and the message uuid is added to a `deltaSeenForUuid` Set. When the complete `assistant` message arrives, it is checked against that Set — if the uuid is present (deltas were seen), the whole-message text blocks are skipped to avoid doubling. The uuid is cleared from the Set after checking. If no deltas arrived for a uuid (old CLI version, or non-text turns) the whole-message text is emitted as before — backwards-compatible fallback. Tool call chunk behavior is unchanged.
+
+### Fix 2 — PlanChat auto-scroll (ui/src/components/PlanChat.tsx)
+
+The original `useEffect` keyed only on `[messages, streamingContent]` with no near-bottom guard. The fix:
+- Adds a `scrollRef` `onScroll` handler that updates `isNearBottomRef` (near if within 80px of bottom).
+- Replaces the effect dependency array with `[messages.length, streamingContent, toolCallIndicators.length, isStreaming]` so tool indicator appends and streaming-state transitions also trigger it.
+- Adds a `wasStreamingRef` to detect when a new response starts (`isStreaming` flips from false to true) and snaps unconditionally to the bottom at that moment, resetting the near-bottom flag — so the user always sees the start of a new response even if they scrolled up mid-prior-run.
+- Otherwise only scrolls when `isNearBottomRef.current` is true, so manual scroll-up during a long run is not fought.
+
+The same near-bottom guard (identical pattern) was applied to `ChatPanel.tsx` as specified.
+
+### Tests
+
+5 new tests added to `server/test/gateway/claude.test.ts`:
+- `streamChat`: incremental deltas yield in order; whole-message text suppressed when deltas arrived; `includePartialMessages: true` is passed.
+- `callWithTools`: incremental deltas yield; whole-message fallback when no deltas; `includePartialMessages: true` confirmed.
+
+The pre-existing `logger.test.ts` suite has 3 failing tests that are unrelated to these changes (NDJSON file-write / level-filter tests that fail due to ESM module-cache ordering of LOG_DIR). All 24 claude adapter tests pass. Server `tsc --noEmit` and UI `tsc --noEmit` + `vite build` are all clean.
+
+### Deviations
+
+None from stated spec. The `uuid` field on `SDKPartialAssistantMessage` is typed as `UUID` (from `crypto`) and is also present on `SDKAssistantMessage` — the deduplication key uses it directly cast via the inline type assertion pattern already used in the file for other untyped SDK fields.

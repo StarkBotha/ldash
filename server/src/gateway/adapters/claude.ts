@@ -131,6 +131,7 @@ export class ClaudeAdapter implements ChatAdapter {
       const queryOpts: Record<string, unknown> = {
         allowedTools: [],
         model,
+        includePartialMessages: true,
       };
       if (systemMessage) {
         queryOpts.systemPrompt = systemMessage;
@@ -138,17 +139,32 @@ export class ClaudeAdapter implements ChatAdapter {
 
       const result = query({ prompt, options: queryOpts as Parameters<typeof query>[0]['options'] });
 
+      // Track whether we saw any partial deltas for the current assistant message UUID.
+      // When deltas arrived we skip the whole-message emission to avoid doubling text.
+      const deltaSeenForUuid = new Set<string>();
+
       for await (const message of result) {
-        if (message.type === 'assistant') {
-          // Extract text from BetaMessage content blocks
-          const betaMessage = message.message;
-          if (betaMessage && betaMessage.content) {
-            for (const block of betaMessage.content) {
-              if (block.type === 'text' && block.text) {
-                yield { type: 'text', text: block.text };
+        if (message.type === 'stream_event') {
+          // SDKPartialAssistantMessage — extract text_delta chunks as they arrive
+          const evt = (message as { type: 'stream_event'; event: { type: string; delta?: { type: string; text?: string } }; uuid: string }).event;
+          if (evt.type === 'content_block_delta' && evt.delta?.type === 'text_delta' && evt.delta.text) {
+            deltaSeenForUuid.add((message as { uuid: string }).uuid);
+            yield { type: 'text', text: evt.delta.text };
+          }
+        } else if (message.type === 'assistant') {
+          // Only emit whole-message text if no deltas arrived for this message (fallback path)
+          const msgUuid = (message as { uuid?: string }).uuid ?? '';
+          if (!deltaSeenForUuid.has(msgUuid)) {
+            const betaMessage = message.message;
+            if (betaMessage && betaMessage.content) {
+              for (const block of betaMessage.content) {
+                if (block.type === 'text' && block.text) {
+                  yield { type: 'text', text: block.text };
+                }
               }
             }
           }
+          deltaSeenForUuid.delete(msgUuid);
           if (message.error) {
             yield { type: 'error', message: String(message.error) };
             return;
@@ -279,6 +295,7 @@ export class ClaudeAdapter implements ChatAdapter {
       allowedTools,
       mcpServers: { [serverName]: mcpServer },
       tools: [],
+      includePartialMessages: true,
     };
     if (systemMessage) {
       queryOpts.systemPrompt = systemMessage;
@@ -293,16 +310,29 @@ export class ClaudeAdapter implements ChatAdapter {
           options: queryOpts as Parameters<typeof query>[0]['options'],
         });
 
+        // Track whether we saw any partial deltas for the current assistant message UUID.
+        const deltaSeenForUuid = new Set<string>();
+
         for await (const message of result) {
-          if (message.type === 'assistant') {
-            const betaMessage = message.message;
-            if (betaMessage && betaMessage.content) {
-              for (const block of betaMessage.content) {
-                if (block.type === 'text' && block.text) {
-                  enqueue({ type: 'text', text: block.text });
+          if (message.type === 'stream_event') {
+            const evt = (message as { type: 'stream_event'; event: { type: string; delta?: { type: string; text?: string } }; uuid: string }).event;
+            if (evt.type === 'content_block_delta' && evt.delta?.type === 'text_delta' && evt.delta.text) {
+              deltaSeenForUuid.add((message as { uuid: string }).uuid);
+              enqueue({ type: 'text', text: evt.delta.text });
+            }
+          } else if (message.type === 'assistant') {
+            const msgUuid = (message as { uuid?: string }).uuid ?? '';
+            if (!deltaSeenForUuid.has(msgUuid)) {
+              const betaMessage = message.message;
+              if (betaMessage && betaMessage.content) {
+                for (const block of betaMessage.content) {
+                  if (block.type === 'text' && block.text) {
+                    enqueue({ type: 'text', text: block.text });
+                  }
                 }
               }
             }
+            deltaSeenForUuid.delete(msgUuid);
             if (message.error) {
               enqueue({ type: 'error', message: String(message.error) });
               return;
