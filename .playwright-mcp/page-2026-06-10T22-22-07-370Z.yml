@@ -1,0 +1,619 @@
+- generic [ref=e2]:
+  - button "⚙" [ref=e3] [cursor=pointer]
+  - generic [ref=e16]:
+    - generic [ref=e17]:
+      - button "← Back" [ref=e18] [cursor=pointer]
+      - heading "dungeonsweeper" [level=1] [ref=e19]
+      - button "Edit" [ref=e20] [cursor=pointer]
+      - combobox [ref=e21]:
+        - option "All items" [selected]
+        - option "Project Setup & Cross-Platform Build"
+        - option "Grid & Tile Engine"
+        - option "Entities & Content"
+        - option "Combat System"
+        - option "Progression"
+        - option "Dungeon Dive Loop & Persistence"
+        - option "UI & Presentation (Gum)"
+      - generic [ref=e22]:
+        - button "Plan" [ref=e23] [cursor=pointer]
+        - button "Export" [ref=e24] [cursor=pointer]
+        - button "New item" [ref=e25] [cursor=pointer]
+    - generic [ref=e26]:
+      - generic [ref=e27]:
+        - generic [ref=e28]:
+          - generic [ref=e29]: Backlog
+          - generic [ref=e30]: "113"
+          - button "+" [ref=e31] [cursor=pointer]
+        - generic [ref=e32]:
+          - generic [ref=e33]:
+            - generic [ref=e35]: Project Setup & Cross-Platform Build
+            - generic [ref=e37]:
+              - button "epic Project Setup & Cross-Platform Build" [ref=e39] [cursor=pointer]:
+                - generic [ref=e40]:
+                  - generic [ref=e41]: epic
+                  - generic [ref=e42]: Project Setup & Cross-Platform Build
+              - button "story Scaffold MonoGame project with Gum ↳ Project Setup & Cross-Platform Build" [ref=e44] [cursor=pointer]:
+                - generic [ref=e45]:
+                  - generic [ref=e46]: story
+                  - generic [ref=e47]: Scaffold MonoGame project with Gum
+                - generic [ref=e48]: ↳ Project Setup & Cross-Platform Build
+              - button "task Create MonoGame solution & project ↳ Scaffold MonoGame project with Gum" [ref=e50] [cursor=pointer]:
+                - generic [ref=e51]:
+                  - generic [ref=e52]: task
+                  - generic [ref=e53]: Create MonoGame solution & project
+                - generic [ref=e54]: ↳ Scaffold MonoGame project with Gum
+              - button "task Add Gum library reference & init ↳ Scaffold MonoGame project with Gum" [ref=e56] [cursor=pointer]:
+                - generic [ref=e57]:
+                  - generic [ref=e58]: task
+                  - generic [ref=e59]: Add Gum library reference & init
+                - generic [ref=e60]: ↳ Scaffold MonoGame project with Gum
+              - button "task Render a test Gum element ↳ Scaffold MonoGame project with Gum" [ref=e62] [cursor=pointer]:
+                - generic [ref=e63]:
+                  - generic [ref=e64]: task
+                  - generic [ref=e65]: Render a test Gum element
+                - generic [ref=e66]: ↳ Scaffold MonoGame project with Gum
+              - button "story Linux & Windows build/publish configs ↳ Project Setup & Cross-Platform Build" [ref=e68] [cursor=pointer]:
+                - generic [ref=e69]:
+                  - generic [ref=e70]: story
+                  - generic [ref=e71]: Linux & Windows build/publish configs
+                - generic [ref=e72]: ↳ Project Setup & Cross-Platform Build
+              - button "task Add Windows publish config ↳ Linux & Windows build/publish configs" [ref=e74] [cursor=pointer]:
+                - generic [ref=e75]:
+                  - generic [ref=e76]: task
+                  - generic [ref=e77]: Add Windows publish config
+                - generic [ref=e78]: ↳ Linux & Windows build/publish configs
+              - button "task Add Linux publish config ↳ Linux & Windows build/publish configs" [ref=e80] [cursor=pointer]:
+                - generic [ref=e81]:
+                  - generic [ref=e82]: task
+                  - generic [ref=e83]: Add Linux publish config
+                - generic [ref=e84]: ↳ Linux & Windows build/publish configs
+              - button "task Document build & publish commands ↳ Linux & Windows build/publish configs" [ref=e86] [cursor=pointer]:
+                - generic [ref=e87]:
+                  - generic [ref=e88]: task
+                  - generic [ref=e89]: Document build & publish commands
+                - generic [ref=e90]: ↳ Linux & Windows build/publish configs
+              - button "story Core game-loop & scene-state skeleton ↳ Project Setup & Cross-Platform Build" [ref=e92] [cursor=pointer]:
+                - generic [ref=e93]:
+                  - generic [ref=e94]: story
+                  - generic [ref=e95]: Core game-loop & scene-state skeleton
+                - generic [ref=e96]: ↳ Project Setup & Cross-Platform Build
+              - button "task Define IScene interface ↳ Core game-loop & scene-state skeleton" [ref=e98] [cursor=pointer]:
+                - generic [ref=e99]:
+                  - generic [ref=e100]: task
+                  - generic [ref=e101]: Define IScene interface
+                - generic [ref=e102]: ↳ Core game-loop & scene-state skeleton
+              - button "task Implement SceneManager with switching ↳ Core game-loop & scene-state skeleton" [ref=e104] [cursor=pointer]:
+                - generic [ref=e105]:
+                  - generic [ref=e106]: task
+                  - generic [ref=e107]: Implement SceneManager with switching
+                - generic [ref=e108]: ↳ Core game-loop & scene-state skeleton
+              - button "task Wire two stub scenes & toggle ↳ Core game-loop & scene-state skeleton" [ref=e110] [cursor=pointer]:
+                - generic [ref=e111]:
+                  - generic [ref=e112]: task
+                  - generic [ref=e113]: Wire two stub scenes & toggle
+                - generic [ref=e114]: ↳ Core game-loop & scene-state skeleton
+          - generic [ref=e115]:
+            - generic [ref=e117]: Grid & Tile Engine
+            - generic [ref=e119]:
+              - button "epic Grid & Tile Engine" [ref=e121] [cursor=pointer]:
+                - generic [ref=e122]:
+                  - generic [ref=e123]: epic
+                  - generic [ref=e124]: Grid & Tile Engine
+              - button "story Board generation ↳ Grid & Tile Engine" [ref=e126] [cursor=pointer]:
+                - generic [ref=e127]:
+                  - generic [ref=e128]: story
+                  - generic [ref=e129]: Board generation
+                - generic [ref=e130]: ↳ Grid & Tile Engine
+              - button "task Define Tile & Board data structures ↳ Board generation" [ref=e132] [cursor=pointer]:
+                - generic [ref=e133]:
+                  - generic [ref=e134]: task
+                  - generic [ref=e135]: Define Tile & Board data structures
+                - generic [ref=e136]: ↳ Board generation
+              - button "task Seeded population by density ↳ Board generation" [ref=e138] [cursor=pointer]:
+                - generic [ref=e139]:
+                  - generic [ref=e140]: task
+                  - generic [ref=e141]: Seeded population by density
+                - generic [ref=e142]: ↳ Board generation
+              - button "task Unit tests for deterministic generation ↳ Board generation" [ref=e144] [cursor=pointer]:
+                - generic [ref=e145]:
+                  - generic [ref=e146]: task
+                  - generic [ref=e147]: Unit tests for deterministic generation
+                - generic [ref=e148]: ↳ Board generation
+              - button "story Adjacency danger-count calculation ↳ Grid & Tile Engine" [ref=e150] [cursor=pointer]:
+                - generic [ref=e151]:
+                  - generic [ref=e152]: story
+                  - generic [ref=e153]: Adjacency danger-count calculation
+                - generic [ref=e154]: ↳ Grid & Tile Engine
+              - button "task Implement 8-neighbour danger count ↳ Adjacency danger-count calculation" [ref=e156] [cursor=pointer]:
+                - generic [ref=e157]:
+                  - generic [ref=e158]: task
+                  - generic [ref=e159]: Implement 8-neighbour danger count
+                - generic [ref=e160]: ↳ Adjacency danger-count calculation
+              - button "task Unit tests for edge/corner counts ↳ Adjacency danger-count calculation" [ref=e162] [cursor=pointer]:
+                - generic [ref=e163]:
+                  - generic [ref=e164]: task
+                  - generic [ref=e165]: Unit tests for edge/corner counts
+                - generic [ref=e166]: ↳ Adjacency danger-count calculation
+              - button "story Reveal mechanic with flood-fill ↳ Grid & Tile Engine" [ref=e168] [cursor=pointer]:
+                - generic [ref=e169]:
+                  - generic [ref=e170]: story
+                  - generic [ref=e171]: Reveal mechanic with flood-fill
+                - generic [ref=e172]: ↳ Grid & Tile Engine
+              - button "task Implement single-tile reveal ↳ Reveal mechanic with flood-fill" [ref=e174] [cursor=pointer]:
+                - generic [ref=e175]:
+                  - generic [ref=e176]: task
+                  - generic [ref=e177]: Implement single-tile reveal
+                - generic [ref=e178]: ↳ Reveal mechanic with flood-fill
+              - button "task Implement zero-region flood-fill ↳ Reveal mechanic with flood-fill" [ref=e180] [cursor=pointer]:
+                - generic [ref=e181]:
+                  - generic [ref=e182]: task
+                  - generic [ref=e183]: Implement zero-region flood-fill
+                - generic [ref=e184]: ↳ Reveal mechanic with flood-fill
+              - button "task Unit tests for flood-fill regions ↳ Reveal mechanic with flood-fill" [ref=e186] [cursor=pointer]:
+                - generic [ref=e187]:
+                  - generic [ref=e188]: task
+                  - generic [ref=e189]: Unit tests for flood-fill regions
+                - generic [ref=e190]: ↳ Reveal mechanic with flood-fill
+              - button "story Flag/mark mechanic ↳ Grid & Tile Engine" [ref=e192] [cursor=pointer]:
+                - generic [ref=e193]:
+                  - generic [ref=e194]: story
+                  - generic [ref=e195]: Flag/mark mechanic
+                - generic [ref=e196]: ↳ Grid & Tile Engine
+              - button "task Implement flag toggle state ↳ Flag/mark mechanic" [ref=e198] [cursor=pointer]:
+                - generic [ref=e199]:
+                  - generic [ref=e200]: task
+                  - generic [ref=e201]: Implement flag toggle state
+                - generic [ref=e202]: ↳ Flag/mark mechanic
+              - button "task Block reveal on flagged tiles + tests ↳ Flag/mark mechanic" [ref=e204] [cursor=pointer]:
+                - generic [ref=e205]:
+                  - generic [ref=e206]: task
+                  - generic [ref=e207]: Block reveal on flagged tiles + tests
+                - generic [ref=e208]: ↳ Flag/mark mechanic
+          - generic [ref=e209]:
+            - generic [ref=e211]: Entities & Content
+            - generic [ref=e213]:
+              - button "epic Entities & Content" [ref=e215] [cursor=pointer]:
+                - generic [ref=e216]:
+                  - generic [ref=e217]: epic
+                  - generic [ref=e218]: Entities & Content
+              - button "story Tile-content model ↳ Entities & Content" [ref=e220] [cursor=pointer]:
+                - generic [ref=e221]:
+                  - generic [ref=e222]: story
+                  - generic [ref=e223]: Tile-content model
+                - generic [ref=e224]: ↳ Entities & Content
+              - button "task Define TileContent type & kinds ↳ Tile-content model" [ref=e226] [cursor=pointer]:
+                - generic [ref=e227]:
+                  - generic [ref=e228]: task
+                  - generic [ref=e229]: Define TileContent type & kinds
+                - generic [ref=e230]: ↳ Tile-content model
+              - button "task Make TileContent serialisable ↳ Tile-content model" [ref=e232] [cursor=pointer]:
+                - generic [ref=e233]:
+                  - generic [ref=e234]: task
+                  - generic [ref=e235]: Make TileContent serialisable
+                - generic [ref=e236]: ↳ Tile-content model
+              - button "story Monster catalogue ↳ Entities & Content" [ref=e238] [cursor=pointer]:
+                - generic [ref=e239]:
+                  - generic [ref=e240]: story
+                  - generic [ref=e241]: Monster catalogue
+                - generic [ref=e242]: ↳ Entities & Content
+              - button "task Define monster data schema ↳ Monster catalogue" [ref=e244] [cursor=pointer]:
+                - generic [ref=e245]:
+                  - generic [ref=e246]: task
+                  - generic [ref=e247]: Define monster data schema
+                - generic [ref=e248]: ↳ Monster catalogue
+              - button "task Load monsters from data file ↳ Monster catalogue" [ref=e250] [cursor=pointer]:
+                - generic [ref=e251]:
+                  - generic [ref=e252]: task
+                  - generic [ref=e253]: Load monsters from data file
+                - generic [ref=e254]: ↳ Monster catalogue
+              - button "task Query monsters by depth ↳ Monster catalogue" [ref=e256] [cursor=pointer]:
+                - generic [ref=e257]:
+                  - generic [ref=e258]: task
+                  - generic [ref=e259]: Query monsters by depth
+                - generic [ref=e260]: ↳ Monster catalogue
+              - button "story Items catalogue (weapons, potions, spells) ↳ Entities & Content" [ref=e262] [cursor=pointer]:
+                - generic [ref=e263]:
+                  - generic [ref=e264]: story
+                  - generic [ref=e265]: Items catalogue (weapons, potions, spells)
+                - generic [ref=e266]: ↳ Entities & Content
+              - button "task Define item data schema ↳ Items catalogue (weapons, potions, spells)" [ref=e268] [cursor=pointer]:
+                - generic [ref=e269]:
+                  - generic [ref=e270]: task
+                  - generic [ref=e271]: Define item data schema
+                - generic [ref=e272]: ↳ Items catalogue (weapons, potions, spells)
+              - button "task Load items from data file ↳ Items catalogue (weapons, potions, spells)" [ref=e274] [cursor=pointer]:
+                - generic [ref=e275]:
+                  - generic [ref=e276]: task
+                  - generic [ref=e277]: Load items from data file
+                - generic [ref=e278]: ↳ Items catalogue (weapons, potions, spells)
+              - button "story Content seeding per depth ↳ Entities & Content" [ref=e280] [cursor=pointer]:
+                - generic [ref=e281]:
+                  - generic [ref=e282]: story
+                  - generic [ref=e283]: Content seeding per depth
+                - generic [ref=e284]: ↳ Entities & Content
+              - button "task Implement depth-scaled seeding rules ↳ Content seeding per depth" [ref=e286] [cursor=pointer]:
+                - generic [ref=e287]:
+                  - generic [ref=e288]: task
+                  - generic [ref=e289]: Implement depth-scaled seeding rules
+                - generic [ref=e290]: ↳ Content seeding per depth
+              - button "task Tests for seeding by depth ↳ Content seeding per depth" [ref=e292] [cursor=pointer]:
+                - generic [ref=e293]:
+                  - generic [ref=e294]: task
+                  - generic [ref=e295]: Tests for seeding by depth
+                - generic [ref=e296]: ↳ Content seeding per depth
+              - button "story Inventory & item use ↳ Entities & Content" [ref=e298] [cursor=pointer]:
+                - generic [ref=e299]:
+                  - generic [ref=e300]: story
+                  - generic [ref=e301]: Inventory & item use
+                - generic [ref=e302]: ↳ Entities & Content
+              - button "task Define inventory data model ↳ Inventory & item use" [ref=e304] [cursor=pointer]:
+                - generic [ref=e305]:
+                  - generic [ref=e306]: task
+                  - generic [ref=e307]: Define inventory data model
+                - generic [ref=e308]: ↳ Inventory & item use
+              - button "task Equip weapon → feed combat damage ↳ Inventory & item use" [ref=e310] [cursor=pointer]:
+                - generic [ref=e311]:
+                  - generic [ref=e312]: task
+                  - generic [ref=e313]: Equip weapon → feed combat damage
+                - generic [ref=e314]: ↳ Inventory & item use
+              - button "task Consume potion → apply effect ↳ Inventory & item use" [ref=e316] [cursor=pointer]:
+                - generic [ref=e317]:
+                  - generic [ref=e318]: task
+                  - generic [ref=e319]: Consume potion → apply effect
+                - generic [ref=e320]: ↳ Inventory & item use
+              - button "task Apply timed buff effects ↳ Inventory & item use" [ref=e322] [cursor=pointer]:
+                - generic [ref=e323]:
+                  - generic [ref=e324]: task
+                  - generic [ref=e325]: Apply timed buff effects
+                - generic [ref=e326]: ↳ Inventory & item use
+              - button "task Tests for inventory & item use ↳ Inventory & item use" [ref=e328] [cursor=pointer]:
+                - generic [ref=e329]:
+                  - generic [ref=e330]: task
+                  - generic [ref=e331]: Tests for inventory & item use
+                - generic [ref=e332]: ↳ Inventory & item use
+          - generic [ref=e333]:
+            - generic [ref=e335]: Combat System
+            - generic [ref=e337]:
+              - button "epic Combat System" [ref=e339] [cursor=pointer]:
+                - generic [ref=e340]:
+                  - generic [ref=e341]: epic
+                  - generic [ref=e342]: Combat System
+              - button "story Turn-based fight resolution ↳ Combat System" [ref=e344] [cursor=pointer]:
+                - generic [ref=e345]:
+                  - generic [ref=e346]: story
+                  - generic [ref=e347]: Turn-based fight resolution
+                - generic [ref=e348]: ↳ Combat System
+              - button "task Define combat state model ↳ Turn-based fight resolution" [ref=e350] [cursor=pointer]:
+                - generic [ref=e351]:
+                  - generic [ref=e352]: task
+                  - generic [ref=e353]: Define combat state model
+                - generic [ref=e354]: ↳ Turn-based fight resolution
+              - button "task Implement player turn actions ↳ Turn-based fight resolution" [ref=e356] [cursor=pointer]:
+                - generic [ref=e357]:
+                  - generic [ref=e358]: task
+                  - generic [ref=e359]: Implement player turn actions
+                - generic [ref=e360]: ↳ Turn-based fight resolution
+              - button "task Implement monster retaliation turn ↳ Turn-based fight resolution" [ref=e362] [cursor=pointer]:
+                - generic [ref=e363]:
+                  - generic [ref=e364]: task
+                  - generic [ref=e365]: Implement monster retaliation turn
+                - generic [ref=e366]: ↳ Turn-based fight resolution
+              - button "story Auto-fight option ↳ Combat System" [ref=e368] [cursor=pointer]:
+                - generic [ref=e369]:
+                  - generic [ref=e370]: story
+                  - generic [ref=e371]: Auto-fight option
+                - generic [ref=e372]: ↳ Combat System
+              - button "task Implement auto-fight strategy ↳ Auto-fight option" [ref=e374] [cursor=pointer]:
+                - generic [ref=e375]:
+                  - generic [ref=e376]: task
+                  - generic [ref=e377]: Implement auto-fight strategy
+                - generic [ref=e378]: ↳ Auto-fight option
+              - 'button "task Tests: auto vs manual parity ↳ Auto-fight option" [ref=e380] [cursor=pointer]':
+                - generic [ref=e381]:
+                  - generic [ref=e382]: task
+                  - generic [ref=e383]: "Tests: auto vs manual parity"
+                - generic [ref=e384]: ↳ Auto-fight option
+              - button "story Damage, health & death ↳ Combat System" [ref=e386] [cursor=pointer]:
+                - generic [ref=e387]:
+                  - generic [ref=e388]: story
+                  - generic [ref=e389]: Damage, health & death
+                - generic [ref=e390]: ↳ Combat System
+              - button "task Implement damage application ↳ Damage, health & death" [ref=e392] [cursor=pointer]:
+                - generic [ref=e393]:
+                  - generic [ref=e394]: task
+                  - generic [ref=e395]: Implement damage application
+                - generic [ref=e396]: ↳ Damage, health & death
+              - button "task Resolve death at zero health ↳ Damage, health & death" [ref=e398] [cursor=pointer]:
+                - generic [ref=e399]:
+                  - generic [ref=e400]: task
+                  - generic [ref=e401]: Resolve death at zero health
+                - generic [ref=e402]: ↳ Damage, health & death
+              - button "story Combat rewards (XP & loot) ↳ Combat System" [ref=e404] [cursor=pointer]:
+                - generic [ref=e405]:
+                  - generic [ref=e406]: story
+                  - generic [ref=e407]: Combat rewards (XP & loot)
+                - generic [ref=e408]: ↳ Combat System
+              - button "task Award XP on victory ↳ Combat rewards (XP & loot)" [ref=e410] [cursor=pointer]:
+                - generic [ref=e411]:
+                  - generic [ref=e412]: task
+                  - generic [ref=e413]: Award XP on victory
+                - generic [ref=e414]: ↳ Combat rewards (XP & loot)
+              - button "task Grant loot drop to inventory ↳ Combat rewards (XP & loot)" [ref=e416] [cursor=pointer]:
+                - generic [ref=e417]:
+                  - generic [ref=e418]: task
+                  - generic [ref=e419]: Grant loot drop to inventory
+                - generic [ref=e420]: ↳ Combat rewards (XP & loot)
+          - generic [ref=e421]:
+            - generic [ref=e423]: Progression
+            - generic [ref=e425]:
+              - button "epic Progression" [ref=e427] [cursor=pointer]:
+                - generic [ref=e428]:
+                  - generic [ref=e429]: epic
+                  - generic [ref=e430]: Progression
+              - button "story Health pool & damage model ↳ Progression" [ref=e432] [cursor=pointer]:
+                - generic [ref=e433]:
+                  - generic [ref=e434]: story
+                  - generic [ref=e435]: Health pool & damage model
+                - generic [ref=e436]: ↳ Progression
+              - button "task Implement health pool (current/max) ↳ Health pool & damage model" [ref=e438] [cursor=pointer]:
+                - generic [ref=e439]:
+                  - generic [ref=e440]: task
+                  - generic [ref=e441]: Implement health pool (current/max)
+                - generic [ref=e442]: ↳ Health pool & damage model
+              - button "task Tests for health bounds ↳ Health pool & damage model" [ref=e444] [cursor=pointer]:
+                - generic [ref=e445]:
+                  - generic [ref=e446]: task
+                  - generic [ref=e447]: Tests for health bounds
+                - generic [ref=e448]: ↳ Health pool & damage model
+              - button "story XP & depth-scaled levelling curve ↳ Progression" [ref=e450] [cursor=pointer]:
+                - generic [ref=e451]:
+                  - generic [ref=e452]: story
+                  - generic [ref=e453]: XP & depth-scaled levelling curve
+                - generic [ref=e454]: ↳ Progression
+              - button "task Define XP-to-level curve ↳ XP & depth-scaled levelling curve" [ref=e456] [cursor=pointer]:
+                - generic [ref=e457]:
+                  - generic [ref=e458]: task
+                  - generic [ref=e459]: Define XP-to-level curve
+                - generic [ref=e460]: ↳ XP & depth-scaled levelling curve
+              - button "task Accumulate XP & compute level ↳ XP & depth-scaled levelling curve" [ref=e462] [cursor=pointer]:
+                - generic [ref=e463]:
+                  - generic [ref=e464]: task
+                  - generic [ref=e465]: Accumulate XP & compute level
+                - generic [ref=e466]: ↳ XP & depth-scaled levelling curve
+              - button "task Tests for level thresholds ↳ XP & depth-scaled levelling curve" [ref=e468] [cursor=pointer]:
+                - generic [ref=e469]:
+                  - generic [ref=e470]: task
+                  - generic [ref=e471]: Tests for level thresholds
+                - generic [ref=e472]: ↳ XP & depth-scaled levelling curve
+              - button "story Level-up rewards (max health & skill points) ↳ Progression" [ref=e474] [cursor=pointer]:
+                - generic [ref=e475]:
+                  - generic [ref=e476]: story
+                  - generic [ref=e477]: Level-up rewards (max health & skill points)
+                - generic [ref=e478]: ↳ Progression
+              - button "task Detect level-up & raise max health ↳ Level-up rewards (max health & skill points)" [ref=e480] [cursor=pointer]:
+                - generic [ref=e481]:
+                  - generic [ref=e482]: task
+                  - generic [ref=e483]: Detect level-up & raise max health
+                - generic [ref=e484]: ↳ Level-up rewards (max health & skill points)
+              - button "task Grant skill points on level-up ↳ Level-up rewards (max health & skill points)" [ref=e486] [cursor=pointer]:
+                - generic [ref=e487]:
+                  - generic [ref=e488]: task
+                  - generic [ref=e489]: Grant skill points on level-up
+                - generic [ref=e490]: ↳ Level-up rewards (max health & skill points)
+              - button "story Skill tree & spending ↳ Progression" [ref=e492] [cursor=pointer]:
+                - generic [ref=e493]:
+                  - generic [ref=e494]: story
+                  - generic [ref=e495]: Skill tree & spending
+                - generic [ref=e496]: ↳ Progression
+              - button "task Define skill tree data ↳ Skill tree & spending" [ref=e498] [cursor=pointer]:
+                - generic [ref=e499]:
+                  - generic [ref=e500]: task
+                  - generic [ref=e501]: Define skill tree data
+                - generic [ref=e502]: ↳ Skill tree & spending
+              - button "task Implement point spending & unlock rules ↳ Skill tree & spending" [ref=e504] [cursor=pointer]:
+                - generic [ref=e505]:
+                  - generic [ref=e506]: task
+                  - generic [ref=e507]: Implement point spending & unlock rules
+                - generic [ref=e508]: ↳ Skill tree & spending
+              - button "task Apply skill effects to stats ↳ Skill tree & spending" [ref=e510] [cursor=pointer]:
+                - generic [ref=e511]:
+                  - generic [ref=e512]: task
+                  - generic [ref=e513]: Apply skill effects to stats
+                - generic [ref=e514]: ↳ Skill tree & spending
+          - generic [ref=e515]:
+            - generic [ref=e517]: Dungeon Dive Loop & Persistence
+            - generic [ref=e519]:
+              - button "epic Dungeon Dive Loop & Persistence" [ref=e521] [cursor=pointer]:
+                - generic [ref=e522]:
+                  - generic [ref=e523]: epic
+                  - generic [ref=e524]: Dungeon Dive Loop & Persistence
+              - button "story Descend-a-level flow with scaling ↳ Dungeon Dive Loop & Persistence" [ref=e526] [cursor=pointer]:
+                - generic [ref=e527]:
+                  - generic [ref=e528]: story
+                  - generic [ref=e529]: Descend-a-level flow with scaling
+                - generic [ref=e530]: ↳ Dungeon Dive Loop & Persistence
+              - button "task Detect level-clear condition ↳ Descend-a-level flow with scaling" [ref=e532] [cursor=pointer]:
+                - generic [ref=e533]:
+                  - generic [ref=e534]: task
+                  - generic [ref=e535]: Detect level-clear condition
+                - generic [ref=e536]: ↳ Descend-a-level flow with scaling
+              - 'button "task Descend: increment depth & regenerate ↳ Descend-a-level flow with scaling" [ref=e538] [cursor=pointer]':
+                - generic [ref=e539]:
+                  - generic [ref=e540]: task
+                  - generic [ref=e541]: "Descend: increment depth & regenerate"
+                - generic [ref=e542]: ↳ Descend-a-level flow with scaling
+              - button "story Exit dive & bank character ↳ Dungeon Dive Loop & Persistence" [ref=e544] [cursor=pointer]:
+                - generic [ref=e545]:
+                  - generic [ref=e546]: story
+                  - generic [ref=e547]: Exit dive & bank character
+                - generic [ref=e548]: ↳ Dungeon Dive Loop & Persistence
+              - button "task Implement exit-and-bank flow ↳ Exit dive & bank character" [ref=e550] [cursor=pointer]:
+                - generic [ref=e551]:
+                  - generic [ref=e552]: task
+                  - generic [ref=e553]: Implement exit-and-bank flow
+                - generic [ref=e554]: ↳ Exit dive & bank character
+              - button "story Start a fresh dive ↳ Dungeon Dive Loop & Persistence" [ref=e556] [cursor=pointer]:
+                - generic [ref=e557]:
+                  - generic [ref=e558]: story
+                  - generic [ref=e559]: Start a fresh dive
+                - generic [ref=e560]: ↳ Dungeon Dive Loop & Persistence
+              - button "task Implement start-fresh-dive flow ↳ Start a fresh dive" [ref=e562] [cursor=pointer]:
+                - generic [ref=e563]:
+                  - generic [ref=e564]: task
+                  - generic [ref=e565]: Implement start-fresh-dive flow
+                - generic [ref=e566]: ↳ Start a fresh dive
+              - button "story Character save/load to disk ↳ Dungeon Dive Loop & Persistence" [ref=e568] [cursor=pointer]:
+                - generic [ref=e569]:
+                  - generic [ref=e570]: story
+                  - generic [ref=e571]: Character save/load to disk
+                - generic [ref=e572]: ↳ Dungeon Dive Loop & Persistence
+              - button "task Implement character serialise/deserialise ↳ Character save/load to disk" [ref=e574] [cursor=pointer]:
+                - generic [ref=e575]:
+                  - generic [ref=e576]: task
+                  - generic [ref=e577]: Implement character serialise/deserialise
+                - generic [ref=e578]: ↳ Character save/load to disk
+              - button "task Save-file location & cross-platform paths ↳ Character save/load to disk" [ref=e580] [cursor=pointer]:
+                - generic [ref=e581]:
+                  - generic [ref=e582]: task
+                  - generic [ref=e583]: Save-file location & cross-platform paths
+                - generic [ref=e584]: ↳ Character save/load to disk
+              - button "task Round-trip save/load tests ↳ Character save/load to disk" [ref=e586] [cursor=pointer]:
+                - generic [ref=e587]:
+                  - generic [ref=e588]: task
+                  - generic [ref=e589]: Round-trip save/load tests
+                - generic [ref=e590]: ↳ Character save/load to disk
+              - button "story Run win/lose (death) handling ↳ Dungeon Dive Loop & Persistence" [ref=e592] [cursor=pointer]:
+                - generic [ref=e593]:
+                  - generic [ref=e594]: story
+                  - generic [ref=e595]: Run win/lose (death) handling
+                - generic [ref=e596]: ↳ Dungeon Dive Loop & Persistence
+              - button "task Trigger end-of-run on death ↳ Run win/lose (death) handling" [ref=e598] [cursor=pointer]:
+                - generic [ref=e599]:
+                  - generic [ref=e600]: task
+                  - generic [ref=e601]: Trigger end-of-run on death
+                - generic [ref=e602]: ↳ Run win/lose (death) handling
+          - generic [ref=e603]:
+            - generic [ref=e605]: UI & Presentation (Gum)
+            - generic [ref=e607]:
+              - button "epic UI & Presentation (Gum)" [ref=e609] [cursor=pointer]:
+                - generic [ref=e610]:
+                  - generic [ref=e611]: epic
+                  - generic [ref=e612]: UI & Presentation (Gum)
+              - button "story Board rendering & tile sprites ↳ UI & Presentation (Gum)" [ref=e614] [cursor=pointer]:
+                - generic [ref=e615]:
+                  - generic [ref=e616]: story
+                  - generic [ref=e617]: Board rendering & tile sprites
+                - generic [ref=e618]: ↳ UI & Presentation (Gum)
+              - button "task Import/create tile sprite set ↳ Board rendering & tile sprites" [ref=e620] [cursor=pointer]:
+                - generic [ref=e621]:
+                  - generic [ref=e622]: task
+                  - generic [ref=e623]: Import/create tile sprite set
+                - generic [ref=e624]: ↳ Board rendering & tile sprites
+              - button "task Render board grid from state ↳ Board rendering & tile sprites" [ref=e626] [cursor=pointer]:
+                - generic [ref=e627]:
+                  - generic [ref=e628]: task
+                  - generic [ref=e629]: Render board grid from state
+                - generic [ref=e630]: ↳ Board rendering & tile sprites
+              - button "task Route clicks to reveal/flag ↳ Board rendering & tile sprites" [ref=e632] [cursor=pointer]:
+                - generic [ref=e633]:
+                  - generic [ref=e634]: task
+                  - generic [ref=e635]: Route clicks to reveal/flag
+                - generic [ref=e636]: ↳ Board rendering & tile sprites
+              - button "story HUD (health, XP, level, depth) ↳ UI & Presentation (Gum)" [ref=e638] [cursor=pointer]:
+                - generic [ref=e639]:
+                  - generic [ref=e640]: story
+                  - generic [ref=e641]: HUD (health, XP, level, depth)
+                - generic [ref=e642]: ↳ UI & Presentation (Gum)
+              - button "task Build HUD layout in Gum ↳ HUD (health, XP, level, depth)" [ref=e644] [cursor=pointer]:
+                - generic [ref=e645]:
+                  - generic [ref=e646]: task
+                  - generic [ref=e647]: Build HUD layout in Gum
+                - generic [ref=e648]: ↳ HUD (health, XP, level, depth)
+              - button "task Bind HUD to live player state ↳ HUD (health, XP, level, depth)" [ref=e650] [cursor=pointer]:
+                - generic [ref=e651]:
+                  - generic [ref=e652]: task
+                  - generic [ref=e653]: Bind HUD to live player state
+                - generic [ref=e654]: ↳ HUD (health, XP, level, depth)
+              - button "story Combat screen ↳ UI & Presentation (Gum)" [ref=e656] [cursor=pointer]:
+                - generic [ref=e657]:
+                  - generic [ref=e658]: story
+                  - generic [ref=e659]: Combat screen
+                - generic [ref=e660]: ↳ UI & Presentation (Gum)
+              - button "task Build combat screen layout ↳ Combat screen" [ref=e662] [cursor=pointer]:
+                - generic [ref=e663]:
+                  - generic [ref=e664]: task
+                  - generic [ref=e665]: Build combat screen layout
+                - generic [ref=e666]: ↳ Combat screen
+              - button "task Wire combat actions & turn log ↳ Combat screen" [ref=e668] [cursor=pointer]:
+                - generic [ref=e669]:
+                  - generic [ref=e670]: task
+                  - generic [ref=e671]: Wire combat actions & turn log
+                - generic [ref=e672]: ↳ Combat screen
+              - button "story Menus (main, skill tree, save/exit) ↳ UI & Presentation (Gum)" [ref=e674] [cursor=pointer]:
+                - generic [ref=e675]:
+                  - generic [ref=e676]: story
+                  - generic [ref=e677]: Menus (main, skill tree, save/exit)
+                - generic [ref=e678]: ↳ UI & Presentation (Gum)
+              - button "task Main menu screen ↳ Menus (main, skill tree, save/exit)" [ref=e680] [cursor=pointer]:
+                - generic [ref=e681]:
+                  - generic [ref=e682]: task
+                  - generic [ref=e683]: Main menu screen
+                - generic [ref=e684]: ↳ Menus (main, skill tree, save/exit)
+              - button "task Skill-tree screen ↳ Menus (main, skill tree, save/exit)" [ref=e686] [cursor=pointer]:
+                - generic [ref=e687]:
+                  - generic [ref=e688]: task
+                  - generic [ref=e689]: Skill-tree screen
+                - generic [ref=e690]: ↳ Menus (main, skill tree, save/exit)
+              - button "task Pause / save-exit menu ↳ Menus (main, skill tree, save/exit)" [ref=e692] [cursor=pointer]:
+                - generic [ref=e693]:
+                  - generic [ref=e694]: task
+                  - generic [ref=e695]: Pause / save-exit menu
+                - generic [ref=e696]: ↳ Menus (main, skill tree, save/exit)
+              - button "story Feedback & juice ↳ UI & Presentation (Gum)" [ref=e698] [cursor=pointer]:
+                - generic [ref=e699]:
+                  - generic [ref=e700]: story
+                  - generic [ref=e701]: Feedback & juice
+                - generic [ref=e702]: ↳ UI & Presentation (Gum)
+              - button "task Reveal & flag animations ↳ Feedback & juice" [ref=e704] [cursor=pointer]:
+                - generic [ref=e705]:
+                  - generic [ref=e706]: task
+                  - generic [ref=e707]: Reveal & flag animations
+                - generic [ref=e708]: ↳ Feedback & juice
+              - button "task Hit, level-up & loot cues ↳ Feedback & juice" [ref=e710] [cursor=pointer]:
+                - generic [ref=e711]:
+                  - generic [ref=e712]: task
+                  - generic [ref=e713]: Hit, level-up & loot cues
+                - generic [ref=e714]: ↳ Feedback & juice
+              - button "story Inventory screen ↳ UI & Presentation (Gum)" [ref=e716] [cursor=pointer]:
+                - generic [ref=e717]:
+                  - generic [ref=e718]: story
+                  - generic [ref=e719]: Inventory screen
+                - generic [ref=e720]: ↳ UI & Presentation (Gum)
+              - button "task Build inventory screen layout in Gum ↳ Inventory screen" [ref=e722] [cursor=pointer]:
+                - generic [ref=e723]:
+                  - generic [ref=e724]: task
+                  - generic [ref=e725]: Build inventory screen layout in Gum
+                - generic [ref=e726]: ↳ Inventory screen
+              - button "task Render inventory items from state ↳ Inventory screen" [ref=e728] [cursor=pointer]:
+                - generic [ref=e729]:
+                  - generic [ref=e730]: task
+                  - generic [ref=e731]: Render inventory items from state
+                - generic [ref=e732]: ↳ Inventory screen
+              - button "task Wire equip/consume actions from UI ↳ Inventory screen" [ref=e734] [cursor=pointer]:
+                - generic [ref=e735]:
+                  - generic [ref=e736]: task
+                  - generic [ref=e737]: Wire equip/consume actions from UI
+                - generic [ref=e738]: ↳ Inventory screen
+      - generic [ref=e740]:
+        - generic [ref=e741]: In Progress
+        - generic [ref=e742]: "0"
+        - button "+" [ref=e743] [cursor=pointer]
+      - generic [ref=e746]:
+        - generic [ref=e747]: Review
+        - generic [ref=e748]: "0"
+        - button "+" [ref=e749] [cursor=pointer]
+      - generic [ref=e752]:
+        - generic [ref=e753]: Done
+        - generic [ref=e754]: "0"
+        - button "+" [ref=e755] [cursor=pointer]
+    - status [ref=e757]
