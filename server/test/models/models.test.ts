@@ -235,24 +235,25 @@ describe('POST /api/models – stored key lookup by providerName', () => {
   let receivedAuth: string | undefined;
 
   beforeEach(async () => {
-    // Save a provider to the DB with a known API key
+    receivedAuth = undefined;
+    fake = await startFakeModelsServer((req, res) => {
+      receivedAuth = req.headers['authorization'] as string | undefined;
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ data: [{ id: 'gpt-4o' }] }));
+    });
+
+    // Save a provider to the DB with a known API key, pointed at the fake server
     settings.setGatewaySettings({
       providers: [
         {
           name: 'MyOpenAI',
           type: 'openai-compatible',
-          baseUrl: 'http://placeholder',
+          baseUrl: fake.baseUrl,
           apiKey: 'sk-stored-test-key',
           model: 'gpt-4o',
         },
       ],
       activeProvider: 'MyOpenAI',
-    });
-
-    fake = await startFakeModelsServer((req, res) => {
-      receivedAuth = req.headers['authorization'] as string | undefined;
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ data: [{ id: 'gpt-4o' }] }));
     });
   });
 
@@ -260,7 +261,7 @@ describe('POST /api/models – stored key lookup by providerName', () => {
     await fake.close();
   });
 
-  it('uses stored apiKey when apiKey is omitted but providerName matches a saved provider', async () => {
+  it('uses stored apiKey when apiKey is omitted and baseUrl matches the saved provider', async () => {
     const { body } = await request(app, 'POST', '/api/models', {
       type: 'openai-compatible',
       baseUrl: fake.baseUrl,
@@ -270,6 +271,32 @@ describe('POST /api/models – stored key lookup by providerName', () => {
     const b = body as { source: string };
     expect(b.source).toBe('provider');
     expect(receivedAuth).toBe('Bearer sk-stored-test-key');
+  });
+
+  it('does NOT send the stored apiKey when the request baseUrl differs from the saved provider', async () => {
+    // Re-point the saved provider at a different origin than the fake server,
+    // simulating an attacker naming a saved provider but supplying their own URL.
+    settings.setGatewaySettings({
+      providers: [
+        {
+          name: 'MyOpenAI',
+          type: 'openai-compatible',
+          baseUrl: 'http://some-other-host:9999',
+          apiKey: 'sk-stored-test-key',
+          model: 'gpt-4o',
+        },
+      ],
+      activeProvider: 'MyOpenAI',
+    });
+
+    const { body } = await request(app, 'POST', '/api/models', {
+      type: 'openai-compatible',
+      baseUrl: fake.baseUrl,
+      providerName: 'MyOpenAI',
+    });
+    const b = body as { source: string };
+    expect(b.source).toBe('provider');
+    expect(receivedAuth).toBeUndefined();
   });
 });
 

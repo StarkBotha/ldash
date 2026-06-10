@@ -6,6 +6,14 @@ export function createModelsRouter(settings: SettingsService): Hono {
   const app = new Hono();
 
   app.post('/api/models', async (c) => {
+    // Require a JSON content type: cross-origin browser requests with this header
+    // trigger a CORS preflight (which we never answer), so a malicious webpage
+    // can't fire this endpoint at localhost as a "simple" no-preflight POST.
+    const contentType = c.req.header('content-type') ?? '';
+    if (!contentType.toLowerCase().includes('application/json')) {
+      return c.json({ error: 'Content-Type must be application/json' }, 415);
+    }
+
     let body: unknown;
     try {
       body = await c.req.json();

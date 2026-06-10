@@ -77,6 +77,16 @@ export function clearModelsCache(): void {
   cache.clear();
 }
 
+// True when both URLs parse and share scheme + host + port.
+function sameOrigin(a: string | undefined, b: string | undefined): boolean {
+  if (!a || !b) return false;
+  try {
+    return new URL(a).origin === new URL(b).origin;
+  } catch {
+    return false;
+  }
+}
+
 // ---------------------------------------------------------------------------
 // OpenAI-compatible provider
 // ---------------------------------------------------------------------------
@@ -236,12 +246,15 @@ export async function fetchModels(
       return { models: [], source: 'fallback', error: 'baseUrl is required' };
     }
 
-    // Resolve API key: use provided key, or fall back to stored key for the providerName
+    // Resolve API key: use provided key, or fall back to stored key for the providerName.
+    // The stored key is only used when the request's baseUrl has the same origin as the
+    // stored provider's baseUrl — otherwise a request could name a saved provider but
+    // point baseUrl at an attacker server and exfiltrate the stored credential.
     let apiKey = (body.apiKey as string | undefined) ?? '';
     if ((!apiKey || apiKey.trim() === '') && typeof body.providerName === 'string' && body.providerName.trim() !== '') {
       const stored = settings.getGatewaySettings();
       const match = stored.providers.find((p) => p.name === body.providerName && p.type === 'openai-compatible');
-      if (match?.apiKey && match.apiKey.trim() !== '') {
+      if (match?.apiKey && match.apiKey.trim() !== '' && sameOrigin(match.baseUrl, baseUrl)) {
         apiKey = match.apiKey;
         logger.debug('using stored apiKey for models fetch', { provider: body.providerName });
       }
