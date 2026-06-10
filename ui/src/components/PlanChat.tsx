@@ -58,24 +58,30 @@ export function PlanChat({ projectId }: PlanChatProps) {
         ref={scrollRef}
         style={{ flex: 1, overflowY: 'auto', padding: 16, display: 'flex', flexDirection: 'column', gap: 8 }}
       >
-        {messages.map((msg, i) => (
-          <div
-            key={i}
-            style={{
-              alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
-              maxWidth: '80%',
-              background: msg.role === 'user' ? '#0070f3' : '#fff',
-              color: msg.role === 'user' ? '#fff' : '#333',
-              border: msg.role === 'user' ? 'none' : '1px solid #ddd',
-              borderRadius: 8,
-              padding: '8px 12px',
-              fontSize: 15,
-              whiteSpace: 'pre-wrap',
-            }}
-          >
-            {msg.content}
-          </div>
-        ))}
+        {messages
+          .filter(
+            (msg) =>
+              msg.role === 'user' ||
+              (msg.role === 'assistant' && msg.content && msg.content.trim() !== '')
+          )
+          .map((msg, i) => (
+            <div
+              key={i}
+              style={{
+                alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
+                maxWidth: '80%',
+                background: msg.role === 'user' ? '#0070f3' : '#fff',
+                color: msg.role === 'user' ? '#fff' : '#333',
+                border: msg.role === 'user' ? 'none' : '1px solid #ddd',
+                borderRadius: 8,
+                padding: '8px 12px',
+                fontSize: 15,
+                whiteSpace: 'pre-wrap',
+              }}
+            >
+              {msg.content}
+            </div>
+          ))}
 
         {/* Streaming bubble */}
         {isStreaming && (

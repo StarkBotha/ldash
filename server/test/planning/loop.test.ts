@@ -77,10 +77,14 @@ describe('runToolLoop', () => {
 
     expect(textSink).toHaveBeenCalledOnce();
     expect(textSink).toHaveBeenCalledWith('Hello');
-    // For text-only turns, no assistant message is appended to history (spec: break when pendingCalls is empty)
-    // The history contains only the initial messages.
     expect(history[0]).toMatchObject({ role: 'user', content: 'Hi' });
     expect(toolCallSink).not.toHaveBeenCalled();
+
+    // Bug 1 fix: text-only reply is now persisted as an assistant message in history.
+    // The planning route persists from returned history, so this ensures the reply survives reload.
+    const assistantMsg = history.find((m) => m.role === 'assistant');
+    expect(assistantMsg).toBeDefined();
+    expect(assistantMsg?.content).toBe('Hello');
   });
 
   it('create_item tool call creates an item in the database', async () => {

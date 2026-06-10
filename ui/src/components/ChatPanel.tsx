@@ -104,9 +104,15 @@ export function ChatPanel({ projectId, itemId, providerLabel }: ChatPanelProps) 
 
       {/* Message list */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '12px' }}>
-        {messages.map((msg) => (
-          <MessageBubble key={msg.id} message={msg} />
-        ))}
+        {messages
+          .filter(
+            (msg) =>
+              msg.role === 'user' ||
+              (msg.role === 'assistant' && msg.content && msg.content.trim() !== '')
+          )
+          .map((msg) => (
+            <MessageBubble key={msg.id} message={msg} />
+          ))}
 
         {isStreaming && streamingText && (
           <div style={{ display: 'flex', justifyContent: 'flex-start', marginBottom: 8 }}>

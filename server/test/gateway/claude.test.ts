@@ -314,6 +314,89 @@ describe('ClaudeAdapter.callWithTools', () => {
     const adapter = new ClaudeAdapter({ authMode: 'subscription' });
     expect(adapter.executesToolsInternally).toBe(true);
   });
+
+  it('SDK flow calling the tool handler mid-stream exercises executeTool exactly once', async () => {
+    // This test closes the gap that hid Bug 2 in loop.ts:
+    // The mock SDK actually invokes the tool handler during query() iteration,
+    // which triggers opts.executeTool (as the real ClaudeAdapter does).
+    let capturedHandler: ((args: Record<string, unknown>) => Promise<unknown>) | null = null;
+
+    mockSdkTool.mockImplementation(
+      (_name: string, _desc: string, _schema: unknown, handler: typeof capturedHandler) => {
+        capturedHandler = handler;
+        return { name: 'create_item', handler };
+      }
+    );
+
+    const executeTool = vi.fn().mockResolvedValue('created');
+
+    // The mock query invokes the captured tool handler mid-stream, exactly as the real SDK does
+    mockQuery.mockImplementation(() => {
+      return {
+        [Symbol.asyncIterator]() {
+          let step = 0;
+          return {
+            async next() {
+              if (step === 0) {
+                step++;
+                // Invoke the tool handler (the SDK fires MCP tool callbacks internally)
+                if (capturedHandler) {
+                  await capturedHandler({ title: 'My task' });
+                }
+                return {
+                  value: {
+                    type: 'assistant',
+                    message: { content: [{ type: 'text', text: 'Done.' }] },
+                  },
+                  done: false,
+                };
+              }
+              if (step === 1) {
+                step++;
+                return {
+                  value: { type: 'result', subtype: 'success', result: '', is_error: false },
+                  done: false,
+                };
+              }
+              return { value: undefined, done: true };
+            },
+          };
+        },
+      };
+    });
+
+    const toolDefs: ToolDefinition[] = [
+      {
+        name: 'create_item',
+        description: 'creates an item',
+        parameters: {
+          type: 'object',
+          properties: { title: { type: 'string' } },
+          required: ['title'],
+        },
+      },
+    ];
+
+    const adapter = new ClaudeAdapter({ authMode: 'subscription' });
+    const chunks: GatewayChunk[] = [];
+
+    for await (const chunk of adapter.callWithTools(
+      [{ role: 'user', content: 'Create task' }],
+      toolDefs,
+      { executeTool }
+    )) {
+      chunks.push(chunk);
+    }
+
+    // executeTool was called exactly once by the SDK tool handler
+    expect(executeTool).toHaveBeenCalledTimes(1);
+    expect(executeTool).toHaveBeenCalledWith('create_item', JSON.stringify({ title: 'My task' }));
+
+    // tool_call chunk was emitted (so loop.ts can push history entries)
+    expect(chunks.some((c) => c.type === 'tool_call')).toBe(true);
+    expect(chunks).toContainEqual({ type: 'text', text: 'Done.' });
+    expect(chunks).toContainEqual({ type: 'done' });
+  });
 });
 
 // ---------------------------------------------------------------------------

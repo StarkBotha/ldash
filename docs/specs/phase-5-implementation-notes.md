@@ -42,6 +42,24 @@ The route handler wraps the `toolHandler` call to emit `tool_result` events befo
 
 The `gateway/types.ts`, `gateway/index.ts`, `services/conversations.ts` all match the Phase 5 spec's documented contract exactly. No authoritative-code deviations needed.
 
+### 12. Bug fixes — assistant text persistence and double tool execution (2026-06-10)
+
+**Bug 1 — assistant text never persisted (internal path).** `runToolLoop` forwarded text chunks to `textSink` but never wrote an assistant message to the returned history on the internal-execution path. The planning route persists only messages from the returned history slice, so a conversational reply with no tool calls persisted nothing and vanished on reload. Fix: on `done` (and before each `tool_call` chunk to preserve ordering), any accumulated text buffer is flushed to history as `{role:'assistant', content: buffer}`.
+
+**Bug 1 — multi-round path same issue.** When the turn ends without tool calls (natural finish), the accumulated `turnText` was never pushed to history. Fix: on exit from a turn with no pending calls, push `{role:'assistant', content: turnText}` if non-empty before breaking.
+
+**Bug 2 — double tool execution on internal path.** `executeTool` (passed to `callWithTools`) called `toolHandler` once (execution #1), and the chunk consumer on receiving a `tool_call` chunk also called `toolHandler` directly (execution #2). The real `ClaudeAdapter` calls `opts.executeTool` from inside the MCP tool handler callback, which meant every planning tool ran twice — duplicate board items. Fix: the chunk consumer no longer executes tools. It pushes the assistant `tool_calls` history entry and calls `toolCallSink` only. Tool execution and the corresponding `role:'tool'` history entry are handled entirely inside `executeTool`, which is only invoked by the adapter's MCP handler.
+
+**Multi-round content field.** Previously the assistant `tool_calls` message had `content: ''` even when the LLM emitted text before calling tools. Fix: `turnText` is now set as the `content` field of that message.
+
+**Tests added (gateway/loop.test.ts, +7 tests):** internal adapter that calls `opts.executeTool`, asserting exactly-once execution; double-execution prevention assertion; text-before-tool flush ordering; multi-round text-on-tool-calls message; multi-round final reply persistence.
+
+**Tests added (gateway/claude.test.ts, +1 test):** mock SDK query that invokes the tool handler mid-stream (closing the gap that hid Bug 2 — prior mocks only called the handler manually after the loop).
+
+**Tests updated (planning/loop.test.ts):** text-only test now asserts an assistant message IS in history (was previously asserting the opposite, which was the bug).
+
+**UI (PlanChat.tsx, ChatPanel.tsx):** history is filtered before rendering to show only user messages and assistant messages with non-empty content, so role:'tool' entries and empty tool_call shells are skipped on reload.
+
 ### 11. ClaudeAdapter.callWithTools — refactored to Agent SDK (2026-06-10)
 
 The original `callWithTools` posted directly to `https://api.anthropic.com/v1/messages` with a Bearer OAuth token. This bypassed the sanctioned Claude-subscription path and was auth-unverified. It was replaced so all claude-subscription traffic goes through `@anthropic-ai/claude-agent-sdk`.

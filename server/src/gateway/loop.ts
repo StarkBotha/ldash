@@ -29,7 +29,12 @@ export async function runToolLoop(
   // and forward chunks to the sinks; no multi-round management needed.
   // ---------------------------------------------------------------------------
   if (adapter.executesToolsInternally) {
-    // executeTool wraps the toolHandler and also appends tool messages to history
+    let textBuffer = '';
+    // Track the last enqueued tool_call id so the result can correlate with it
+    let lastToolCallId: string | null = null;
+
+    // executeTool wraps the toolHandler, appends tool messages to history,
+    // and is called ONLY by the adapter's MCP handler (not by the chunk consumer).
     const executeTool = async (name: string, argsStr: string): Promise<string> => {
       let parsedArgs: Record<string, unknown>;
       try {
@@ -45,48 +50,56 @@ export async function runToolLoop(
         resultStr = 'Error: ' + (err instanceof Error ? err.message : String(err));
       }
 
+      // Append the tool result message; correlate with the last pushed tool_call id
+      const toolCallId = lastToolCallId ?? `${name}-result`;
+      history.push({
+        role: 'tool',
+        content: resultStr,
+        tool_call_id: toolCallId,
+      });
+
       return resultStr;
     };
 
     for await (const chunk of adapter.callWithTools(history, tools, { executeTool })) {
       if (chunk.type === 'text') {
+        textBuffer += chunk.text;
         textSink(chunk.text);
       } else if (chunk.type === 'tool_call') {
+        // Flush any accumulated text before the tool_call as a standalone assistant message
+        if (textBuffer.trim()) {
+          history.push({ role: 'assistant', content: textBuffer });
+          textBuffer = '';
+        }
+
         const pending: PendingToolCall = { id: chunk.id, name: chunk.name, args: chunk.args };
         toolCallSink(pending);
 
-        // Append the assistant tool_call message and tool result to history
+        // Append the assistant tool_call message to history
+        lastToolCallId = chunk.id;
         history.push({
           role: 'assistant',
           content: '',
           tool_calls: [{ id: chunk.id, name: chunk.name, arguments: chunk.args }],
         });
 
-        // Execute the tool and record the result
-        let parsedArgs: Record<string, unknown>;
-        try {
-          parsedArgs = JSON.parse(chunk.args) as Record<string, unknown>;
-        } catch {
-          parsedArgs = {};
-        }
-
-        let resultStr: string;
-        try {
-          resultStr = await toolHandler(chunk.name, parsedArgs);
-        } catch (err: unknown) {
-          resultStr = 'Error: ' + (err instanceof Error ? err.message : String(err));
-        }
-
-        history.push({
-          role: 'tool',
-          content: resultStr,
-          tool_call_id: chunk.id,
-        });
+        // NOTE: The tool RESULT is appended inside executeTool (called by the adapter's
+        // MCP handler). We do NOT call toolHandler here — that would be double execution.
       } else if (chunk.type === 'error') {
         throw new Error(chunk.message);
       } else if (chunk.type === 'done') {
+        // Flush any remaining text as a final assistant message
+        if (textBuffer.trim()) {
+          history.push({ role: 'assistant', content: textBuffer });
+          textBuffer = '';
+        }
         break;
       }
+    }
+
+    // Final flush in case the generator ended without a done chunk
+    if (textBuffer.trim()) {
+      history.push({ role: 'assistant', content: textBuffer });
     }
 
     return history;
@@ -99,10 +112,12 @@ export async function runToolLoop(
 
   for (let turn = 0; turn < maxTurns; turn++) {
     const pendingCalls: PendingToolCall[] = [];
+    let turnText = '';
 
     // Iterate over chunks from this turn
     for await (const chunk of adapter.callWithTools(history, tools)) {
       if (chunk.type === 'text') {
+        turnText += chunk.text;
         textSink(chunk.text);
       } else if (chunk.type === 'tool_call') {
         const pending: PendingToolCall = { id: chunk.id, name: chunk.name, args: chunk.args };
@@ -115,15 +130,19 @@ export async function runToolLoop(
       }
     }
 
-    // If no tool calls, LLM has finished
+    // If no tool calls, LLM has finished naturally
     if (pendingCalls.length === 0) {
+      // Persist any text from this final turn as an assistant message
+      if (turnText) {
+        history.push({ role: 'assistant', content: turnText });
+      }
       break;
     }
 
-    // Build assistant message with pending tool calls
+    // Build assistant message with pending tool calls; carry turn text as content
     const assistantMessage: ChatMessage = {
       role: 'assistant',
-      content: '',
+      content: turnText,
       tool_calls: pendingCalls.map((pc) => ({
         id: pc.id,
         name: pc.name,
