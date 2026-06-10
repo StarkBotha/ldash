@@ -111,7 +111,7 @@ export function Board({ projectId, onBack }: Props) {
   return (
     <div style={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
       <div style={{
-        padding: '12px 24px',
+        padding: '12px 72px 12px 24px', // right padding clears the global settings gear
         borderBottom: '1px solid #ddd',
         display: 'flex',
         alignItems: 'center',

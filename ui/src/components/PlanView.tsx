@@ -8,25 +8,34 @@ interface PlanViewProps {
 
 export function PlanView({ projectId, onClose }: PlanViewProps) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', position: 'relative' }}>
-      {/* Close button */}
-      <button
-        onClick={onClose}
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
+      {/* Header bar — right padding leaves room for the global settings gear */}
+      <div
         style={{
-          position: 'absolute',
-          top: 12,
-          right: 12,
-          zIndex: 10,
-          padding: '4px 12px',
-          fontSize: 12,
+          display: 'flex',
+          alignItems: 'center',
+          padding: '10px 72px 10px 24px',
+          borderBottom: '1px solid #ddd',
           background: '#fff',
-          border: '1px solid #ddd',
-          borderRadius: 4,
-          cursor: 'pointer',
+          gap: 12,
         }}
       >
-        Close planning mode
-      </button>
+        <span style={{ fontSize: 15, fontWeight: 600 }}>Planning mode</span>
+        <button
+          onClick={onClose}
+          style={{
+            marginLeft: 'auto',
+            padding: '4px 12px',
+            fontSize: 12,
+            background: '#fff',
+            border: '1px solid #ddd',
+            borderRadius: 4,
+            cursor: 'pointer',
+          }}
+        >
+          Close planning mode
+        </button>
+      </div>
 
       {/* Chat panel — flex 3 */}
       <div style={{ flex: 3, overflow: 'hidden', borderBottom: '2px solid #e5e7eb' }}>

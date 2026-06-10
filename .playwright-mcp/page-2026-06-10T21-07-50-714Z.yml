@@ -1,0 +1,29 @@
+- generic [ref=e2]:
+  - button "⚙" [ref=e3] [cursor=pointer]
+  - generic [ref=e16]:
+    - generic [ref=e17]:
+      - button "← Back" [ref=e18]
+      - heading "dungeonsweeper" [level=1] [ref=e19]
+      - button "Edit" [ref=e20]
+      - generic [ref=e21]:
+        - button "Plan" [ref=e22]
+        - button "Export" [ref=e23]
+        - button "New item" [ref=e24]
+    - generic [ref=e25]:
+      - generic [ref=e27]:
+        - generic [ref=e28]: Backlog
+        - generic [ref=e29]: "0"
+        - button "+" [ref=e30] [cursor=pointer]
+      - generic [ref=e33]:
+        - generic [ref=e34]: In Progress
+        - generic [ref=e35]: "0"
+        - button "+" [ref=e36] [cursor=pointer]
+      - generic [ref=e39]:
+        - generic [ref=e40]: Review
+        - generic [ref=e41]: "0"
+        - button "+" [ref=e42] [cursor=pointer]
+      - generic [ref=e45]:
+        - generic [ref=e46]: Done
+        - generic [ref=e47]: "0"
+        - button "+" [ref=e48] [cursor=pointer]
+    - status [ref=e50]

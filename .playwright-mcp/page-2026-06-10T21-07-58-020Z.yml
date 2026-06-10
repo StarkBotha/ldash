@@ -1,0 +1,28 @@
+- generic [ref=e2]:
+  - button "⚙" [ref=e3] [cursor=pointer]
+  - generic [ref=e51]:
+    - generic [ref=e52]:
+      - generic [ref=e53]: Planning mode
+      - button "Close planning mode" [ref=e54] [cursor=pointer]
+    - generic [ref=e56]:
+      - generic [ref=e57]:
+        - strong [ref=e58]: Planning Chat
+        - button "Clear history" [ref=e59]
+      - generic [ref=e61]:
+        - textbox "Describe what you want to build..." [ref=e62]
+        - button "Send" [disabled] [ref=e63]
+    - generic [ref=e64]:
+      - generic [ref=e65]: Board (live)
+      - generic [ref=e68]:
+        - generic [ref=e70]:
+          - text: Backlog
+          - generic [ref=e71]: "0"
+        - generic [ref=e73]:
+          - text: In Progress
+          - generic [ref=e74]: "0"
+        - generic [ref=e76]:
+          - text: Review
+          - generic [ref=e77]: "0"
+        - generic [ref=e79]:
+          - text: Done
+          - generic [ref=e80]: "0"
