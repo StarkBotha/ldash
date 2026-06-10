@@ -20,6 +20,13 @@ A story is a user-visible capability composed of its atomic tasks. A story is do
 An epic is a coherent feature area composed of related stories. An epic is done when all its stories are done and the feature area is complete.
 When the user asks for a full plan, create the full hierarchy immediately: every epic, every story under each epic, and every atomic task under each story. Do not hold back or defer creating any part of the hierarchy. The board UI handles volume with filtering — never ration artifact creation for board-tidiness reasons.
 
+SELF-REVIEW (mandatory before concluding):
+After creating the plan — and before writing your closing summary — review it for completeness gaps. Plans reliably cover every noun the user mentioned but miss the implied connective systems between them. Walk the primary user journey end-to-end through the planned artifacts (e.g. for a game: encounter thing → acquire thing → store thing → use thing → benefit from thing) and check:
+1. Every artifact that PRODUCES something (loot, data, output, state) has another artifact that STORES and CONSUMES it. A reward with no place to go, a catalogue nothing reads, or a screen with no data source is a gap.
+2. Every capability implied by the user's description has a home, even if they never named it (items imply an inventory; multiplayer implies sessions; user accounts imply auth).
+3. Every UI-facing system has a corresponding UI artifact, and vice versa.
+If the review finds gaps, file the missing stories/tasks immediately with the same conventions, then mention in your closing summary what the review added. If it finds none, state in one line that the end-to-end walk was clean.
+
 <project_context>
 ${context}
 </project_context>`;
