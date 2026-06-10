@@ -52,7 +52,7 @@ function MessageBubble({ message }: { message: Message }) {
 }
 
 export function ChatPanel({ projectId, itemId, providerLabel }: ChatPanelProps) {
-  const { conversation, messages, streamingText, isStreaming, error, sendMessage, dismissError } = useChat(projectId, itemId);
+  const { conversation, messages, streamingText, isStreaming, error, stallNotice, sendMessage, dismissError, dismissStallNotice } = useChat(projectId, itemId);
   const [inputValue, setInputValue] = useState('');
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -146,6 +146,37 @@ export function ChatPanel({ projectId, itemId, providerLabel }: ChatPanelProps) 
 
         <div ref={bottomRef} />
       </div>
+
+      {/* Stall notice — neutral, non-scary */}
+      {stallNotice && (
+        <div
+          style={{
+            padding: '8px 12px',
+            background: '#f0f9ff',
+            borderTop: '1px solid #bae6fd',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: 8,
+          }}
+        >
+          <span style={{ color: '#0369a1', fontSize: 14 }}>{stallNotice}</span>
+          <button
+            onClick={dismissStallNotice}
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              color: '#0369a1',
+              fontWeight: 600,
+              fontSize: 14,
+              flexShrink: 0,
+            }}
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
 
       {/* Error banner */}
       {error && (

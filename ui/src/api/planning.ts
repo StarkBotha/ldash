@@ -11,12 +11,14 @@ export async function fetchPlanningHistory(projectId: string): Promise<{
 
 export async function sendPlanningMessage(
   projectId: string,
-  content: string
+  content: string,
+  signal?: AbortSignal
 ): Promise<Response> {
   return fetch(`/api/projects/${projectId}/planning/messages`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ content }),
+    signal,
   });
 }
 

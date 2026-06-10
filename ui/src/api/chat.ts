@@ -24,7 +24,8 @@ export async function getConversation(
 export async function streamMessage(
   conversationId: string,
   content: string,
-  onChunk: (event: ChatStreamEvent) => void
+  onChunk: (event: ChatStreamEvent) => void,
+  signal?: AbortSignal
 ): Promise<void> {
   const res = await fetch(`/api/conversations/${conversationId}/messages`, {
     method: 'POST',
@@ -33,6 +34,7 @@ export async function streamMessage(
       'Accept': 'text/event-stream',
     },
     body: JSON.stringify({ content }),
+    signal,
   });
 
   if (!res.ok) throw new Error('HTTP ' + res.status);

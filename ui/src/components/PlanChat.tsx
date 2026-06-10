@@ -6,7 +6,7 @@ interface PlanChatProps {
 }
 
 export function PlanChat({ projectId }: PlanChatProps) {
-  const { messages, streamingContent, toolCallIndicators, isStreaming, error, sendMessage, clearHistory } =
+  const { messages, streamingContent, toolCallIndicators, isStreaming, error, stallNotice, sendMessage, clearHistory, dismissStallNotice } =
     usePlanningChat(projectId);
   const [inputValue, setInputValue] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -119,6 +119,30 @@ export function PlanChat({ projectId }: PlanChatProps) {
           </div>
         )}
       </div>
+
+      {/* Stall notice — neutral, non-scary */}
+      {stallNotice && (
+        <div
+          style={{
+            background: '#f0f9ff',
+            border: '1px solid #bae6fd',
+            color: '#0369a1',
+            padding: '8px 16px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            fontSize: 14,
+          }}
+        >
+          <span style={{ flex: 1 }}>{stallNotice}</span>
+          <button
+            onClick={dismissStallNotice}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#0369a1', fontWeight: 'bold' }}
+          >
+            ×
+          </button>
+        </div>
+      )}
 
       {/* Error banner */}
       {displayError && (
