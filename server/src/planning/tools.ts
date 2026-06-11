@@ -1,7 +1,7 @@
 import type Database from 'better-sqlite3';
 import type { ToolDefinition } from '../gateway/types.js';
 import type { ToolHandler } from '../gateway/loop.js';
-import { ITEM_TYPES, isWorkItemType, type Services, type ItemType } from '../types.js';
+import { ITEM_TYPES, WORK_ITEM_TYPES, isWorkItemType, type Services, type ItemType } from '../types.js';
 import type { EventBus } from '../events/bus.js';
 import { recomputeAncestors } from '../services/rollup.js';
 
@@ -46,7 +46,7 @@ export function getPlanningToolDefinitions(): ToolDefinition[] {
     {
       name: 'update_item',
       description:
-        'Update the title or description of an existing item. Use this to refine an item you just created, or to improve a pre-existing item based on the planning conversation.',
+        'Update the title, description, or type of an existing item. Use this to refine an item you just created, or to improve a pre-existing item based on the planning conversation. Type changes are only allowed between task, bug, and investigation — epics and stories cannot be converted.',
       parameters: {
         type: 'object',
         required: ['item_id'],
@@ -62,6 +62,12 @@ export function getPlanningToolDefinitions(): ToolDefinition[] {
           description: {
             type: 'string',
             description: 'New description. Omit to leave unchanged.',
+          },
+          type: {
+            type: 'string',
+            enum: [...WORK_ITEM_TYPES],
+            description:
+              'New item type. Omit to leave unchanged. Only conversions between task, bug, and investigation are allowed.',
           },
         },
       },
@@ -184,13 +190,30 @@ export function createPlanningToolHandler(
 
       const newTitle = args['title'];
       const newDescription = args['description'];
+      const newType = args['type'];
 
-      if (newTitle === undefined && newDescription === undefined) {
-        return 'Error: provide title or description to update';
+      if (newTitle === undefined && newDescription === undefined && newType === undefined) {
+        return 'Error: provide title, description, or type to update';
       }
 
-      const updateData: Partial<{ title: string; description: string }> = {};
+      const updateData: Partial<{ title: string; description: string; type: ItemType }> = {};
       const fields: Record<string, unknown> = {};
+
+      if (newType !== undefined) {
+        if (typeof newType !== 'string' || !isWorkItemType(newType)) {
+          return 'Error: type must be task, bug, or investigation';
+        }
+        if (newType !== existingItem.type && !isWorkItemType(existingItem.type)) {
+          return (
+            'Error: type can only be changed between work item types (task, bug, investigation) — cannot convert ' +
+            existingItem.type + ' to ' + newType
+          );
+        }
+        updateData.type = newType;
+        if (newType !== existingItem.type) {
+          fields['type'] = { from: existingItem.type, to: newType };
+        }
+      }
 
       if (typeof newTitle === 'string') {
         updateData.title = newTitle;

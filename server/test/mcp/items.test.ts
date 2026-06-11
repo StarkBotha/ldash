@@ -196,6 +196,31 @@ describe('item MCP tools', () => {
       expect(entry).toBeDefined();
       expect(entry!.actor_type).toBe('claude');
     });
+
+    it('changes the type of a task to bug, key unchanged', async () => {
+      const item = ctx.services.items.create({ project_id: projectId, type: 'task', title: 'Task', column_id: columns[0].id });
+
+      const result = await ctx.client.callTool({
+        name: 'ldash_update_item_fields',
+        arguments: { item_id: item.id, type: 'bug' },
+      });
+      expect(result.isError).toBeFalsy();
+      const updated = JSON.parse(getText(result));
+      expect(updated.type).toBe('bug');
+      expect(updated.key).toBe(item.key);
+    });
+
+    it('rejects converting a story to a task', async () => {
+      const story = ctx.services.items.create({ project_id: projectId, type: 'story', title: 'Story', column_id: columns[0].id });
+
+      const result = await ctx.client.callTool({
+        name: 'ldash_update_item_fields',
+        arguments: { item_id: story.id, type: 'task' },
+      });
+      expect(result.isError).toBe(true);
+      expect(getText(result)).toContain('cannot convert story to task');
+      expect(ctx.services.items.get(story.id)!.type).toBe('story');
+    });
   });
 
   // ldash_update_item_status

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useMoveItem, useFlagItem, useBlockItem, useDeleteItem } from '../hooks/useBoard';
+import { useMoveItem, useFlagItem, useBlockItem, useDeleteItem, useUpdateItem } from '../hooks/useBoard';
 import { useAttachments, useUploadAttachment, useDeleteAttachment } from '../hooks/useItemDetail';
 import { api } from '../api/client';
 import { CommentBox } from './CommentBox';
@@ -8,8 +8,8 @@ import { ActivityFeed } from './ActivityFeed';
 import { ChatPanel } from './ChatPanel';
 import { getSettings } from '../api/settings';
 import { TYPE_COLORS } from './Card';
-import { isWorkItemType } from '../types';
-import type { Item, Column } from '../types';
+import { isWorkItemType, WORK_ITEM_TYPES } from '../types';
+import type { Item, Column, ItemType } from '../types';
 
 interface Props {
   item: Item;
@@ -24,6 +24,7 @@ type Tab = 'details' | 'comments' | 'chat';
 
 export function ItemDetailPanel({ item, columns, projectId, onClose, onEdit, onDeleted }: Props) {
   const moveItem = useMoveItem();
+  const updateItem = useUpdateItem();
   const flagItem = useFlagItem();
   const blockItem = useBlockItem();
   const deleteItem = useDeleteItem();
@@ -52,6 +53,10 @@ export function ItemDetailPanel({ item, columns, projectId, onClose, onEdit, onD
 
   async function handleStatusChange(e: React.ChangeEvent<HTMLSelectElement>) {
     await moveItem.mutateAsync({ id: item.id, projectId, data: { column_id: e.target.value } });
+  }
+
+  async function handleTypeChange(e: React.ChangeEvent<HTMLSelectElement>) {
+    await updateItem.mutateAsync({ id: item.id, projectId, data: { type: e.target.value as ItemType } });
   }
 
   async function handleFlagToggle() {
@@ -153,13 +158,31 @@ export function ItemDetailPanel({ item, columns, projectId, onClose, onEdit, onD
         <div style={{ ...sectionStyle, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div style={{ flex: 1 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-              <span style={{
-                fontSize: 12, fontWeight: 600, color: '#fff',
-                background: TYPE_COLORS[item.type] ?? '#888',
-                borderRadius: 4, padding: '1px 6px',
-              }}>
-                {item.type}
-              </span>
+              {isWorkItemType(item.type) ? (
+                <select
+                  value={item.type}
+                  onChange={handleTypeChange}
+                  title="Change item type"
+                  style={{
+                    fontSize: 12, fontWeight: 600, color: '#fff',
+                    background: TYPE_COLORS[item.type] ?? '#888',
+                    border: 'none', borderRadius: 4, padding: '1px 6px',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {WORK_ITEM_TYPES.map((t) => (
+                    <option key={t} value={t} style={{ color: '#111', background: '#fff' }}>{t}</option>
+                  ))}
+                </select>
+              ) : (
+                <span style={{
+                  fontSize: 12, fontWeight: 600, color: '#fff',
+                  background: TYPE_COLORS[item.type] ?? '#888',
+                  borderRadius: 4, padding: '1px 6px',
+                }}>
+                  {item.type}
+                </span>
+              )}
               <span style={{ fontSize: 13, fontWeight: 600, color: '#999' }}>{item.key}</span>
             </div>
             <h2 style={{ margin: 0, fontSize: 18 }}>{item.title}</h2>

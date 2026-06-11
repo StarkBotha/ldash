@@ -48,6 +48,12 @@ export function Board({ projectId, onBack }: Props) {
 
   const allItems = items ?? [];
 
+  // The detail panel must reflect live query data (e.g. after a type change) —
+  // the click-time snapshot in state goes stale once queries refetch.
+  const liveSelectedItem = selectedItem
+    ? allItems.find((i) => i.id === selectedItem.id) ?? selectedItem
+    : null;
+
   // Compute filtered items based on epic filter selection
   const epics = allItems.filter((item) => item.type === 'epic');
   const visibleItems: Item[] = (() => {
@@ -164,9 +170,9 @@ export function Board({ projectId, onBack }: Props) {
 
       <ConnectionIndicator status={status} />
 
-      {selectedItem && (
+      {liveSelectedItem && (
         <ItemDetailPanel
-          item={selectedItem}
+          item={liveSelectedItem}
           columns={sortedColumns}
           projectId={projectId}
           onClose={() => setSelectedItem(null)}

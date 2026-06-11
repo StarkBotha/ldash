@@ -129,15 +129,31 @@ export function itemsRouter(
     }
 
     const body = await c.req.json().catch(() => ({}));
-    const { title, description, parent_id } = body as {
+    const { title, description, parent_id, type } = body as {
       title?: unknown;
       description?: unknown;
       parent_id?: unknown;
+      type?: unknown;
     };
 
-    const updateData: Partial<{ title: string; description: string; parent_id: string | null }> = {};
+    const updateData: Partial<{ title: string; description: string; parent_id: string | null; type: ItemType }> = {};
     const oldFields: Record<string, unknown> = {};
     const newFields: Record<string, unknown> = {};
+
+    if (type !== undefined) {
+      if (typeof type !== 'string' || !VALID_TYPES.has(type)) {
+        throw makeError('type must be one of: epic, story, task, bug, investigation', 400);
+      }
+      if (type !== existing.type && (!isWorkItemType(existing.type) || !isWorkItemType(type))) {
+        throw makeError(
+          `Type can only be changed between work item types (task, bug, investigation) — cannot convert ${existing.type} to ${type}`,
+          409
+        );
+      }
+      updateData.type = type as ItemType;
+      oldFields.type = existing.type;
+      newFields.type = type;
+    }
 
     if (title !== undefined) {
       if (typeof title !== 'string' || title.trim() === '') {
@@ -176,7 +192,7 @@ export function itemsRouter(
     }
 
     if (Object.keys(updateData).length === 0) {
-      throw makeError('Body must contain at least one of: title, description, parent_id', 400);
+      throw makeError('Body must contain at least one of: title, description, parent_id, type', 400);
     }
 
     const updated = itemService.update(id, updateData);

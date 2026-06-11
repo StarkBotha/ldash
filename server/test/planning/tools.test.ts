@@ -325,7 +325,7 @@ describe('createPlanningToolHandler', () => {
       expect(result).toBe('Error: item not found in this project');
     });
 
-    it('neither title nor description provided: returns error', async () => {
+    it('neither title, description, nor type provided: returns error', async () => {
       const db = createTestDb();
       const services = createServices(db);
       const bus = new EventBus();
@@ -343,7 +343,54 @@ describe('createPlanningToolHandler', () => {
       const handler = createPlanningToolHandler(services, project.id, bus);
       const result = await handler('update_item', { item_id: item.id });
 
-      expect(result).toBe('Error: provide title or description to update');
+      expect(result).toBe('Error: provide title, description, or type to update');
+    });
+
+    it('changes a task to a bug, key unchanged', async () => {
+      const db = createTestDb();
+      const services = createServices(db);
+      const bus = new EventBus();
+      const project = services.projects.create({ name: 'Test Project', description: '' });
+      const columns = services.columns.list();
+      const backlogCol = columns.find((c) => c.name === 'Backlog')!;
+
+      const item = services.items.create({
+        project_id: project.id,
+        type: 'task',
+        title: 'Actually a defect',
+        column_id: backlogCol.id,
+      });
+
+      const handler = createPlanningToolHandler(services, project.id, bus);
+      const result = await handler('update_item', { item_id: item.id, type: 'bug' });
+
+      const parsed = JSON.parse(result) as { success: boolean; item: { type: string; key: string } };
+      expect(parsed.success).toBe(true);
+      expect(parsed.item.type).toBe('bug');
+      expect(parsed.item.key).toBe(item.key);
+    });
+
+    it('rejects converting an epic to a bug', async () => {
+      const db = createTestDb();
+      const services = createServices(db);
+      const bus = new EventBus();
+      const project = services.projects.create({ name: 'Test Project', description: '' });
+      const columns = services.columns.list();
+      const backlogCol = columns.find((c) => c.name === 'Backlog')!;
+
+      const epic = services.items.create({
+        project_id: project.id,
+        type: 'epic',
+        title: 'Big theme',
+        column_id: backlogCol.id,
+      });
+
+      const handler = createPlanningToolHandler(services, project.id, bus);
+      const result = await handler('update_item', { item_id: epic.id, type: 'bug' });
+
+      expect(result).toContain('Error');
+      expect(result).toContain('cannot convert epic to bug');
+      expect(services.items.get(epic.id)!.type).toBe('epic');
     });
   });
 

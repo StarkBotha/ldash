@@ -1,4 +1,4 @@
-import type { Project, Column, Item, Comment, ActivityEntry, Attachment } from '../types';
+import type { Project, Column, Item, ItemType, Comment, ActivityEntry, Attachment } from '../types';
 
 const BASE = '/api';
 
@@ -52,7 +52,7 @@ export const api = {
       description?: string;
       column_id: string;
     }) => apiFetch<Item>('/items', { method: 'POST', body: JSON.stringify(data) }),
-    update: (id: string, data: Partial<{ title: string; description: string; parent_id: string | null }>) =>
+    update: (id: string, data: Partial<{ title: string; description: string; parent_id: string | null; type: ItemType }>) =>
       apiFetch<Item>(`/items/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
     move: (id: string, data: { column_id: string; position?: number }) =>
       apiFetch<Item>(`/items/${id}/move`, { method: 'PATCH', body: JSON.stringify(data) }),

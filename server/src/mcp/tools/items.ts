@@ -1,6 +1,6 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
-import { ITEM_TYPES, isWorkItemType, type Services } from '../../types.js';
+import { ITEM_TYPES, WORK_ITEM_TYPES, isWorkItemType, type Services } from '../../types.js';
 import { eventBus as defaultBus } from '../../events/bus.js';
 import type { EventBus } from '../../events/bus.js';
 import { recomputeAncestors, recomputeAncestorsByParent } from '../../services/rollup.js';
@@ -198,11 +198,12 @@ export function registerItemTools(server: McpServer, services: Services, bus: Ev
   // ldash_update_item_fields
   server.tool(
     'ldash_update_item_fields',
-    'Update the title and/or description of an item. Use this to correct a title, add detail to a description, or clarify scope after investigation. Does not change status — use ldash_update_item_status for that.',
+    'Update the title, description, and/or type of an item. Use this to correct a title, add detail to a description, or reclassify a work item (e.g. a task that turned out to be a bug). Type changes are only allowed between task, bug, and investigation — epics and stories cannot be converted. Does not change status — use ldash_update_item_status for that.',
     {
       item_id: z.string().describe('The id of the item to update.'),
       title: z.string().min(1).optional().describe('New title. Optional — omit to leave unchanged.'),
       description: z.string().optional().describe('New description. Optional — omit to leave unchanged. Pass an empty string to clear the description.'),
+      type: z.enum(WORK_ITEM_TYPES).optional().describe('New item type. Optional — omit to leave unchanged. Only conversions between task, bug, and investigation are allowed; epics and stories cannot be converted.'),
     },
     async (input) => {
       const oldItem = services.items.get(input.item_id);
@@ -210,13 +211,18 @@ export function registerItemTools(server: McpServer, services: Services, bus: Ev
         return { content: [{ type: 'text' as const, text: 'Error: item not found' }], isError: true };
       }
 
-      if (input.title === undefined && input.description === undefined) {
+      if (input.title === undefined && input.description === undefined && input.type === undefined) {
         return { content: [{ type: 'text' as const, text: 'Error: provide at least one field to update' }], isError: true };
+      }
+
+      if (input.type !== undefined && input.type !== oldItem.type && !isWorkItemType(oldItem.type)) {
+        return { content: [{ type: 'text' as const, text: `Error: type can only be changed between work item types (task, bug, investigation) — cannot convert ${oldItem.type} to ${input.type}` }], isError: true };
       }
 
       const updatedItem = services.items.update(input.item_id, {
         title: input.title,
         description: input.description,
+        type: input.type,
       });
 
       // Build fields payload showing what changed
@@ -226,6 +232,9 @@ export function registerItemTools(server: McpServer, services: Services, bus: Ev
       }
       if (input.description !== undefined && input.description !== oldItem.description) {
         fields['description'] = { old: oldItem.description, new: input.description };
+      }
+      if (input.type !== undefined && input.type !== oldItem.type) {
+        fields['type'] = { old: oldItem.type, new: input.type };
       }
 
       services.activity.append({

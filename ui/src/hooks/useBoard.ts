@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api/client';
+import type { ItemType } from '../types';
 
 export function useColumns() {
   return useQuery({
@@ -43,7 +44,7 @@ export function useUpdateItem() {
     }: {
       id: string;
       projectId: string;
-      data: Partial<{ title: string; description: string; parent_id: string | null }>;
+      data: Partial<{ title: string; description: string; parent_id: string | null; type: ItemType }>;
     }) => api.items.update(id, data),
     onSuccess: (_item, vars) => {
       qc.invalidateQueries({ queryKey: ['items', vars.projectId] });

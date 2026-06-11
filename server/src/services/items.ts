@@ -122,9 +122,23 @@ export class ItemService {
     return this.get(id) as Item;
   }
 
-  update(id: string, data: Partial<{ title: string; description: string; parent_id: string | null }>): Item {
+  update(id: string, data: Partial<{ title: string; description: string; parent_id: string | null; type: ItemType }>): Item {
     const fields: string[] = [];
     const values: unknown[] = [];
+
+    if (data.type !== undefined) {
+      const item = this.get(id);
+      if (item && data.type !== item.type) {
+        if (!isWorkItemType(item.type) || !isWorkItemType(data.type)) {
+          throw new Error(
+            'Type can only be changed between work item types (task, bug, investigation) — cannot convert ' +
+              item.type + ' to ' + data.type
+          );
+        }
+        fields.push('type = ?');
+        values.push(data.type);
+      }
+    }
 
     if (data.title !== undefined) {
       fields.push('title = ?');
