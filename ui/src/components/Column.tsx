@@ -35,7 +35,31 @@ interface EpicGroup {
   orderedItems: Item[];
 }
 
-function buildGroups(columnItems: Item[], allItems: Item[]): EpicGroup[] {
+/** Order a group's stories and tasks hierarchically: each story (by position)
+ *  followed by its tasks in this column, then tasks whose parent story is not
+ *  in the column. Ignores epics — the caller places the epic card first. */
+function orderStoriesAndTasks(members: Item[]): Item[] {
+  const stories = members.filter((i) => i.type === 'story').sort((a, b) => a.position - b.position);
+  const memberStoryIds = new Set(stories.map((s) => s.id));
+  // tasks whose parent story is NOT in this column's member set
+  const orphanTasks = members.filter(
+    (i) => i.type === 'task' && (i.parent_id == null || !memberStoryIds.has(i.parent_id))
+  ).sort((a, b) => a.position - b.position);
+
+  const ordered: Item[] = [];
+  for (const story of stories) {
+    ordered.push(story);
+    // Tasks in this column whose parent is this story
+    const storyTasks = members
+      .filter((i) => i.type === 'task' && i.parent_id === story.id)
+      .sort((a, b) => a.position - b.position);
+    ordered.push(...storyTasks);
+  }
+  ordered.push(...orphanTasks);
+  return ordered;
+}
+
+export function buildGroups(columnItems: Item[], allItems: Item[]): EpicGroup[] {
   // All epics in the entire project (not just this column), for ordering groups
   const allEpics = allItems
     .filter((i) => i.type === 'epic')
@@ -57,35 +81,21 @@ function buildGroups(columnItems: Item[], allItems: Item[]): EpicGroup[] {
 
     const members = groupMap.get(epic.id)!;
 
-    // Separate this column's members by type
+    // Epic card always renders first in its group (regardless of its position
+    // value — the rollup can move it into a column after its children, giving
+    // it a higher position), then stories with their tasks nested.
     const epicCard = members.find((i) => i.id === epic.id) ?? null;
-    const stories = members.filter((i) => i.type === 'story').sort((a, b) => a.position - b.position);
-    // tasks whose parent story IS in this column's member set
-    const memberStoryIds = new Set(stories.map((s) => s.id));
-    const orphanTasks = members.filter(
-      (i) => i.type === 'task' && (i.parent_id == null || !memberStoryIds.has(i.parent_id))
-    ).sort((a, b) => a.position - b.position);
-
     const orderedItems: Item[] = [];
     if (epicCard) orderedItems.push(epicCard);
-    for (const story of stories) {
-      orderedItems.push(story);
-      // Tasks in this column whose parent is this story
-      const storyTasks = members
-        .filter((i) => i.type === 'task' && i.parent_id === story.id)
-        .sort((a, b) => a.position - b.position);
-      orderedItems.push(...storyTasks);
-    }
-    // Tasks whose parent story is not in this column
-    orderedItems.push(...orphanTasks);
+    orderedItems.push(...orderStoriesAndTasks(members));
 
     groups.push({ epicId: epic.id, epicTitle: epic.title, orderedItems });
   }
 
-  // "No epic" group last
+  // "No epic" group last — same hierarchical ordering, so a parent story
+  // never sinks below its own tasks just because its position is higher.
   if (groupMap.has(null)) {
-    const noEpicItems = groupMap.get(null)!.sort((a, b) => a.position - b.position);
-    groups.push({ epicId: null, epicTitle: 'No epic', orderedItems: noEpicItems });
+    groups.push({ epicId: null, epicTitle: 'No epic', orderedItems: orderStoriesAndTasks(groupMap.get(null)!) });
   }
 
   return groups;
