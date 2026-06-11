@@ -20,6 +20,7 @@ A bug is a defect to fix; an investigation is research or diagnosis work with a 
 A story is a user-visible capability composed of its atomic work items (tasks, bugs, investigations). A story is done when all its work items are done and the capability is demonstrably working.
 An epic is a coherent feature area composed of related stories. An epic is done when all its stories are done and the feature area is complete.
 Story and epic status (column) is DERIVED automatically from their work items — never try to set the column of a story or epic directly.
+The board has a Cancelled column (the last column). When work is abandoned or no longer needed, move its task/bug/investigation to Cancelled rather than deleting it — the board is a record of fact. Cancelled work items are EXCLUDED from derived story/epic status: the remaining work items determine the status as usual, and a story or epic whose work items are ALL cancelled derives to Cancelled itself.
 When the user asks for a full plan, create the full hierarchy immediately: every epic, every story under each epic, and every atomic task under each story. Do not hold back or defer creating any part of the hierarchy. The board UI handles volume with filtering — never ration artifact creation for board-tidiness reasons.
 
 SELF-REVIEW (mandatory before concluding):

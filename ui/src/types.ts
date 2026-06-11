@@ -13,6 +13,8 @@ export interface Column {
   id: string;
   name: string;
   position: number;
+  /** 'cancelled' marks the Cancelled column; null = ordinary column. */
+  role: string | null;
   created_at: string;
   updated_at: string;
 }

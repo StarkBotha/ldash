@@ -10,23 +10,25 @@ beforeEach(() => {
 });
 
 describe('Columns', () => {
-  it('AC11: GET /api/columns returns 4 default columns in order', async () => {
+  it('AC11: GET /api/columns returns 5 default columns in order', async () => {
     const { status, body } = await req(app, 'GET', '/api/columns');
     expect(status).toBe(200);
     const cols = body as Column[];
-    expect(cols).toHaveLength(4);
+    expect(cols).toHaveLength(5);
     expect(cols[0].name).toBe('Backlog');
     expect(cols[1].name).toBe('In Progress');
     expect(cols[2].name).toBe('Review');
     expect(cols[3].name).toBe('Done');
+    expect(cols[4].name).toBe('Cancelled');
+    expect(cols[4].role).toBe('cancelled');
   });
 
-  it('AC12: POST /api/columns adds column at end (position 4)', async () => {
+  it('AC12: POST /api/columns adds column at end (position 5)', async () => {
     const { status, body } = await req(app, 'POST', '/api/columns', { name: 'QA' });
     expect(status).toBe(201);
     const col = body as Column;
     expect(col.name).toBe('QA');
-    expect(col.position).toBe(4);
+    expect(col.position).toBe(5);
   });
 
   it('AC13: POST /api/columns with missing name returns 400', async () => {

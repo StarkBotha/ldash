@@ -17,6 +17,9 @@ export function generateExport(services: Services, projectId: string): ExportFil
   for (const col of allColumns) {
     columnMap.set(col.id, col.name);
   }
+  const cancelledColumnIds = new Set(
+    allColumns.filter((c) => c.role === 'cancelled').map((c) => c.id)
+  );
 
   const allItems = services.items.listByProject(projectId);
   const itemMap = new Map(allItems.map((item) => [item.id, item]));
@@ -98,7 +101,9 @@ export function generateExport(services: Services, projectId: string): ExportFil
           for (const task of storyTasks) {
             const taskColumnName = columnMap.get(task.column_id) ?? task.column_id;
             const typeTag = task.type === 'task' ? '' : ` _(${task.type})_`;
-            epicLines.push(`- [${taskColumnName}] **${task.key}**${typeTag} ${task.title}`);
+            // Cancelled work items render struck through
+            const taskTitle = cancelledColumnIds.has(task.column_id) ? `~~${task.title}~~` : task.title;
+            epicLines.push(`- [${taskColumnName}] **${task.key}**${typeTag} ${taskTitle}`);
             if (task.description && task.description.trim() !== '') {
               epicLines.push(`  ${task.description}`);
             }

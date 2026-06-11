@@ -20,30 +20,49 @@ function listWorkChildren(itemService: ItemService, projectId: string, parentId:
  * Derive the target column for an aggregate item (story or epic) based on
  * the column positions of its descendant work items (tasks/bugs/investigations).
  *
- * Column semantics (by position):
+ * The cancelled column is identified explicitly by role='cancelled' (not by
+ * position — it sits after Done, so "last = done" would break). Positional
+ * semantics apply to the remaining (non-cancelled) columns:
  *   FIRST  (lowest position)  = not-started
- *   LAST   (highest position) = done
+ *   LAST   (highest position, excluding cancelled) = done
  *   SECOND (index 1)          = in-progress representative
  *
  * Rules:
- *   - No tasks  → return null (don't touch the item)
- *   - All tasks in FIRST column → FIRST column id
- *   - All tasks in LAST column → LAST column id
- *   - Otherwise → SECOND column id
+ *   - No work items → return null (don't touch the item)
+ *   - ALL work items cancelled → cancelled column id
+ *   - Otherwise cancelled work items are EXCLUDED, and the non-cancelled rest
+ *     derive as before:
+ *     - All in FIRST column → FIRST column id
+ *     - All in DONE column → DONE column id
+ *     - Otherwise → SECOND column id
  */
-function deriveColumnId(tasks: Item[], sortedColumns: { id: string; position: number }[]): string | null {
+function deriveColumnId(
+  tasks: Item[],
+  sortedColumns: { id: string; position: number; role: string | null }[]
+): string | null {
   if (tasks.length === 0) return null;
   if (sortedColumns.length === 0) return null;
 
-  const firstColId = sortedColumns[0].id;
-  const lastColId = sortedColumns[sortedColumns.length - 1].id;
-  const secondColId = sortedColumns.length > 1 ? sortedColumns[1].id : firstColId;
+  const cancelledCol = sortedColumns.find((c) => c.role === 'cancelled');
+  const activeColumns = sortedColumns.filter((c) => c.role !== 'cancelled');
+  if (activeColumns.length === 0) return null;
 
-  const allFirst = tasks.every((t) => t.column_id === firstColId);
-  const allLast = tasks.every((t) => t.column_id === lastColId);
+  const activeTasks = cancelledCol
+    ? tasks.filter((t) => t.column_id !== cancelledCol.id)
+    : tasks;
+
+  // All leaf work items cancelled → the aggregate derives to Cancelled.
+  if (activeTasks.length === 0) return cancelledCol!.id;
+
+  const firstColId = activeColumns[0].id;
+  const doneColId = activeColumns[activeColumns.length - 1].id;
+  const secondColId = activeColumns.length > 1 ? activeColumns[1].id : firstColId;
+
+  const allFirst = activeTasks.every((t) => t.column_id === firstColId);
+  const allDone = activeTasks.every((t) => t.column_id === doneColId);
 
   if (allFirst) return firstColId;
-  if (allLast) return lastColId;
+  if (allDone) return doneColId;
   return secondColId;
 }
 

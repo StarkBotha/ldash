@@ -28,7 +28,7 @@ describe('MCP guard: ldash_update_item_status on non-tasks', () => {
       title: 'Story',
       column_id: columns[0].id,
     });
-    const doneCol = columns[columns.length - 1];
+    const doneCol = columns.filter((c) => c.role !== 'cancelled').at(-1)!;
 
     const result = await ctx.client.callTool({
       name: 'ldash_update_item_status',
@@ -45,7 +45,7 @@ describe('MCP guard: ldash_update_item_status on non-tasks', () => {
       title: 'Epic',
       column_id: columns[0].id,
     });
-    const doneCol = columns[columns.length - 1];
+    const doneCol = columns.filter((c) => c.role !== 'cancelled').at(-1)!;
 
     const result = await ctx.client.callTool({
       name: 'ldash_update_item_status',
@@ -69,7 +69,7 @@ describe('MCP guard: ldash_update_item_status on non-tasks', () => {
       column_id: columns[0].id,
       parent_id: story.id,
     });
-    const doneCol = columns[columns.length - 1];
+    const doneCol = columns.filter((c) => c.role !== 'cancelled').at(-1)!;
 
     const result = await ctx.client.callTool({
       name: 'ldash_update_item_status',

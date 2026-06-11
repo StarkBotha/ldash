@@ -5,6 +5,7 @@ import * as migration003 from './migrations/003_system_actor.js';
 import * as migration004 from './migrations/004_ticket_numbers.js';
 import * as migration005 from './migrations/005_attachments.js';
 import * as migration006 from './migrations/006_bug_investigation_types.js';
+import * as migration007 from './migrations/007_cancelled_column.js';
 import { createLogger } from '../logger.js';
 
 const logger = createLogger('db');
@@ -18,7 +19,7 @@ interface Migration {
   disableForeignKeys?: boolean;
 }
 
-const MIGRATIONS: Migration[] = [migration001, migration002, migration003, migration004, migration005, migration006];
+const MIGRATIONS: Migration[] = [migration001, migration002, migration003, migration004, migration005, migration006, migration007];
 
 export function runMigrations(db: Database.Database): void {
   db.exec(`

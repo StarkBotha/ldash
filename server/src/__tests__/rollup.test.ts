@@ -47,7 +47,8 @@ describe('rollup', () => {
     const cols = columnService.list().sort((a, b) => a.position - b.position);
     backlogColId = cols[0].id;     // position 0 = Backlog (first)
     inProgressColId = cols[1].id;  // position 1 = In Progress (second)
-    doneColId = cols[cols.length - 1].id; // last = Done
+    const active = cols.filter((c) => c.role !== 'cancelled');
+    doneColId = active[active.length - 1].id; // last non-cancelled = Done
   });
 
   describe('story rollup', () => {

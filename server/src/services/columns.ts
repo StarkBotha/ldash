@@ -6,6 +6,7 @@ interface ColumnRow {
   id: string;
   name: string;
   position: number;
+  role: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -15,6 +16,7 @@ function rowToColumn(row: ColumnRow): Column {
     id: row.id,
     name: row.name,
     position: row.position,
+    role: row.role,
     created_at: row.created_at,
     updated_at: row.updated_at,
   };

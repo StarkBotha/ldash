@@ -27,7 +27,7 @@ describe('bug and investigation item types', () => {
       const columns = cols as Column[];
       firstColId = columns[0].id;
       secondColId = columns[1].id;
-      lastColId = columns[columns.length - 1].id;
+      lastColId = columns.filter((c) => c.role !== 'cancelled').at(-1)!.id;
       const { body: project } = await req(app, 'POST', '/api/projects', { name: 'Work Types' });
       projectId = (project as { id: string }).id;
     });
@@ -155,7 +155,7 @@ describe('bug and investigation item types', () => {
       const cols = columnService.list().sort((a, b) => a.position - b.position);
       backlogColId = cols[0].id;
       inProgressColId = cols[1].id;
-      doneColId = cols[cols.length - 1].id;
+      doneColId = cols.filter((c) => c.role !== 'cancelled').at(-1)!.id;
     });
 
     it('story with 1 done task + 1 backlog bug → in progress', () => {

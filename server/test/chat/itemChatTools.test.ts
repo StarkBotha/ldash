@@ -96,9 +96,10 @@ describe('item chat tools', () => {
     const task = services.items.create({
       project_id: projectId, type: 'task', title: 't', column_id: cols()[0].id, parent_id: story.id,
     });
-    await handler('move_task', { item_id: task.id, column_id: cols()[cols().length - 1].id });
+    const doneCol = cols().filter((c) => c.role !== 'cancelled').at(-1)!;
+    await handler('move_task', { item_id: task.id, column_id: doneCol.id });
     const updatedStory = services.items.get(story.id)!;
-    expect(updatedStory.column_id).toBe(cols()[cols().length - 1].id);
+    expect(updatedStory.column_id).toBe(doneCol.id);
   });
 
   it('add_comment creates a comment with chat-llm author', async () => {

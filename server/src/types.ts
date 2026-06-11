@@ -16,6 +16,10 @@ export interface Column {
   id: string;
   name: string;
   position: number;
+  /** Explicit column semantics, independent of name/position. 'cancelled'
+   *  marks the Cancelled column (excluded from rollup); null = ordinary
+   *  positional column. */
+  role: string | null;
   created_at: string;
   updated_at: string;
 }

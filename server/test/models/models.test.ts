@@ -4,6 +4,7 @@ import type { AddressInfo } from 'node:net';
 import Database from 'better-sqlite3';
 import { Hono } from 'hono';
 import { runSchema } from '../../src/db/schema.js';
+import { runMigrations } from '../../src/db/migrationRunner.js';
 import { seedColumns } from '../../src/db/seed.js';
 import { SettingsService } from '../../src/services/settings.js';
 import { clearModelsCache } from '../../src/services/modelsService.js';
@@ -18,6 +19,7 @@ function makeDb() {
   db.pragma('journal_mode = WAL');
   db.pragma('foreign_keys = ON');
   runSchema(db);
+  runMigrations(db);
   seedColumns(db);
   return db;
 }

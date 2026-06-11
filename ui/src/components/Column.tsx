@@ -105,6 +105,7 @@ export function buildGroups(columnItems: Item[], allItems: Item[]): EpicGroup[] 
 
 export function Column({ column, items, allItems, collapsedIds, onToggleCollapse, onCardClick, onNewItem }: Props) {
   const groups = buildGroups(items, allItems);
+  const isCancelled = column.role === 'cancelled';
 
   return (
     <div
@@ -125,7 +126,7 @@ export function Column({ column, items, allItems, collapsedIds, onToggleCollapse
         alignItems: 'center',
         borderBottom: '1px solid #e0e0e0',
       }}>
-        <span style={{ fontWeight: 600 }}>{column.name}</span>
+        <span style={{ fontWeight: 600, color: isCancelled ? '#999' : undefined }}>{column.name}</span>
         <span style={{ color: '#888', fontSize: 14 }}>{items.length}</span>
         <button
           onClick={onNewItem}
@@ -135,7 +136,7 @@ export function Column({ column, items, allItems, collapsedIds, onToggleCollapse
           +
         </button>
       </div>
-      <div style={{ flex: 1, overflowY: 'auto', padding: 8, display: 'flex', flexDirection: 'column', gap: 0 }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: 8, display: 'flex', flexDirection: 'column', gap: 0, opacity: isCancelled ? 0.6 : 1 }}>
         {groups.map((group) => (
           <div key={group.epicId ?? '__no_epic__'}>
             {/* Epic group header — label only */}

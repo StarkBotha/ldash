@@ -59,7 +59,7 @@ describe('HTTP move route guard and rollup', () => {
     const proj = projectService.create({ name: 'P' });
     const cols = columnService.list().sort((a, b) => a.position - b.position);
     const backlog = cols[0];
-    const done = cols[cols.length - 1];
+    const done = cols.filter((c) => c.role !== 'cancelled').at(-1)!;
 
     const story = itemService.create({ project_id: proj.id, type: 'story', title: 'Story', column_id: backlog.id });
 
@@ -72,7 +72,7 @@ describe('HTTP move route guard and rollup', () => {
     const proj = projectService.create({ name: 'P' });
     const cols = columnService.list().sort((a, b) => a.position - b.position);
     const backlog = cols[0];
-    const done = cols[cols.length - 1];
+    const done = cols.filter((c) => c.role !== 'cancelled').at(-1)!;
 
     const epic = itemService.create({ project_id: proj.id, type: 'epic', title: 'Epic', column_id: backlog.id });
 
@@ -85,7 +85,7 @@ describe('HTTP move route guard and rollup', () => {
     const proj = projectService.create({ name: 'P' });
     const cols = columnService.list().sort((a, b) => a.position - b.position);
     const backlog = cols[0];
-    const done = cols[cols.length - 1];
+    const done = cols.filter((c) => c.role !== 'cancelled').at(-1)!;
 
     const story = itemService.create({ project_id: proj.id, type: 'story', title: 'Story', column_id: backlog.id });
     const task = itemService.create({ project_id: proj.id, type: 'task', title: 'Task', column_id: backlog.id, parent_id: story.id });

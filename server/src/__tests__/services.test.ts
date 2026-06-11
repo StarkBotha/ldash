@@ -62,15 +62,16 @@ describe('ColumnService', () => {
     svc = new ColumnService(db);
   });
 
-  it('list returns 4 seeded columns', () => {
+  it('list returns 5 seeded columns', () => {
     const cols = svc.list();
-    expect(cols).toHaveLength(4);
+    expect(cols).toHaveLength(5);
     expect(cols[0].name).toBe('Backlog');
+    expect(cols[4].name).toBe('Cancelled');
   });
 
   it('create appends at end', () => {
     const col = svc.create({ name: 'QA' });
-    expect(col.position).toBe(4);
+    expect(col.position).toBe(5);
   });
 
   it('reorder updates positions correctly', () => {
