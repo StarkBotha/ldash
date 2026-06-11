@@ -1,11 +1,13 @@
 import type Database from 'better-sqlite3';
 import { nanoid } from 'nanoid';
 import type { Project } from '../types.js';
+import { derivePrefix } from './projectPrefix.js';
 
 interface ProjectRow {
   id: string;
   name: string;
   description: string;
+  prefix: string;
   created_at: string;
   updated_at: string;
 }
@@ -15,6 +17,7 @@ function rowToProject(row: ProjectRow): Project {
     id: row.id,
     name: row.name,
     description: row.description,
+    prefix: row.prefix,
     created_at: row.created_at,
     updated_at: row.updated_at,
   };
@@ -39,9 +42,11 @@ export class ProjectService {
 
   create(data: { name: string; description?: string }): Project {
     const id = nanoid();
+    const existing = this.db.prepare('SELECT prefix FROM projects').all() as { prefix: string }[];
+    const prefix = derivePrefix(data.name, new Set(existing.map((r) => r.prefix)));
     this.db
-      .prepare('INSERT INTO projects (id, name, description) VALUES (?, ?, ?)')
-      .run(id, data.name, data.description ?? '');
+      .prepare('INSERT INTO projects (id, name, description, prefix) VALUES (?, ?, ?, ?)')
+      .run(id, data.name, data.description ?? '', prefix);
     return this.get(id) as Project;
   }
 

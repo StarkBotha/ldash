@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { streamText } from 'hono/streaming';
+import type Database from 'better-sqlite3';
 import type { Services } from '../types.js';
 import type { SettingsService } from '../services/settings.js';
 import type { EventBus } from '../events/bus.js';
@@ -49,7 +50,8 @@ const gatewayLogger = createLogger('gateway');
 export function createPlanningRouter(
   services: Services,
   settingsService: SettingsService,
-  bus: EventBus
+  bus: EventBus,
+  db?: Database.Database
 ): Hono {
   const app = new Hono();
 
@@ -101,7 +103,7 @@ export function createPlanningRouter(
     messages.unshift({ role: 'system', content: systemPrompt });
 
     const tools = getPlanningToolDefinitions();
-    const toolHandler = createPlanningToolHandler(services, projectId, bus);
+    const toolHandler = createPlanningToolHandler(services, projectId, bus, db);
 
     // Track messages already persisted (count before loop)
     const persistedCount = storedMessages.length;

@@ -11,6 +11,7 @@ import { ProjectService } from '../../src/services/projects.js';
 import { ColumnService } from '../../src/services/columns.js';
 import { ItemService } from '../../src/services/items.js';
 import { CommentService } from '../../src/services/comments.js';
+import { AttachmentService } from '../../src/services/attachments.js';
 import { ActivityService } from '../../src/services/activity.js';
 import { ConversationService } from '../../src/services/conversations.js';
 import { SettingsService } from '../../src/services/settings.js';
@@ -21,6 +22,7 @@ import { commentsRouter, itemCommentsRouter } from '../../src/routes/comments.js
 import { projectActivityRouter, itemActivityRouter } from '../../src/routes/activity.js';
 import { onError } from '../../src/middleware/error.js';
 import { createMcpRouter } from '../../src/routes/mcp.js';
+import { EventBus } from '../../src/events/bus.js';
 import type { Services } from '../../src/types.js';
 
 export interface TestContext {
@@ -31,6 +33,7 @@ export interface TestContext {
     items: ItemService;
     columns: ColumnService;
     comments: CommentService;
+    attachments: AttachmentService;
     activity: ActivityService;
   };
   teardown: () => Promise<void>;
@@ -53,6 +56,7 @@ export async function createTestContext(): Promise<TestContext> {
   const itemService = new ItemService(db);
   const commentService = new CommentService(db);
   const activityService = new ActivityService(db);
+  const attachmentService = new AttachmentService(db, activityService, new EventBus());
 
   const conversationService = new ConversationService(db);
   const settingsService = new SettingsService(db);
@@ -62,6 +66,7 @@ export async function createTestContext(): Promise<TestContext> {
     items: itemService,
     columns: columnService,
     comments: commentService,
+    attachments: attachmentService,
     activity: activityService,
     conversations: conversationService,
     settings: settingsService,
@@ -131,6 +136,7 @@ export async function createTestContext(): Promise<TestContext> {
       items: itemService,
       columns: columnService,
       comments: commentService,
+      attachments: attachmentService,
       activity: activityService,
     },
     teardown,

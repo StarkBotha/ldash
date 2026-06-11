@@ -44,6 +44,11 @@ function invalidateForEvent(
       break;
     }
 
+    case 'attachment.created':
+    case 'attachment.deleted':
+      queryClient.invalidateQueries({ queryKey: ['attachments', entityId] });
+      break;
+
     case 'project.created':
     case 'project.updated':
       queryClient.invalidateQueries({ queryKey: ['projects'] });
@@ -82,33 +87,50 @@ export function useSSE(projectId: string | null): { status: SSEStatus } {
     }
 
     isFirstOpen.current = true;
-    const es = new EventSource(`/api/sse?projectId=${encodeURIComponent(projectId)}`);
+    let es: EventSource | null = null;
+    let retryTimer: number | undefined;
+    let disposed = false;
 
-    es.onopen = () => {
-      if (isFirstOpen.current) {
-        isFirstOpen.current = false;
-      } else {
-        // Reconnected after a gap — refetch everything
-        invalidateAll(queryClient, projectId);
-      }
-      setStatus('connected');
+    const connect = () => {
+      es = new EventSource(`/api/sse?projectId=${encodeURIComponent(projectId)}`);
+
+      es.onopen = () => {
+        if (isFirstOpen.current) {
+          isFirstOpen.current = false;
+        } else {
+          // Reconnected after a gap — refetch everything
+          invalidateAll(queryClient, projectId);
+        }
+        setStatus('connected');
+      };
+
+      es.addEventListener('board', (e: MessageEvent) => {
+        try {
+          const event = JSON.parse(e.data) as BoardEvent;
+          invalidateForEvent(queryClient, projectId, event);
+        } catch {
+          // ignore malformed event
+        }
+      });
+
+      es.onerror = () => {
+        setStatus('reconnecting');
+        // EventSource only auto-retries network blips; a non-event-stream
+        // response (e.g. the dev proxy's 500 during a server restart) closes
+        // it permanently — recreate it ourselves after a backoff.
+        if (es?.readyState === EventSource.CLOSED && !disposed) {
+          es.close();
+          retryTimer = window.setTimeout(connect, 3000);
+        }
+      };
     };
 
-    es.addEventListener('board', (e: MessageEvent) => {
-      try {
-        const event = JSON.parse(e.data) as BoardEvent;
-        invalidateForEvent(queryClient, projectId, event);
-      } catch {
-        // ignore malformed event
-      }
-    });
-
-    es.onerror = () => {
-      setStatus('reconnecting');
-    };
+    connect();
 
     return () => {
-      es.close();
+      disposed = true;
+      window.clearTimeout(retryTimer);
+      es?.close();
     };
   }, [projectId, queryClient]);
 

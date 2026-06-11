@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useChat } from '../hooks/useChat';
+import type { ToolCallIndicator } from '../hooks/usePlanningChat';
 import type { Message } from '../types';
 
 interface ChatPanelProps {
@@ -51,8 +52,59 @@ function MessageBubble({ message }: { message: Message }) {
   );
 }
 
+function ToolChipRow({ chips }: { chips: ToolCallIndicator[] }) {
+  if (chips.length === 0) return null;
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 8 }}>
+      {chips.map((indicator, i) => (
+        <div
+          key={i}
+          style={{ fontSize: 13, color: '#666', display: 'flex', alignItems: 'center', gap: 4 }}
+        >
+          {indicator.status === 'pending' && <span>⟳</span>}
+          {indicator.status === 'done' && <span style={{ color: '#22c55e' }}>✓</span>}
+          {indicator.status === 'error' && <span style={{ color: '#ef4444' }}>✗</span>}
+          <span>{indicator.label}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// Build chips for persisted assistant messages that carry tool_calls.
+// tool_call_id is not persisted on tool-role messages, so results are
+// correlated by order: the tool messages immediately following an assistant
+// message are its results, one per call. Success uses the same encoding the
+// server uses for the live tool_result event: content starting with 'Error:'.
+function buildHistoryChips(messages: Message[]): Map<string, ToolCallIndicator[]> {
+  const map = new Map<string, ToolCallIndicator[]>();
+  for (let i = 0; i < messages.length; i++) {
+    const msg = messages[i];
+    if (msg.role !== 'assistant' || !msg.tool_calls || msg.tool_calls.length === 0) continue;
+    const results: Message[] = [];
+    for (
+      let j = i + 1;
+      j < messages.length && messages[j].role === 'tool' && results.length < msg.tool_calls.length;
+      j++
+    ) {
+      results.push(messages[j]);
+    }
+    map.set(
+      msg.id,
+      msg.tool_calls.map((tc, k) => {
+        const result = results[k];
+        const status: ToolCallIndicator['status'] =
+          result && result.content.startsWith('Error:') ? 'error' : 'done';
+        return { toolName: tc.name, label: tc.name, status };
+      })
+    );
+  }
+  return map;
+}
+
 export function ChatPanel({ projectId, itemId, providerLabel }: ChatPanelProps) {
-  const { conversation, messages, streamingText, isStreaming, error, stallNotice, sendMessage, dismissError, dismissStallNotice } = useChat(projectId, itemId);
+  const { conversation, messages, streamingText, toolCallIndicators, isStreaming, error, stallNotice, sendMessage, dismissError, dismissStallNotice } = useChat(projectId, itemId);
+  const historyChips = buildHistoryChips(messages);
   const [inputValue, setInputValue] = useState('');
   const bottomRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -71,7 +123,7 @@ export function ChatPanel({ projectId, itemId, providerLabel }: ChatPanelProps) 
     if (justStarted || isNearBottomRef.current) {
       bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [messages.length, streamingText, isStreaming]);
+  }, [messages.length, streamingText, toolCallIndicators.length, isStreaming]);
 
   async function handleSubmit() {
     const text = inputValue.trim();
@@ -117,15 +169,18 @@ export function ChatPanel({ projectId, itemId, providerLabel }: ChatPanelProps) 
 
       {/* Message list */}
       <div ref={scrollContainerRef} onScroll={handleScroll} style={{ flex: 1, overflowY: 'auto', padding: '12px' }}>
-        {messages
-          .filter(
-            (msg) =>
-              msg.role === 'user' ||
-              (msg.role === 'assistant' && msg.content && msg.content.trim() !== '')
-          )
-          .map((msg) => (
-            <MessageBubble key={msg.id} message={msg} />
-          ))}
+        {messages.map((msg) => {
+          if (msg.role === 'tool') return null;
+          const chips = historyChips.get(msg.id);
+          const hasText = msg.content && msg.content.trim() !== '';
+          if (msg.role === 'assistant' && !hasText && !chips) return null;
+          return (
+            <div key={msg.id}>
+              {(msg.role === 'user' || hasText) && <MessageBubble message={msg} />}
+              {chips && <ToolChipRow chips={chips} />}
+            </div>
+          );
+        })}
 
         {isStreaming && streamingText && (
           <div style={{ display: 'flex', justifyContent: 'flex-start', marginBottom: 8 }}>
@@ -156,6 +211,9 @@ export function ChatPanel({ projectId, itemId, providerLabel }: ChatPanelProps) 
         {isStreaming && !streamingText && (
           <div style={{ color: '#9ca3af', fontSize: 14, padding: '4px 12px' }}>Thinking...</div>
         )}
+
+        {/* Live tool call indicators (cleared once server history is re-synced) */}
+        <ToolChipRow chips={toolCallIndicators} />
 
         <div ref={bottomRef} />
       </div>

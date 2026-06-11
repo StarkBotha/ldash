@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useMoveItem, useFlagItem, useBlockItem, useDeleteItem } from '../hooks/useBoard';
+import { useAttachments, useUploadAttachment, useDeleteAttachment } from '../hooks/useItemDetail';
+import { api } from '../api/client';
 import { CommentBox } from './CommentBox';
 import { ActivityFeed } from './ActivityFeed';
 import { ChatPanel } from './ChatPanel';
@@ -26,6 +28,11 @@ export function ItemDetailPanel({ item, columns, projectId, onClose, onEdit, onD
   const [showBlockReason, setShowBlockReason] = useState(false);
   const [blockReason, setBlockReason] = useState('');
   const [activeTab, setActiveTab] = useState<Tab>('details');
+  const [uploadingCount, setUploadingCount] = useState(0);
+  const { data: attachmentsData } = useAttachments(item.id);
+  const attachments = attachmentsData?.attachments ?? [];
+  const uploadAttachment = useUploadAttachment();
+  const deleteAttachment = useDeleteAttachment();
 
   const { data: settings } = useQuery({
     queryKey: ['settings'],
@@ -64,6 +71,35 @@ export function ItemDetailPanel({ item, columns, projectId, onClose, onEdit, onD
     setBlockReason('');
   }
 
+  function handlePaste(e: React.ClipboardEvent<HTMLDivElement>) {
+    const imageItems = Array.from(e.clipboardData.items).filter((it) =>
+      it.type.startsWith('image/')
+    );
+    if (imageItems.length === 0) return; // normal text paste — leave it alone
+    e.preventDefault();
+    for (const clipItem of imageItems) {
+      const file = clipItem.getAsFile();
+      if (!file) continue;
+      const reader = new FileReader();
+      reader.onload = async () => {
+        const dataUrl = reader.result as string;
+        const base64 = dataUrl.slice(dataUrl.indexOf(',') + 1);
+        setUploadingCount((n) => n + 1);
+        try {
+          await uploadAttachment.mutateAsync({
+            itemId: item.id,
+            data: { filename: file.name || undefined, mime: file.type, data_base64: base64 },
+          });
+        } catch {
+          // upload failed — thumbnail simply won't appear
+        } finally {
+          setUploadingCount((n) => n - 1);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  }
+
   async function handleDelete() {
     if (window.confirm(`Delete "${item.title}"? This cannot be undone.`)) {
       await deleteItem.mutateAsync({ id: item.id, projectId });
@@ -81,7 +117,9 @@ export function ItemDetailPanel({ item, columns, projectId, onClose, onEdit, onD
     borderLeft: '1px solid #ddd',
     display: 'flex',
     flexDirection: 'column',
-    zIndex: 500,
+    // Above the global Settings gear (900) so it can't cover the panel's ✕,
+    // below modals (1000).
+    zIndex: 950,
   };
 
   const sectionStyle: React.CSSProperties = {
@@ -105,10 +143,10 @@ export function ItemDetailPanel({ item, columns, projectId, onClose, onEdit, onD
       <div
         onClick={onClose}
         style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.1)', zIndex: 499,
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.1)', zIndex: 949,
         }}
       />
-      <div style={panelStyle}>
+      <div style={panelStyle} onPaste={handlePaste}>
         {/* Header */}
         <div style={{ ...sectionStyle, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div style={{ flex: 1 }}>
@@ -120,6 +158,7 @@ export function ItemDetailPanel({ item, columns, projectId, onClose, onEdit, onD
               }}>
                 {item.type}
               </span>
+              <span style={{ fontSize: 13, fontWeight: 600, color: '#999' }}>{item.key}</span>
             </div>
             <h2 style={{ margin: 0, fontSize: 18 }}>{item.title}</h2>
           </div>
@@ -206,6 +245,51 @@ export function ItemDetailPanel({ item, columns, projectId, onClose, onEdit, onD
                 <div style={sectionStyle}>
                   <label style={{ display: 'block', marginBottom: 4, fontWeight: 600, fontSize: 14 }}>Description</label>
                   <p style={{ margin: 0, whiteSpace: 'pre-wrap', fontSize: 15 }}>{item.description}</p>
+                </div>
+              )}
+
+              {(attachments.length > 0 || uploadingCount > 0) && (
+                <div style={sectionStyle}>
+                  <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, fontSize: 14 }}>Attachments</label>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                    {attachments.map((att) => (
+                      <div key={att.id} style={{ position: 'relative' }}>
+                        <img
+                          src={api.attachments.url(att.id)}
+                          alt={att.filename}
+                          title={att.filename}
+                          onClick={() => window.open(api.attachments.url(att.id), '_blank')}
+                          style={{
+                            height: 80, width: 80, objectFit: 'cover',
+                            borderRadius: 6, border: '1px solid #e5e7eb',
+                            cursor: 'pointer', display: 'block',
+                          }}
+                        />
+                        <button
+                          onClick={() => deleteAttachment.mutate({ id: att.id, itemId: item.id })}
+                          title="Delete attachment"
+                          style={{
+                            position: 'absolute', top: 2, right: 2,
+                            width: 18, height: 18, padding: 0, lineHeight: '16px',
+                            fontSize: 11, borderRadius: 9, border: 'none',
+                            background: 'rgba(0,0,0,0.55)', color: '#fff', cursor: 'pointer',
+                          }}
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))}
+                    {uploadingCount > 0 && (
+                      <div style={{
+                        height: 80, width: 80, borderRadius: 6,
+                        border: '1px dashed #d1d5db', background: '#f9fafb',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: 12, color: '#9ca3af',
+                      }}>
+                        Uploading…
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
 

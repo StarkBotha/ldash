@@ -1,14 +1,17 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import Database from 'better-sqlite3';
 import { runSchema } from '../../src/db/schema.js';
+import { runMigrations } from '../../src/db/migrationRunner.js';
 import { seedColumns } from '../../src/db/seed.js';
 import { ProjectService } from '../../src/services/projects.js';
 import { ColumnService } from '../../src/services/columns.js';
 import { ItemService } from '../../src/services/items.js';
 import { CommentService } from '../../src/services/comments.js';
+import { AttachmentService } from '../../src/services/attachments.js';
 import { ActivityService } from '../../src/services/activity.js';
 import { ConversationService } from '../../src/services/conversations.js';
 import { SettingsService } from '../../src/services/settings.js';
+import { EventBus } from '../../src/events/bus.js';
 import { buildItemChatContext } from '../../src/gateway/context.js';
 import type { Services } from '../../src/types.js';
 
@@ -18,6 +21,7 @@ function createTestServices() {
   db.pragma('foreign_keys = ON');
 
   runSchema(db);
+  runMigrations(db);
   seedColumns(db);
 
   const projects = new ProjectService(db);
@@ -28,7 +32,9 @@ function createTestServices() {
   const conversations = new ConversationService(db);
   const settings = new SettingsService(db);
 
-  const services: Services = { projects, items, columns, comments, activity, conversations, settings };
+  const attachments = new AttachmentService(db, activity, new EventBus());
+
+  const services: Services = { projects, items, columns, comments, attachments, activity, conversations, settings };
 
   return { db, services, projects, columns, items, comments, activity };
 }

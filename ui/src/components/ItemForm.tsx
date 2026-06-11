@@ -1,5 +1,8 @@
 import { useState } from 'react';
 import { useCreateItem, useUpdateItem } from '../hooks/useBoard';
+import { useAttachments, useUploadAttachment } from '../hooks/useItemDetail';
+import { api } from '../api/client';
+import { logClientError } from '../clientLog';
 import type { Item, Column, ItemType } from '../types';
 
 interface Props {
@@ -21,6 +24,54 @@ export function ItemForm({ projectId, columnId, columns, items, item, onClose }:
 
   const createItem = useCreateItem();
   const updateItem = useUpdateItem();
+  const [uploadingCount, setUploadingCount] = useState(0);
+  // Images pasted while creating a new item — held locally and uploaded right
+  // after the item is created (no id exists to attach to before that).
+  const [pendingImages, setPendingImages] = useState<
+    { filename?: string; mime: string; dataUrl: string }[]
+  >([]);
+  const { data: attachmentData } = useAttachments(item?.id ?? '');
+  const attachments = attachmentData?.attachments ?? [];
+  const uploadAttachment = useUploadAttachment();
+
+  function base64Of(dataUrl: string): string {
+    return dataUrl.slice(dataUrl.indexOf(',') + 1);
+  }
+
+  function handlePaste(e: React.ClipboardEvent<HTMLDivElement>) {
+    const imageItems = Array.from(e.clipboardData.items).filter((it) =>
+      it.type.startsWith('image/')
+    );
+    if (imageItems.length === 0) return; // normal text paste — leave it alone
+    e.preventDefault();
+    for (const clipItem of imageItems) {
+      const file = clipItem.getAsFile();
+      if (!file) continue;
+      const reader = new FileReader();
+      reader.onload = async () => {
+        const dataUrl = reader.result as string;
+        if (!item) {
+          setPendingImages((prev) => [
+            ...prev,
+            { filename: file.name || undefined, mime: file.type, dataUrl },
+          ]);
+          return;
+        }
+        setUploadingCount((n) => n + 1);
+        try {
+          await uploadAttachment.mutateAsync({
+            itemId: item.id,
+            data: { filename: file.name || undefined, mime: file.type, data_base64: base64Of(dataUrl) },
+          });
+        } catch {
+          // upload failed — thumbnail simply won't appear
+        } finally {
+          setUploadingCount((n) => n - 1);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -43,7 +94,7 @@ export function ItemForm({ projectId, columnId, columns, items, item, onClose }:
           },
         });
       } else {
-        await createItem.mutateAsync({
+        const created = await createItem.mutateAsync({
           project_id: projectId,
           parent_id: parentId || null,
           type,
@@ -51,6 +102,17 @@ export function ItemForm({ projectId, columnId, columns, items, item, onClose }:
           description,
           column_id: colId,
         });
+        for (const img of pendingImages) {
+          try {
+            await uploadAttachment.mutateAsync({
+              itemId: created.id,
+              data: { filename: img.filename, mime: img.mime, data_base64: base64Of(img.dataUrl) },
+            });
+          } catch (uploadErr) {
+            // item is already created — don't fail the whole submit over an image
+            logClientError(`attachment upload after item create failed: ${(uploadErr as Error).message}`);
+          }
+        }
       }
       onClose();
     } catch (err) {
@@ -70,7 +132,7 @@ export function ItemForm({ projectId, columnId, columns, items, item, onClose }:
 
   return (
     <div style={overlayStyle} onClick={onClose}>
-      <div style={modalStyle} onClick={(e) => e.stopPropagation()}>
+      <div style={modalStyle} onClick={(e) => e.stopPropagation()} onPaste={handlePaste}>
         <h2 style={{ margin: '0 0 16px' }}>{item ? 'Edit item' : 'New item'}</h2>
         <form onSubmit={handleSubmit}>
           <div style={{ marginBottom: 12 }}>
@@ -106,6 +168,51 @@ export function ItemForm({ projectId, columnId, columns, items, item, onClose }:
               rows={3}
               style={{ width: '100%', padding: 8, boxSizing: 'border-box' }}
             />
+            {(attachments.length > 0 || pendingImages.length > 0 || uploadingCount > 0) && (
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
+                {attachments.map((a) => (
+                  <img
+                    key={a.id}
+                    src={api.attachments.url(a.id)}
+                    alt={a.filename}
+                    title={a.filename}
+                    style={{ height: 40, width: 40, objectFit: 'cover', borderRadius: 4, border: '1px solid #e5e7eb' }}
+                  />
+                ))}
+                {pendingImages.map((img, i) => (
+                  <span key={i} style={{ position: 'relative', display: 'inline-block' }}>
+                    <img
+                      src={img.dataUrl}
+                      alt={img.filename ?? 'pasted image'}
+                      title={`${img.filename ?? 'pasted image'} — uploads when you press Create`}
+                      style={{ height: 40, width: 40, objectFit: 'cover', borderRadius: 4, border: '1px dashed #9ca3af' }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setPendingImages((prev) => prev.filter((_, j) => j !== i))}
+                      title="Remove"
+                      style={{
+                        position: 'absolute', top: -6, right: -6, width: 16, height: 16,
+                        borderRadius: '50%', border: 'none', background: '#374151', color: '#fff',
+                        fontSize: 10, lineHeight: '16px', padding: 0, cursor: 'pointer',
+                      }}
+                    >
+                      ✕
+                    </button>
+                  </span>
+                ))}
+                {uploadingCount > 0 && (
+                  <span style={{ fontSize: 12, color: '#6b7280', alignSelf: 'center' }}>
+                    Uploading {uploadingCount} image{uploadingCount > 1 ? 's' : ''}…
+                  </span>
+                )}
+              </div>
+            )}
+            <p style={{ margin: '4px 0 0', fontSize: 12, color: '#9ca3af' }}>
+              {item
+                ? 'Paste an image (Ctrl+V) to attach it to this ticket.'
+                : 'Paste an image (Ctrl+V) to attach it — it uploads when you press Create.'}
+            </p>
           </div>
 
           <div style={{ marginBottom: 12 }}>

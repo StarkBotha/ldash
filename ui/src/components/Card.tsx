@@ -37,7 +37,10 @@ export function Card({ item, parentTitle, onClick }: Props) {
         }}>
           {item.type}
         </span>
-        <span style={{ fontSize: 15, flex: 1 }}>{item.title}</span>
+        <span style={{ fontSize: 15, flex: 1 }}>
+          <span style={{ fontSize: 12, color: '#999', fontWeight: 600, marginRight: 5 }}>{item.key}</span>
+          {item.title}
+        </span>
       </div>
       {parentTitle && (
         <div style={{

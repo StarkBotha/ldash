@@ -1,7 +1,9 @@
+import type Database from 'better-sqlite3';
 import type { ToolDefinition } from '../gateway/types.js';
 import type { ToolHandler } from '../gateway/loop.js';
 import type { Services, ItemType } from '../types.js';
 import type { EventBus } from '../events/bus.js';
+import { recomputeAncestors } from '../services/rollup.js';
 
 export function getPlanningToolDefinitions(): ToolDefinition[] {
   return [
@@ -85,7 +87,8 @@ export function getPlanningToolDefinitions(): ToolDefinition[] {
 export function createPlanningToolHandler(
   services: Services,
   projectId: string,
-  bus: EventBus
+  bus: EventBus,
+  db?: Database.Database
 ): ToolHandler {
   return async function toolHandler(name: string, args: Record<string, unknown>): Promise<string> {
     if (name === 'create_item') {
@@ -159,6 +162,11 @@ export function createPlanningToolHandler(
         entityId: item.id,
         data: { item },
       });
+
+      // Rollup: after a task is created, recompute ancestor story/epic status
+      if (item.type === 'task' && db) {
+        recomputeAncestors(item.id, db, services.items, services.activity, services.columns, bus);
+      }
 
       return JSON.stringify({ success: true, item });
     }

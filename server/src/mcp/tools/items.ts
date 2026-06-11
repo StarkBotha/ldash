@@ -53,21 +53,63 @@ export function registerItemTools(server: McpServer, services: Services, bus: Ev
   // ldash_get_item
   server.tool(
     'ldash_get_item',
-    'Get full details of a single item including its description, current status, flag and block state, all comments, and the 20 most recent activity entries. Use this before working on a task so you understand its current state and any prior discussion.',
+    'Get full details of a single item including its description, current status, flag and block state, all comments, attachment metadata, and the 20 most recent activity entries. Use this before working on a task so you understand its current state and any prior discussion. Accepts either an item id or a ticket key like "DUN-12". Attachments are listed as metadata only (id, filename, mime, size) — use ldash_get_attachment with the attachment id to view an image.',
     {
-      item_id: z.string().describe('The id of the item to retrieve.'),
+      item_id: z.string().describe('The id of the item to retrieve, or its ticket key (e.g. "DUN-12").'),
     },
     async (input) => {
-      const item = services.items.get(input.item_id);
+      const item = services.items.get(input.item_id) ?? services.items.getByKey(input.item_id);
       if (!item) {
         return { content: [{ type: 'text' as const, text: 'Error: item not found' }], isError: true };
       }
 
-      const comments = services.comments.listByItem(input.item_id);
-      const recent_activity = services.activity.listByItem(input.item_id, { limit: 20 });
+      const comments = services.comments.listByItem(item.id);
+      const attachments = services.attachments.listForItem(item.id);
+      const recent_activity = services.activity.listByItem(item.id, { limit: 20 });
 
-      const assembled = { item, comments, recent_activity };
+      const assembled = { item, comments, attachments, recent_activity };
       return { content: [{ type: 'text' as const, text: JSON.stringify(assembled, null, 2) }] };
+    }
+  );
+
+  // ldash_get_attachment
+  server.tool(
+    'ldash_get_attachment',
+    'Fetch an attachment by id and return it as an image content block. Attachment ids and metadata appear in the "attachments" array of ldash_get_item. WARNING: images consume significant context — only fetch an attachment deliberately, when the image is relevant to the work at hand.',
+    {
+      attachment_id: z.string().describe('The id of the attachment to fetch, as listed in ldash_get_item\'s attachments array.'),
+    },
+    async (input) => {
+      const attachment = services.attachments.get(input.attachment_id);
+      if (!attachment) {
+        return { content: [{ type: 'text' as const, text: 'Error: attachment not found' }], isError: true };
+      }
+
+      return {
+        content: [
+          { type: 'text' as const, text: `${attachment.filename} (${attachment.mime}, ${attachment.size_bytes} bytes)` },
+          { type: 'image' as const, data: attachment.data.toString('base64'), mimeType: attachment.mime },
+        ],
+      };
+    }
+  );
+
+  // ldash_search_items
+  server.tool(
+    'ldash_search_items',
+    'Search items in a project by free text. Matches title, description, and ticket key (case-insensitive substring). Returns ONLY the matching ticket keys — use ldash_get_item with a key to read a ticket\'s full details.',
+    {
+      project_id: z.string().describe('The id of the project to search in. Required.'),
+      query: z.string().min(1).describe('Text to search for. Required and must not be empty.'),
+    },
+    async (input) => {
+      const project = services.projects.get(input.project_id);
+      if (!project) {
+        return { content: [{ type: 'text' as const, text: 'Error: project not found' }], isError: true };
+      }
+
+      const keys = services.items.search(input.project_id, input.query).map((i) => i.key);
+      return { content: [{ type: 'text' as const, text: JSON.stringify(keys) }] };
     }
   );
 

@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import Database from 'better-sqlite3';
 import { runSchema } from '../../src/db/schema.js';
+import { runMigrations } from '../../src/db/migrationRunner.js';
 import { seedColumns } from '../../src/db/seed.js';
 import { ProjectService } from '../../src/services/projects.js';
 import { ColumnService } from '../../src/services/columns.js';
@@ -12,6 +13,7 @@ function createTestDb() {
   db.pragma('journal_mode = WAL');
   db.pragma('foreign_keys = ON');
   runSchema(db);
+  runMigrations(db);
   seedColumns(db);
   return db;
 }

@@ -132,6 +132,11 @@ export class ClaudeAdapter implements ChatAdapter {
         allowedTools: [],
         model,
         includePartialMessages: true,
+        // Isolate the session: do NOT load the user's filesystem config
+        // (~/.claude CLAUDE.md, user-scope MCP servers) into product chats.
+        settingSources: [],
+        mcpServers: {},
+        strictMcpConfig: true,
       };
       if (systemMessage) {
         queryOpts.systemPrompt = systemMessage;
@@ -139,22 +144,22 @@ export class ClaudeAdapter implements ChatAdapter {
 
       const result = query({ prompt, options: queryOpts as Parameters<typeof query>[0]['options'] });
 
-      // Track whether we saw any partial deltas for the current assistant message UUID.
-      // When deltas arrived we skip the whole-message emission to avoid doubling text.
-      const deltaSeenForUuid = new Set<string>();
+      // Track whether any partial deltas arrived since the last complete assistant
+      // message. The complete message's uuid does not reliably match its stream_event
+      // uuids (caused doubled text), so a per-message flag is used instead.
+      let deltaSeenSinceLastAssistant = false;
 
       for await (const message of result) {
         if (message.type === 'stream_event') {
           // SDKPartialAssistantMessage — extract text_delta chunks as they arrive
           const evt = (message as { type: 'stream_event'; event: { type: string; delta?: { type: string; text?: string } }; uuid: string }).event;
           if (evt.type === 'content_block_delta' && evt.delta?.type === 'text_delta' && evt.delta.text) {
-            deltaSeenForUuid.add((message as { uuid: string }).uuid);
+            deltaSeenSinceLastAssistant = true;
             yield { type: 'text', text: evt.delta.text };
           }
         } else if (message.type === 'assistant') {
-          // Only emit whole-message text if no deltas arrived for this message (fallback path)
-          const msgUuid = (message as { uuid?: string }).uuid ?? '';
-          if (!deltaSeenForUuid.has(msgUuid)) {
+          // Only emit whole-message text if no deltas arrived since the last assistant message
+          if (!deltaSeenSinceLastAssistant) {
             const betaMessage = message.message;
             if (betaMessage && betaMessage.content) {
               for (const block of betaMessage.content) {
@@ -164,7 +169,7 @@ export class ClaudeAdapter implements ChatAdapter {
               }
             }
           }
-          deltaSeenForUuid.delete(msgUuid);
+          deltaSeenSinceLastAssistant = false;
           if (message.error) {
             yield { type: 'error', message: String(message.error) };
             return;
@@ -296,6 +301,9 @@ export class ClaudeAdapter implements ChatAdapter {
       mcpServers: { [serverName]: mcpServer },
       tools: [],
       includePartialMessages: true,
+      // Isolate the session: only the injected board tools, no user filesystem config
+      settingSources: [],
+      strictMcpConfig: true,
     };
     if (systemMessage) {
       queryOpts.systemPrompt = systemMessage;
@@ -310,19 +318,21 @@ export class ClaudeAdapter implements ChatAdapter {
           options: queryOpts as Parameters<typeof query>[0]['options'],
         });
 
-        // Track whether we saw any partial deltas for the current assistant message UUID.
-        const deltaSeenForUuid = new Set<string>();
+        // Track whether any partial deltas arrived since the last complete assistant
+        // message. The complete message's uuid does not reliably match its
+        // stream_event uuids (caused doubled text), so a per-message flag is used
+        // instead of uuid matching.
+        let deltaSeenSinceLastAssistant = false;
 
         for await (const message of result) {
           if (message.type === 'stream_event') {
             const evt = (message as { type: 'stream_event'; event: { type: string; delta?: { type: string; text?: string } }; uuid: string }).event;
             if (evt.type === 'content_block_delta' && evt.delta?.type === 'text_delta' && evt.delta.text) {
-              deltaSeenForUuid.add((message as { uuid: string }).uuid);
+              deltaSeenSinceLastAssistant = true;
               enqueue({ type: 'text', text: evt.delta.text });
             }
           } else if (message.type === 'assistant') {
-            const msgUuid = (message as { uuid?: string }).uuid ?? '';
-            if (!deltaSeenForUuid.has(msgUuid)) {
+            if (!deltaSeenSinceLastAssistant) {
               const betaMessage = message.message;
               if (betaMessage && betaMessage.content) {
                 for (const block of betaMessage.content) {
@@ -332,7 +342,7 @@ export class ClaudeAdapter implements ChatAdapter {
                 }
               }
             }
-            deltaSeenForUuid.delete(msgUuid);
+            deltaSeenSinceLastAssistant = false;
             if (message.error) {
               enqueue({ type: 'error', message: String(message.error) });
               return;

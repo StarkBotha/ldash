@@ -13,6 +13,7 @@ export interface Project {
   id: string;
   name: string;
   description: string;
+  prefix: string;
   created_at: string;
   updated_at: string;
 }
@@ -22,6 +23,8 @@ export interface Item {
   project_id: string;
   parent_id: string | null;
   type: ItemType;
+  number: number;
+  key: string;
   title: string;
   description: string;
   column_id: string;
@@ -52,6 +55,15 @@ export interface ActivityEntry {
   created_at: string;
 }
 
+export interface Attachment {
+  id: string;
+  item_id: string;
+  filename: string;
+  mime: string;
+  size_bytes: number;
+  created_at: string;
+}
+
 export type ConversationType = 'item' | 'planning';
 
 export interface Conversation {
@@ -62,12 +74,18 @@ export interface Conversation {
   created_at: string;
 }
 
+export interface ToolCall {
+  id: string;
+  name: string;
+  arguments: string;
+}
+
 export interface Message {
   id: string;
   conversation_id: string;
   role: 'user' | 'assistant' | 'tool';
   content: string;
-  tool_calls: unknown[] | null;
+  tool_calls: ToolCall[] | null;
   created_at: string;
 }
 
@@ -102,6 +120,8 @@ export type PlanningStreamEvent =
 
 export type ChatStreamEvent =
   | { type: 'text'; text: string }
+  | { type: 'tool_call'; toolName: string }
+  | { type: 'tool_result'; toolName: string; success: boolean }
   | { type: 'done' }
   | { type: 'error'; message: string };
 
@@ -115,6 +135,8 @@ export type BoardEventType =
   | 'item.blocked'
   | 'item.unblocked'
   | 'comment.created'
+  | 'attachment.created'
+  | 'attachment.deleted'
   | 'project.created'
   | 'project.updated'
   | 'project.deleted'

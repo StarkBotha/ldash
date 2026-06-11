@@ -1,11 +1,16 @@
 import { Hono } from 'hono';
 import { streamText } from 'hono/streaming';
+import type Database from 'better-sqlite3';
 import type { Services } from '../types.js';
 import type { ConversationService } from '../services/conversations.js';
 import type { SettingsService } from '../services/settings.js';
 import { getAdapter } from '../gateway/index.js';
 import { buildItemChatContext } from '../gateway/context.js';
 import type { ChatMessage } from '../gateway/types.js';
+import { runToolLoop, type PendingToolCall } from '../gateway/loop.js';
+import { getItemChatToolDefinitions, createItemChatToolHandler } from '../chat/tools.js';
+import { eventBus as defaultBus } from '../events/bus.js';
+import type { EventBus } from '../events/bus.js';
 import { createLogger } from '../logger.js';
 
 const logger = createLogger('chat');
@@ -14,7 +19,9 @@ const gatewayLogger = createLogger('gateway');
 export function createConversationsRouter(
   services: Services,
   conversations: ConversationService,
-  settings: SettingsService
+  settings: SettingsService,
+  bus: EventBus = defaultBus,
+  db?: Database.Database
 ): Hono {
   const app = new Hono();
 
@@ -108,9 +115,17 @@ export function createConversationsRouter(
 
     // Prepend system prompt for item conversations
     let systemPrompt: string | undefined;
-    if (conversation.type === 'item' && conversation.item_id) {
+    const isItemChat = conversation.type === 'item' && conversation.item_id != null;
+    if (isItemChat) {
       try {
-        systemPrompt = buildItemChatContext(services, conversation.item_id);
+        systemPrompt = buildItemChatContext(services, conversation.item_id!);
+        const columnNames = services.columns.list().map((col) => col.name).join(', ');
+        systemPrompt +=
+          '\n\n## Board tools\n' +
+          'You have tools to act on the board: move_task (tasks only — story/epic status is derived and cannot be set), add_comment, get_item, create_item, update_item, and list_items. ' +
+          'Items can be referenced by id or by ticket key (e.g. "DUN-12"). ' +
+          `move_task accepts the column NAME directly — the columns are: ${columnNames}. ` +
+          'Use the tools when the user asks to change status, record a note on a ticket, or file follow-up work. Do not move items the user did not ask about.';
         chatMessages.unshift({ role: 'system', content: systemPrompt });
       } catch {
         // If context assembly fails, continue without system prompt
@@ -133,6 +148,72 @@ export function createConversationsRouter(
     const lastUserMsg = chatMessages.filter(m => m.role === 'user').at(-1);
     if (lastUserMsg) {
       gatewayLogger.debug('user message', { preview: lastUserMsg.content.slice(0, 200) });
+    }
+
+    // Item conversations get board tools and run through the tool loop
+    if (isItemChat && conversation.project_id) {
+      const tools = getItemChatToolDefinitions();
+      const toolHandler = createItemChatToolHandler(services, conversation.project_id, bus, db);
+      const historyOffset = chatMessages.length;
+
+      return streamText(c, async (stream) => {
+        let chunkCount = 0;
+        let totalTextLength = 0;
+        let toolCallCount = 0;
+        const streamStart = Date.now();
+
+        try {
+          const finalHistory = await runToolLoop(
+            adapter,
+            chatMessages,
+            tools,
+            async (name, args) => {
+              logger.debug('chat tool args', { tool: name, args });
+              const toolStart = Date.now();
+              const result = await toolHandler(name, args);
+              const success = !result.startsWith('Error:');
+              logger.info('chat tool executed', { tool: name, ok: success, duration_ms: Date.now() - toolStart });
+              await stream.write(`data: ${JSON.stringify({ type: 'tool_result', toolName: name, success })}\n\n`);
+              return result;
+            },
+            async (chunk) => {
+              chunkCount++;
+              totalTextLength += chunk.length;
+              await stream.write(`data: ${JSON.stringify({ type: 'text', text: chunk })}\n\n`);
+            },
+            async (call: PendingToolCall) => {
+              toolCallCount++;
+              await stream.write(`data: ${JSON.stringify({ type: 'tool_call', toolName: call.name })}\n\n`);
+            }
+          );
+
+          // Persist new messages produced by the loop (everything after the input history)
+          const newMessages = finalHistory.slice(historyOffset);
+          for (const msg of newMessages) {
+            if (msg.role === 'assistant' || msg.role === 'tool') {
+              conversations.appendMessage(id, {
+                role: msg.role,
+                content: msg.content,
+                tool_calls: msg.tool_calls ?? null,
+              });
+            }
+          }
+
+          gatewayLogger.info('stream complete', {
+            conversationId: id,
+            chunks: chunkCount,
+            text_length: totalTextLength,
+            tool_call_count: toolCallCount,
+            duration_ms: Date.now() - streamStart,
+          });
+
+          await stream.write(`data: ${JSON.stringify({ type: 'done' })}\n\n`);
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : String(err);
+          gatewayLogger.error('stream error chunk', { message: msg, conversationId: id });
+          await stream.write(`data: ${JSON.stringify({ type: 'error', message: msg })}\n\n`);
+        }
+      });
     }
 
     return streamText(c, async (stream) => {

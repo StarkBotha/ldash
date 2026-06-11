@@ -7,6 +7,7 @@ import { ProjectService } from '../../src/services/projects.js';
 import { ColumnService } from '../../src/services/columns.js';
 import { ItemService } from '../../src/services/items.js';
 import { CommentService } from '../../src/services/comments.js';
+import { AttachmentService } from '../../src/services/attachments.js';
 import { ActivityService } from '../../src/services/activity.js';
 import { ConversationService } from '../../src/services/conversations.js';
 import { SettingsService } from '../../src/services/settings.js';
@@ -25,12 +26,14 @@ function createTestDb() {
 }
 
 function createServices(db: Database.Database): Services {
+  const activity = new ActivityService(db);
   return {
     projects: new ProjectService(db),
     items: new ItemService(db),
     columns: new ColumnService(db),
     comments: new CommentService(db),
-    activity: new ActivityService(db),
+    attachments: new AttachmentService(db, activity, new EventBus()),
+    activity,
     conversations: new ConversationService(db),
     settings: new SettingsService(db),
   };
@@ -108,6 +111,44 @@ describe('createPlanningToolHandler', () => {
       const story = items.find((i) => i.title === 'Login story');
       expect(story).toBeDefined();
       expect(story!.parent_id).toBe(epic.id);
+    });
+
+    it('rollup: creating a task under a Done story recomputes the story back to In Progress', async () => {
+      const db = createTestDb();
+      const services = createServices(db);
+      const bus = new EventBus();
+      const project = services.projects.create({ name: 'Test Project', description: '' });
+      const columns = services.columns.list();
+      const backlogCol = columns.find((c) => c.name === 'Backlog')!;
+      const inProgressCol = columns.find((c) => c.name === 'In Progress')!;
+      const doneCol = columns.find((c) => c.name === 'Done')!;
+
+      const story = services.items.create({
+        project_id: project.id,
+        type: 'story',
+        title: 'Auth story',
+        column_id: backlogCol.id,
+      });
+
+      const handler = createPlanningToolHandler(services, project.id, bus, db);
+
+      // One Done task → story derives to Done
+      await handler('create_item', {
+        type: 'task',
+        title: 'Finished task',
+        column_id: doneCol.id,
+        parent_id: story.id,
+      });
+      expect(services.items.get(story.id)!.column_id).toBe(doneCol.id);
+
+      // New Backlog task under the Done story → story drops to In Progress immediately
+      await handler('create_item', {
+        type: 'task',
+        title: 'New follow-up task',
+        column_id: backlogCol.id,
+        parent_id: story.id,
+      });
+      expect(services.items.get(story.id)!.column_id).toBe(inProgressCol.id);
     });
 
     it('invalid column: returns error, nothing is persisted', async () => {

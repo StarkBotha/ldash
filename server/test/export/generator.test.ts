@@ -7,9 +7,11 @@ import { ProjectService } from '../../src/services/projects.js';
 import { ColumnService } from '../../src/services/columns.js';
 import { ItemService } from '../../src/services/items.js';
 import { CommentService } from '../../src/services/comments.js';
+import { AttachmentService } from '../../src/services/attachments.js';
 import { ActivityService } from '../../src/services/activity.js';
 import { ConversationService } from '../../src/services/conversations.js';
 import { SettingsService } from '../../src/services/settings.js';
+import { EventBus } from '../../src/events/bus.js';
 import { generateExport } from '../../src/export/generator.js';
 import type { Services } from '../../src/types.js';
 
@@ -24,12 +26,14 @@ function createTestDb() {
 }
 
 function createServices(db: Database.Database): Services {
+  const activity = new ActivityService(db);
   return {
     projects: new ProjectService(db),
     items: new ItemService(db),
     columns: new ColumnService(db),
     comments: new CommentService(db),
-    activity: new ActivityService(db),
+    attachments: new AttachmentService(db, activity, new EventBus()),
+    activity,
     conversations: new ConversationService(db),
     settings: new SettingsService(db),
   };

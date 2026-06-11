@@ -4,6 +4,7 @@ import { Hono } from 'hono';
 import { serve } from '@hono/node-server';
 import http from 'node:http';
 import { runSchema } from '../db/schema.js';
+import { runMigrations } from '../db/migrationRunner.js';
 import { seedColumns } from '../db/seed.js';
 import { ProjectService } from '../services/projects.js';
 import { ColumnService } from '../services/columns.js';
@@ -106,6 +107,7 @@ beforeEach(async () => {
   db.pragma('foreign_keys = ON');
 
   runSchema(db);
+  runMigrations(db);
   seedColumns(db);
 
   projectService = new ProjectService(db);

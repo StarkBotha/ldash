@@ -27,11 +27,13 @@ export function Board({ projectId, onBack }: Props) {
   const [showProjectForm, setShowProjectForm] = useState(false);
   const [isPlanningMode, setIsPlanningMode] = useState(false);
   const [epicFilter, setEpicFilter] = useState<string>('all');
+  const [search, setSearch] = useState('');
   const { status } = useSSE(projectId);
 
-  // Reset epic filter when switching projects
+  // Reset filters when switching projects
   useEffect(() => {
     setEpicFilter('all');
+    setSearch('');
   }, [projectId]);
 
   if (isPlanningMode) {
@@ -56,6 +58,16 @@ export function Board({ projectId, onBack }: Props) {
       (i) => i.id === epicFilter || storyIds.has(i.id) || (i.parent_id != null && storyIds.has(i.parent_id))
     );
   })();
+
+  const q = search.trim().toLowerCase();
+  const searchedItems = q === ''
+    ? visibleItems
+    : visibleItems.filter(
+        (i) =>
+          i.title.toLowerCase().includes(q) ||
+          i.key.toLowerCase().includes(q) ||
+          i.description.toLowerCase().includes(q)
+      );
 
   function openNewItemForm(colId: string) {
     setItemFormColId(colId);
@@ -86,6 +98,13 @@ export function Board({ projectId, onBack }: Props) {
             <option key={epic.id} value={epic.id}>{epic.title}</option>
           ))}
         </select>
+        <input
+          type="search"
+          placeholder="Search tickets…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          style={{ marginLeft: 8, padding: '4px 8px', width: 200 }}
+        />
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
           <button onClick={() => setIsPlanningMode(true)}>Plan</button>
           <button
@@ -111,7 +130,7 @@ export function Board({ projectId, onBack }: Props) {
           <Column
             key={col.id}
             column={col}
-            items={visibleItems.filter((item) => item.column_id === col.id)}
+            items={searchedItems.filter((item) => item.column_id === col.id)}
             allItems={allItems}
             onCardClick={(item) => setSelectedItem(item)}
             onNewItem={() => openNewItemForm(col.id)}

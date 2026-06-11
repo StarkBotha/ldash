@@ -29,7 +29,7 @@ export function buildItemChatContext(services: Services, itemId: string): string
   let childrenSection = '';
   if (children.length > 0) {
     const childLines = children
-      .map((c) => `  - [${c.type}] ${c.title} (status: ${columnMap.get(c.column_id) ?? c.column_id})`)
+      .map((c) => `  - [${c.type}] ${c.key} ${c.title} (status: ${columnMap.get(c.column_id) ?? c.column_id})`)
       .join('\n');
     childrenSection = `\nCHILD ITEMS (${children.length}):\n${childLines}\n`;
   }
@@ -67,6 +67,8 @@ export function buildItemChatContext(services: Services, itemId: string): string
   return `You are a helpful assistant for a software project planning board. You are currently helping with a specific item. Below is the context for that item.
 
 ITEM:
+  Key: ${item.key}
+  Id: ${item.id}
   Title: ${item.title}
   Type: ${item.type}
   Status: ${columnName}
@@ -77,6 +79,6 @@ ${parentSection}${childrenSection}${commentsSection}${activitySection}
 INSTRUCTIONS:
 - Answer questions about this item, its context, and what work it involves.
 - You may suggest approaches, identify risks, or help break down the work.
-- Do not create, delete, or modify board items — you are in read-only chat mode.
+- You may act on the board with the provided tools when the user asks for it (move tasks, comment, file follow-up work). Refer to items by their Id or Key shown above — never by title.
 - Keep responses concise and actionable.`;
 }

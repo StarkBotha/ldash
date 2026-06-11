@@ -13,6 +13,7 @@ export interface Project {
   id: string;
   name: string;
   description: string;
+  prefix: string;
   created_at: string;
   updated_at: string;
 }
@@ -22,6 +23,8 @@ export interface Item {
   project_id: string;
   parent_id: string | null;
   type: ItemType;
+  number: number;
+  key: string;
   title: string;
   description: string;
   column_id: string;
@@ -38,6 +41,15 @@ export interface Comment {
   item_id: string;
   author: string;
   body: string;
+  created_at: string;
+}
+
+export interface Attachment {
+  id: string;
+  item_id: string;
+  filename: string;
+  mime: string;
+  size_bytes: number;
   created_at: string;
 }
 
@@ -66,6 +78,8 @@ export const EventTypes = {
   ITEM_BLOCKED: 'item.blocked',
   ITEM_UNBLOCKED: 'item.unblocked',
   COMMENT_CREATED: 'comment.created',
+  ATTACHMENT_CREATED: 'attachment.created',
+  ATTACHMENT_DELETED: 'attachment.deleted',
   COLUMN_CREATED: 'column.created',
   COLUMN_UPDATED: 'column.updated',
   COLUMN_REORDERED: 'column.reordered',
@@ -117,6 +131,7 @@ import type { ProjectService } from './services/projects.js';
 import type { ItemService } from './services/items.js';
 import type { ColumnService } from './services/columns.js';
 import type { CommentService } from './services/comments.js';
+import type { AttachmentService } from './services/attachments.js';
 import type { ActivityService } from './services/activity.js';
 import type { ConversationService } from './services/conversations.js';
 import type { SettingsService } from './services/settings.js';
@@ -126,6 +141,7 @@ export interface Services {
   items: ItemService;
   columns: ColumnService;
   comments: CommentService;
+  attachments: AttachmentService;
   activity: ActivityService;
   conversations: ConversationService;
   settings: SettingsService;

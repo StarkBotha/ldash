@@ -64,7 +64,7 @@ function wrapMcpServer(server: McpServer): McpServer {
 export function createMcpServer(services: Services, bus: EventBus = defaultBus, db?: Database.Database): McpServer {
   const server = wrapMcpServer(new McpServer({ name: 'ldash', version: '1.0.0' }));
 
-  registerProjectTools(server, services);
+  registerProjectTools(server, services, bus);
   registerItemTools(server, services, bus, db);
   registerCommentTools(server, services, bus);
   registerFlagTools(server, services, bus);

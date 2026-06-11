@@ -8,6 +8,7 @@ import { ProjectService } from './services/projects.js';
 import { ColumnService } from './services/columns.js';
 import { ItemService } from './services/items.js';
 import { CommentService } from './services/comments.js';
+import { AttachmentService } from './services/attachments.js';
 import { ActivityService } from './services/activity.js';
 import { ConversationService } from './services/conversations.js';
 import { SettingsService } from './services/settings.js';
@@ -15,6 +16,7 @@ import { projectsRouter } from './routes/projects.js';
 import { columnsRouter } from './routes/columns.js';
 import { itemsRouter, projectItemsRouter } from './routes/items.js';
 import { commentsRouter, itemCommentsRouter } from './routes/comments.js';
+import { attachmentsRouter, itemAttachmentsRouter } from './routes/attachments.js';
 import { projectActivityRouter, itemActivityRouter } from './routes/activity.js';
 import { onError } from './middleware/error.js';
 import { createMcpRouter } from './routes/mcp.js';
@@ -55,6 +57,7 @@ const columnService = new ColumnService(db);
 const itemService = new ItemService(db);
 const commentService = new CommentService(db);
 const activityService = new ActivityService(db);
+const attachmentService = new AttachmentService(db, activityService, eventBus);
 
 // 4a. Instantiate settings service
 const settingsService = new SettingsService(db);
@@ -71,6 +74,7 @@ const services: Services = {
   items: itemService,
   columns: columnService,
   comments: commentService,
+  attachments: attachmentService,
   activity: activityService,
   conversations: conversationService,
   settings: settingsService,
@@ -97,21 +101,23 @@ app.route('/api/projects/:projectId', projectNestedApp);
 // Nested routes under /api/items/:itemId
 const itemNestedApp = new Hono();
 itemNestedApp.route('/comments', itemCommentsRouter(commentService, itemService));
+itemNestedApp.route('/attachments', itemAttachmentsRouter(attachmentService, itemService));
 itemNestedApp.route('/activity', itemActivityRouter(activityService, itemService));
 app.route('/api/items/:itemId', itemNestedApp);
 
 app.route('/api/comments', commentsRouter(commentService, itemService, activityService, eventBus));
+app.route('/api/attachments', attachmentsRouter(attachmentService));
 
 // MCP server
 app.route('/mcp', createMcpRouter(services, eventBus, db));
 
 // Conversations, settings, and models routes
-app.route('/', createConversationsRouter(services, conversationService, settingsService));
+app.route('/', createConversationsRouter(services, conversationService, settingsService, eventBus, db));
 app.route('/', createSettingsRouter(settingsService));
 app.route('/', createModelsRouter(settingsService));
 
 // Planning and export routes
-app.route('/', createPlanningRouter(services, settingsService, eventBus));
+app.route('/', createPlanningRouter(services, settingsService, eventBus, db));
 app.route('/', createExportRouter(services));
 
 // Client error reporter

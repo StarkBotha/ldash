@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getOrCreateConversation, getConversation, streamMessage } from '../api/chat';
 import type { Conversation, Message } from '../types';
+import type { ToolCallIndicator } from './usePlanningChat';
 
 const INACTIVITY_TIMEOUT_MS = 120_000;
 
@@ -8,6 +9,7 @@ export interface UseChatReturn {
   conversation: Conversation | null;
   messages: Message[];
   streamingText: string;
+  toolCallIndicators: ToolCallIndicator[];
   isStreaming: boolean;
   error: string | null;
   stallNotice: string | null;
@@ -20,6 +22,7 @@ export function useChat(projectId: string, itemId: string): UseChatReturn {
   const [conversation, setConversation] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [streamingText, setStreamingText] = useState('');
+  const [toolCallIndicators, setToolCallIndicators] = useState<ToolCallIndicator[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [stallNotice, setStallNotice] = useState<string | null>(null);
@@ -55,6 +58,7 @@ export function useChat(projectId: string, itemId: string): UseChatReturn {
 
     setIsStreaming(true);
     setStreamingText('');
+    setToolCallIndicators([]);
     setError(null);
     setStallNotice(null);
 
@@ -96,6 +100,9 @@ export function useChat(projectId: string, itemId: string): UseChatReturn {
       try {
         const { messages: serverMessages } = await getConversation(convId);
         setMessages(serverMessages);
+        // Server history now carries any tool_calls — clear live chips so they
+        // don't render twice alongside the history-derived ones.
+        setToolCallIndicators([]);
         setStallNotice('Connection dropped — showing saved history.');
       } catch {
         setStallNotice('Connection dropped — showing saved history.');
@@ -116,6 +123,23 @@ export function useChat(projectId: string, itemId: string): UseChatReturn {
           if (event.type === 'text') {
             accumulatedText += event.text;
             setStreamingText(accumulatedText);
+          } else if (event.type === 'tool_call') {
+            setToolCallIndicators((prev) => [
+              ...prev,
+              { toolName: event.toolName, label: event.toolName, status: 'pending' },
+            ]);
+          } else if (event.type === 'tool_result') {
+            setToolCallIndicators((prev) => {
+              const copy = [...prev];
+              // Find the most recent pending indicator with matching toolName
+              for (let i = copy.length - 1; i >= 0; i--) {
+                if (copy[i].toolName === event.toolName && copy[i].status === 'pending') {
+                  copy[i] = { ...copy[i], status: event.success ? 'done' : 'error' };
+                  break;
+                }
+              }
+              return copy;
+            });
           } else if (event.type === 'done') {
             clearWatchdog();
             const tempAssistantMessage: Message = {
@@ -134,6 +158,9 @@ export function useChat(projectId: string, itemId: string): UseChatReturn {
             getConversation(conversation.id)
               .then(({ messages: serverMessages }) => {
                 setMessages(serverMessages);
+                // Server history now carries any tool_calls — clear live chips
+                // so they don't render twice alongside the history-derived ones.
+                setToolCallIndicators([]);
               })
               .catch(() => {
                 // Keep temp messages if refresh fails
@@ -185,6 +212,7 @@ export function useChat(projectId: string, itemId: string): UseChatReturn {
     conversation,
     messages,
     streamingText,
+    toolCallIndicators,
     isStreaming,
     error,
     stallNotice,

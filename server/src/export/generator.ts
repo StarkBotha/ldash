@@ -45,7 +45,7 @@ export function generateExport(services: Services, projectId: string): ExportFil
   for (const epic of epics) {
     const columnName = columnMap.get(epic.column_id) ?? epic.column_id;
     const epicSlug = slugify(epic.title);
-    readmeLines.push(`- [${columnName}] [${epic.title}](./epic-${epicSlug}/README.md)`);
+    readmeLines.push(`- [${columnName}] [${epic.key} ${epic.title}](./epic-${epicSlug}/README.md)`);
   }
 
   readmeLines.push('');
@@ -62,7 +62,7 @@ export function generateExport(services: Services, projectId: string): ExportFil
     const epicColumnName = columnMap.get(epic.column_id) ?? epic.column_id;
 
     const epicLines: string[] = [];
-    epicLines.push(`# ${epic.title}`);
+    epicLines.push(`# ${epic.key} ${epic.title}`);
     epicLines.push('');
     epicLines.push(`**Status:** ${epicColumnName}`);
     epicLines.push('');
@@ -80,7 +80,7 @@ export function generateExport(services: Services, projectId: string): ExportFil
     } else {
       for (const story of epicStories) {
         const storyColumnName = columnMap.get(story.column_id) ?? story.column_id;
-        epicLines.push(`### ${story.title}`);
+        epicLines.push(`### ${story.key} ${story.title}`);
         epicLines.push('');
         epicLines.push(`**Status:** ${storyColumnName}`);
         epicLines.push('');
@@ -96,7 +96,7 @@ export function generateExport(services: Services, projectId: string): ExportFil
           epicLines.push('');
           for (const task of storyTasks) {
             const taskColumnName = columnMap.get(task.column_id) ?? task.column_id;
-            epicLines.push(`- [${taskColumnName}] **${task.title}**`);
+            epicLines.push(`- [${taskColumnName}] **${task.key}** ${task.title}`);
             if (task.description && task.description.trim() !== '') {
               epicLines.push(`  ${task.description}`);
             }
@@ -125,7 +125,7 @@ export function generateExport(services: Services, projectId: string): ExportFil
 
     for (const orphan of orphans) {
       const columnName = columnMap.get(orphan.column_id) ?? orphan.column_id;
-      orphanLines.push(`- [${orphan.type}] **${orphan.title}** (status: ${columnName})`);
+      orphanLines.push(`- [${orphan.type}] **${orphan.key}** ${orphan.title} (status: ${columnName})`);
     }
 
     files.push({ relativePath: 'orphans.md', content: orphanLines.join('\n') });

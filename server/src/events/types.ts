@@ -10,6 +10,8 @@ export type BoardEventType =
   | 'item.blocked'
   | 'item.unblocked'
   | 'comment.created'
+  | 'attachment.created'
+  | 'attachment.deleted'
   | 'project.created'
   | 'project.updated'
   | 'project.deleted'

@@ -31,6 +31,36 @@ export function useDeleteComment() {
   });
 }
 
+export function useAttachments(itemId: string) {
+  return useQuery({
+    queryKey: ['attachments', itemId],
+    queryFn: () => api.attachments.listByItem(itemId),
+    enabled: !!itemId,
+  });
+}
+
+export function useUploadAttachment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ itemId, data }: { itemId: string; data: { filename?: string; mime: string; data_base64: string } }) =>
+      api.attachments.upload(itemId, data),
+    onSuccess: (_attachment, vars) => {
+      qc.invalidateQueries({ queryKey: ['attachments', vars.itemId] });
+    },
+  });
+}
+
+export function useDeleteAttachment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id }: { id: string; itemId: string }) =>
+      api.attachments.delete(id),
+    onSuccess: (_r, vars) => {
+      qc.invalidateQueries({ queryKey: ['attachments', vars.itemId] });
+    },
+  });
+}
+
 export function useItemActivity(itemId: string) {
   return useQuery({
     queryKey: ['activity', 'item', itemId],

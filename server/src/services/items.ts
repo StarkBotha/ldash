@@ -7,6 +7,8 @@ interface ItemRow {
   project_id: string;
   parent_id: string | null;
   type: string;
+  number: number;
+  key: string;
   title: string;
   description: string;
   column_id: string;
@@ -24,6 +26,8 @@ function rowToItem(row: ItemRow): Item {
     project_id: row.project_id,
     parent_id: row.parent_id,
     type: row.type as ItemType,
+    number: row.number,
+    key: row.key,
     title: row.title,
     description: row.description,
     column_id: row.column_id,
@@ -53,6 +57,23 @@ export class ItemService {
     return row ? rowToItem(row) : undefined;
   }
 
+  getByKey(key: string): Item | undefined {
+    const row = this.db
+      .prepare('SELECT * FROM items WHERE key = ? COLLATE NOCASE')
+      .get(key) as ItemRow | undefined;
+    return row ? rowToItem(row) : undefined;
+  }
+
+  search(projectId: string, query: string): Item[] {
+    const like = '%' + query.replace(/[\\%_]/g, (m) => '\\' + m) + '%';
+    const rows = this.db
+      .prepare(
+        "SELECT * FROM items WHERE project_id = ? AND (title LIKE ? ESCAPE '\\' OR description LIKE ? ESCAPE '\\' OR key LIKE ? ESCAPE '\\') ORDER BY number ASC"
+      )
+      .all(projectId, like, like, like) as ItemRow[];
+    return rows.map(rowToItem);
+  }
+
   create(data: {
     project_id: string;
     parent_id?: string | null;
@@ -67,20 +88,36 @@ export class ItemService {
     const position = posRow.maxPos + 1;
     const id = nanoid();
 
-    this.db
-      .prepare(
-        'INSERT INTO items (id, project_id, parent_id, type, title, description, column_id, position) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
-      )
-      .run(
-        id,
-        data.project_id,
-        data.parent_id ?? null,
-        data.type,
-        data.title,
-        data.description ?? '',
-        data.column_id,
-        position
-      );
+    const insert = this.db.transaction(() => {
+      const proj = this.db
+        .prepare('SELECT prefix, next_number FROM projects WHERE id = ?')
+        .get(data.project_id) as { prefix: string; next_number: number } | undefined;
+      if (!proj) {
+        throw new Error('Project not found: ' + data.project_id);
+      }
+
+      this.db
+        .prepare(
+          'INSERT INTO items (id, project_id, parent_id, type, number, key, title, description, column_id, position) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+        )
+        .run(
+          id,
+          data.project_id,
+          data.parent_id ?? null,
+          data.type,
+          proj.next_number,
+          `${proj.prefix}-${proj.next_number}`,
+          data.title,
+          data.description ?? '',
+          data.column_id,
+          position
+        );
+
+      this.db
+        .prepare('UPDATE projects SET next_number = next_number + 1 WHERE id = ?')
+        .run(data.project_id);
+    });
+    insert();
 
     return this.get(id) as Item;
   }

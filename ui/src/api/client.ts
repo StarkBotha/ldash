@@ -1,4 +1,4 @@
-import type { Project, Column, Item, Comment, ActivityEntry } from '../types';
+import type { Project, Column, Item, Comment, ActivityEntry, Attachment } from '../types';
 
 const BASE = '/api';
 
@@ -74,6 +74,19 @@ export const api = {
       apiFetch<Comment>('/comments', { method: 'POST', body: JSON.stringify(data) }),
     delete: (id: string) =>
       apiFetch<void>(`/comments/${id}`, { method: 'DELETE' }),
+  },
+
+  attachments: {
+    listByItem: (itemId: string) =>
+      apiFetch<{ attachments: Attachment[] }>(`/items/${itemId}/attachments`),
+    upload: (itemId: string, data: { filename?: string; mime: string; data_base64: string }) =>
+      apiFetch<Attachment>(`/items/${itemId}/attachments`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    delete: (id: string) =>
+      apiFetch<void>(`/attachments/${id}`, { method: 'DELETE' }),
+    url: (id: string) => `${BASE}/attachments/${id}`,
   },
 
   activity: {
