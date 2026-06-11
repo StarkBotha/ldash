@@ -1,3 +1,0 @@
-- generic [ref=e2]:
-  - button "⚙" [ref=e3] [cursor=pointer]
-  - generic [ref=e4]: Loading projects…

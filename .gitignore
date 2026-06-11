@@ -7,3 +7,4 @@ dist/
 exports/
 logs/
 .env
+.playwright-mcp/
