@@ -1,4 +1,12 @@
-export type ItemType = 'epic' | 'story' | 'task';
+export type ItemType = 'epic' | 'story' | 'task' | 'bug' | 'investigation';
+
+/** Leaf work item types: directly movable between columns; stories/epics have
+ *  derived status. Mirrors the server-side helper in server/src/types.ts. */
+export const WORK_ITEM_TYPES = ['task', 'bug', 'investigation'] as const;
+
+export function isWorkItemType(type: string): type is (typeof WORK_ITEM_TYPES)[number] {
+  return (WORK_ITEM_TYPES as readonly string[]).includes(type);
+}
 export type ActorType = 'user' | 'claude';
 
 export interface Column {

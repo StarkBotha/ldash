@@ -1,7 +1,7 @@
 import type Database from 'better-sqlite3';
 import type { ToolDefinition } from '../gateway/types.js';
 import type { ToolHandler } from '../gateway/loop.js';
-import type { Services, ItemType } from '../types.js';
+import { ITEM_TYPES, isWorkItemType, type Services, type ItemType } from '../types.js';
 import type { EventBus } from '../events/bus.js';
 import { recomputeAncestors } from '../services/rollup.js';
 
@@ -10,14 +10,14 @@ export function getPlanningToolDefinitions(): ToolDefinition[] {
     {
       name: 'create_item',
       description:
-        'Create a new item (epic, story, or task) on the project board. Call this when the user has agreed to add a piece of work. Epics represent large themes (weeks of work), stories represent a coherent user-facing feature or component (days), tasks represent a single concrete unit of work (hours). Always place epics in the Backlog column unless the user specifies otherwise.',
+        'Create a new item (epic, story, task, bug, or investigation) on the project board. Call this when the user has agreed to add a piece of work. Epics represent large themes (weeks of work), stories represent a coherent user-facing feature or component (days), tasks represent a single concrete unit of work (hours). Bugs are defects to fix and investigations are research or diagnosis work — both behave like tasks on the board. Always place epics in the Backlog column unless the user specifies otherwise.',
       parameters: {
         type: 'object',
         required: ['type', 'title', 'column_id'],
         properties: {
           type: {
             type: 'string',
-            enum: ['epic', 'story', 'task'],
+            enum: [...ITEM_TYPES],
             description: 'The item type.',
           },
           title: {
@@ -38,7 +38,7 @@ export function getPlanningToolDefinitions(): ToolDefinition[] {
           parent_id: {
             type: 'string',
             description:
-              'The id of the parent item. Required for stories (parent must be an epic) and tasks (parent must be a story or epic). Omit for top-level epics.',
+              'The id of the parent item. Required for stories (parent must be an epic) and tasks/bugs/investigations (parent must be a story or epic). Omit for top-level epics.',
           },
         },
       },
@@ -75,7 +75,7 @@ export function getPlanningToolDefinitions(): ToolDefinition[] {
         properties: {
           type: {
             type: 'string',
-            enum: ['epic', 'story', 'task'],
+            enum: [...ITEM_TYPES],
             description: 'Filter by item type. Omit to list all types.',
           },
         },
@@ -94,8 +94,8 @@ export function createPlanningToolHandler(
     if (name === 'create_item') {
       // Validate type
       const type = args['type'];
-      if (type !== 'epic' && type !== 'story' && type !== 'task') {
-        return 'Error: type must be epic, story, or task';
+      if (typeof type !== 'string' || !(ITEM_TYPES as readonly string[]).includes(type)) {
+        return 'Error: type must be epic, story, task, bug, or investigation';
       }
 
       // Validate title
@@ -163,8 +163,8 @@ export function createPlanningToolHandler(
         data: { item },
       });
 
-      // Rollup: after a task is created, recompute ancestor story/epic status
-      if (item.type === 'task' && db) {
+      // Rollup: after a work item is created, recompute ancestor story/epic status
+      if (isWorkItemType(item.type) && db) {
         recomputeAncestors(item.id, db, services.items, services.activity, services.columns, bus);
       }
 

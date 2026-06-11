@@ -1,6 +1,6 @@
 import type Database from 'better-sqlite3';
 import { nanoid } from 'nanoid';
-import type { Item, ItemType } from '../types.js';
+import { isWorkItemType, type Item, type ItemType } from '../types.js';
 
 interface ItemRow {
   id: string;
@@ -152,7 +152,7 @@ export class ItemService {
   move(id: string, data: { column_id: string; position?: number }, opts?: { internal?: boolean }): Item {
     if (!opts?.internal) {
       const item = this.get(id);
-      if (item && item.type !== 'task') {
+      if (item && !isWorkItemType(item.type)) {
         throw new Error('Status of a ' + item.type + ' is derived from its tasks and cannot be set directly');
       }
     }

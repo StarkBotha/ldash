@@ -1,4 +1,4 @@
-import type { Services } from '../types.js';
+import { isWorkItemType, type Services } from '../types.js';
 import { slugify } from '../utils/slugify.js';
 
 export interface ExportFile {
@@ -23,7 +23,8 @@ export function generateExport(services: Services, projectId: string): ExportFil
 
   const epics = allItems.filter((i) => i.type === 'epic').sort((a, b) => a.position - b.position);
   const stories = allItems.filter((i) => i.type === 'story');
-  const tasks = allItems.filter((i) => i.type === 'task');
+  // Leaf work items: tasks, bugs, investigations all render the same way
+  const tasks = allItems.filter((i) => isWorkItemType(i.type));
 
   const files: ExportFile[] = [];
 
@@ -96,7 +97,8 @@ export function generateExport(services: Services, projectId: string): ExportFil
           epicLines.push('');
           for (const task of storyTasks) {
             const taskColumnName = columnMap.get(task.column_id) ?? task.column_id;
-            epicLines.push(`- [${taskColumnName}] **${task.key}** ${task.title}`);
+            const typeTag = task.type === 'task' ? '' : ` _(${task.type})_`;
+            epicLines.push(`- [${taskColumnName}] **${task.key}**${typeTag} ${task.title}`);
             if (task.description && task.description.trim() !== '') {
               epicLines.push(`  ${task.description}`);
             }

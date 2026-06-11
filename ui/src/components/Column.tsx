@@ -1,4 +1,5 @@
 import { Card } from './Card';
+import { isWorkItemType } from '../types';
 import type { Column as ColumnType, Item } from '../types';
 
 interface Props {
@@ -60,19 +61,19 @@ function buildGroups(columnItems: Item[], allItems: Item[]): EpicGroup[] {
     // Separate this column's members by type
     const epicCard = members.find((i) => i.id === epic.id) ?? null;
     const stories = members.filter((i) => i.type === 'story').sort((a, b) => a.position - b.position);
-    // tasks whose parent story IS in this column's member set
+    // work items (tasks/bugs/investigations) whose parent story IS in this column's member set
     const memberStoryIds = new Set(stories.map((s) => s.id));
     const orphanTasks = members.filter(
-      (i) => i.type === 'task' && (i.parent_id == null || !memberStoryIds.has(i.parent_id))
+      (i) => isWorkItemType(i.type) && (i.parent_id == null || !memberStoryIds.has(i.parent_id))
     ).sort((a, b) => a.position - b.position);
 
     const orderedItems: Item[] = [];
     if (epicCard) orderedItems.push(epicCard);
     for (const story of stories) {
       orderedItems.push(story);
-      // Tasks in this column whose parent is this story
+      // Work items in this column whose parent is this story
       const storyTasks = members
-        .filter((i) => i.type === 'task' && i.parent_id === story.id)
+        .filter((i) => isWorkItemType(i.type) && i.parent_id === story.id)
         .sort((a, b) => a.position - b.position);
       orderedItems.push(...storyTasks);
     }
@@ -152,7 +153,7 @@ export function Column({ column, items, allItems, collapsedIds, onToggleCollapse
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 4 }}>
               {group.orderedItems.map((item) => {
                 const parent = item.parent_id ? allItems.find((i) => i.id === item.parent_id) : undefined;
-                const isTask = item.type === 'task';
+                const isTask = isWorkItemType(item.type);
                 const childCount = isTask
                   ? undefined
                   : allItems.filter((i) => i.parent_id === item.id).length;

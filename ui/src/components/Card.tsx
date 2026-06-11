@@ -10,14 +10,16 @@ interface Props {
   onClick: () => void;
 }
 
-const TYPE_COLORS: Record<string, string> = {
+export const TYPE_COLORS: Record<string, string> = {
   epic: '#8b5cf6',
   story: '#3b82f6',
   task: '#10b981',
+  bug: '#ef4444',
+  investigation: '#14b8a6',
 };
 
 export function Card({ item, parentTitle, childCount, collapsed, onToggleCollapse, onClick }: Props) {
-  const childLabel = item.type === 'epic' ? 'stories' : 'tasks';
+  const childLabel = item.type === 'epic' ? 'stories' : 'work items';
   return (
     <div
       onClick={onClick}

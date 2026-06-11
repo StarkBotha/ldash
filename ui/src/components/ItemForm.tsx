@@ -156,6 +156,8 @@ export function ItemForm({ projectId, columnId, columns, items, item, onClose }:
                 <option value="epic">Epic</option>
                 <option value="story">Story</option>
                 <option value="task">Task</option>
+                <option value="bug">Bug</option>
+                <option value="investigation">Investigation</option>
               </select>
             </div>
           )}

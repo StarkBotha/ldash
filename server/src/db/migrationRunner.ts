@@ -4,10 +4,21 @@ import * as migration002 from './migrations/002_planning_actor.js';
 import * as migration003 from './migrations/003_system_actor.js';
 import * as migration004 from './migrations/004_ticket_numbers.js';
 import * as migration005 from './migrations/005_attachments.js';
+import * as migration006 from './migrations/006_bug_investigation_types.js';
 import { createLogger } from '../logger.js';
 
 const logger = createLogger('db');
-const MIGRATIONS = [migration001, migration002, migration003, migration004, migration005];
+
+interface Migration {
+  name: string;
+  up: (db: Database.Database) => void;
+  /** Table-rebuild migrations set this so FK enforcement (and its ON DELETE
+   *  actions) is suspended around the rebuild. PRAGMA foreign_keys is a no-op
+   *  inside a transaction, so the runner toggles it outside the transaction. */
+  disableForeignKeys?: boolean;
+}
+
+const MIGRATIONS: Migration[] = [migration001, migration002, migration003, migration004, migration005, migration006];
 
 export function runMigrations(db: Database.Database): void {
   db.exec(`
@@ -32,7 +43,17 @@ export function runMigrations(db: Database.Database): void {
       insertStmt.run(migration.name);
     });
 
-    apply();
+    if (migration.disableForeignKeys) {
+      const fkWasOn = (db.pragma('foreign_keys', { simple: true }) as number) === 1;
+      db.pragma('foreign_keys = OFF');
+      try {
+        apply();
+      } finally {
+        if (fkWasOn) db.pragma('foreign_keys = ON');
+      }
+    } else {
+      apply();
+    }
     logger.info('migration applied', { name: migration.name });
   }
 }

@@ -7,6 +7,8 @@ import { CommentBox } from './CommentBox';
 import { ActivityFeed } from './ActivityFeed';
 import { ChatPanel } from './ChatPanel';
 import { getSettings } from '../api/settings';
+import { TYPE_COLORS } from './Card';
+import { isWorkItemType } from '../types';
 import type { Item, Column } from '../types';
 
 interface Props {
@@ -153,7 +155,7 @@ export function ItemDetailPanel({ item, columns, projectId, onClose, onEdit, onD
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
               <span style={{
                 fontSize: 12, fontWeight: 600, color: '#fff',
-                background: item.type === 'epic' ? '#8b5cf6' : item.type === 'story' ? '#3b82f6' : '#10b981',
+                background: TYPE_COLORS[item.type] ?? '#888',
                 borderRadius: 4, padding: '1px 6px',
               }}>
                 {item.type}
@@ -181,7 +183,7 @@ export function ItemDetailPanel({ item, columns, projectId, onClose, onEdit, onD
             <>
               <div style={sectionStyle}>
                 <label style={{ display: 'block', marginBottom: 6, fontWeight: 600, fontSize: 14 }}>Status</label>
-                {item.type === 'task' ? (
+                {isWorkItemType(item.type) ? (
                   <select
                     value={item.column_id}
                     onChange={handleStatusChange}
@@ -197,7 +199,7 @@ export function ItemDetailPanel({ item, columns, projectId, onClose, onEdit, onD
                       {columns.find((col) => col.id === item.column_id)?.name ?? item.column_id}
                     </span>
                     <span style={{ fontSize: 12, color: '#9ca3af', marginLeft: 8 }}>
-                      derived from its tasks
+                      derived from its work items
                     </span>
                   </div>
                 )}

@@ -1,6 +1,6 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
-import type { Services } from '../../types.js';
+import { ITEM_TYPES, isWorkItemType, type Services } from '../../types.js';
 import { eventBus as defaultBus } from '../../events/bus.js';
 import type { EventBus } from '../../events/bus.js';
 import { recomputeAncestors, recomputeAncestorsByParent } from '../../services/rollup.js';
@@ -10,11 +10,11 @@ export function registerItemTools(server: McpServer, services: Services, bus: Ev
   // ldash_list_items
   server.tool(
     'ldash_list_items',
-    'List items (epics, stories, tasks) on the board. Use this to find what work is planned and what its current status is. Filter by project_id (required), and optionally by status column name or id, item type, or parent item id. Returns id, title, type, column_id, flagged, blocked, and parent_id for each item.',
+    'List items (epics, stories, tasks, bugs, investigations) on the board. Use this to find what work is planned and what its current status is. Filter by project_id (required), and optionally by status column name or id, item type, or parent item id. Returns id, title, type, column_id, flagged, blocked, and parent_id for each item.',
     {
       project_id: z.string().describe('The id of the project to list items from. Required.'),
       column_id: z.string().optional().describe('Filter to items in this column. Accepts either a column id or a column name (case-insensitive). Optional.'),
-      type: z.enum(['epic', 'story', 'task']).optional().describe('Filter to items of this type. Optional.'),
+      type: z.enum(ITEM_TYPES).optional().describe('Filter to items of this type. Optional.'),
       parent_id: z.string().optional().describe('Filter to items whose parent_id matches this value. Pass "null" as a string to get top-level items with no parent. Optional.'),
     },
     async (input) => {
@@ -116,14 +116,14 @@ export function registerItemTools(server: McpServer, services: Services, bus: Ev
   // ldash_create_item
   server.tool(
     'ldash_create_item',
-    'Create a new item (epic, story, or task) on the board. Use this to file follow-up work discovered while completing a task — for example, a bug found while implementing a feature, or a refactor that should happen later. The item is created in the specified column (defaults to the first column if omitted).',
+    'Create a new item (epic, story, task, bug, or investigation) on the board. Use this to file follow-up work discovered while completing a task — for example, a bug found while implementing a feature, or a refactor that should happen later. The item is created in the specified column (defaults to the first column if omitted).',
     {
       project_id: z.string().describe('The id of the project this item belongs to.'),
-      type: z.enum(['epic', 'story', 'task']).describe('The item type. Use "task" for concrete work items, "story" for grouped work, "epic" for large themes.'),
+      type: z.enum(ITEM_TYPES).describe('The item type. Use "task" for concrete work items, "bug" for defects, "investigation" for research or diagnosis work, "story" for grouped work, "epic" for large themes.'),
       title: z.string().min(1).describe('Short title for the item. Required and must not be empty.'),
       description: z.string().optional().describe('Longer description of the work. Markdown is accepted. Optional.'),
       column_id: z.string().optional().describe('The id or name of the column to place the item in. Defaults to the first column (Backlog) if omitted.'),
-      parent_id: z.string().optional().describe('The id of a parent item. Optional. Use to nest a task under a story, or a story under an epic.'),
+      parent_id: z.string().optional().describe('The id of a parent item. Optional. Use to nest a task, bug, or investigation under a story, or a story under an epic.'),
     },
     async (input) => {
       const project = services.projects.get(input.project_id);
@@ -186,8 +186,8 @@ export function registerItemTools(server: McpServer, services: Services, bus: Ev
         data: { item },
       });
 
-      // Rollup: after a task is created, recompute ancestor story/epic status
-      if (item.type === 'task' && db) {
+      // Rollup: after a work item is created, recompute ancestor story/epic status
+      if (isWorkItemType(item.type) && db) {
         recomputeAncestors(item.id, db, services.items, services.activity, services.columns, bus);
       }
 
@@ -251,7 +251,7 @@ export function registerItemTools(server: McpServer, services: Services, bus: Ev
   // ldash_update_item_status
   server.tool(
     'ldash_update_item_status',
-    'Move a TASK to a different status column. Use this to advance a task through the board — for example, moving a task from "In Progress" to "Review" after completing the implementation. Accepts either a column id or a column name. Stories and epics derive their status automatically from their tasks — do not call this tool on them.',
+    'Move a TASK, BUG, or INVESTIGATION to a different status column. Use this to advance a work item through the board — for example, moving a task from "In Progress" to "Review" after completing the implementation. Accepts either a column id or a column name. Stories and epics derive their status automatically from their child work items — do not call this tool on them.',
     {
       item_id: z.string().describe('The id of the item to move.'),
       column_id: z.string().describe('The target column. Accepts either a column id or a column name (case-insensitive match). Examples: "Done", "In Progress", or the raw id.'),
@@ -308,8 +308,8 @@ export function registerItemTools(server: McpServer, services: Services, bus: Ev
         data: { item: movedItem, fromColumnId: oldItem.column_id, toColumnId: resolvedColumn.id },
       });
 
-      // Rollup: after a successful task move, recompute ancestor story/epic status
-      if (oldItem.type === 'task' && db) {
+      // Rollup: after a successful work item move, recompute ancestor story/epic status
+      if (isWorkItemType(oldItem.type) && db) {
         recomputeAncestors(input.item_id, db, services.items, services.activity, services.columns, bus);
       }
 

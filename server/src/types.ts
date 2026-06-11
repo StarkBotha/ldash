@@ -1,4 +1,15 @@
-export type ItemType = 'epic' | 'story' | 'task';
+export type ItemType = 'epic' | 'story' | 'task' | 'bug' | 'investigation';
+
+/** Leaf work item types: directly movable between columns, and the inputs to
+ *  story/epic status rollup. Stories and epics are aggregates with derived status. */
+export const WORK_ITEM_TYPES = ['task', 'bug', 'investigation'] as const;
+export type WorkItemType = (typeof WORK_ITEM_TYPES)[number];
+
+export function isWorkItemType(type: string): type is WorkItemType {
+  return (WORK_ITEM_TYPES as readonly string[]).includes(type);
+}
+
+export const ITEM_TYPES = ['epic', 'story', 'task', 'bug', 'investigation'] as const;
 export type ActorType = 'user' | 'claude' | 'llm' | 'system';
 
 export interface Column {
