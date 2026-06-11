@@ -5,6 +5,8 @@ interface Props {
   column: ColumnType;
   items: Item[];
   allItems: Item[];
+  collapsedIds: Set<string>;
+  onToggleCollapse: (id: string) => void;
   onCardClick: (item: Item) => void;
   onNewItem: () => void;
 }
@@ -89,7 +91,7 @@ function buildGroups(columnItems: Item[], allItems: Item[]): EpicGroup[] {
   return groups;
 }
 
-export function Column({ column, items, allItems, onCardClick, onNewItem }: Props) {
+export function Column({ column, items, allItems, collapsedIds, onToggleCollapse, onCardClick, onNewItem }: Props) {
   const groups = buildGroups(items, allItems);
 
   return (
@@ -151,6 +153,9 @@ export function Column({ column, items, allItems, onCardClick, onNewItem }: Prop
               {group.orderedItems.map((item) => {
                 const parent = item.parent_id ? allItems.find((i) => i.id === item.parent_id) : undefined;
                 const isTask = item.type === 'task';
+                const childCount = isTask
+                  ? undefined
+                  : allItems.filter((i) => i.parent_id === item.id).length;
                 return (
                   <div
                     key={item.id}
@@ -160,7 +165,14 @@ export function Column({ column, items, allItems, onCardClick, onNewItem }: Prop
                       paddingLeft: 6,
                     } : undefined}
                   >
-                    <Card item={item} parentTitle={parent?.title} onClick={() => onCardClick(item)} />
+                    <Card
+                      item={item}
+                      parentTitle={parent?.title}
+                      childCount={childCount}
+                      collapsed={collapsedIds.has(item.id)}
+                      onToggleCollapse={() => onToggleCollapse(item.id)}
+                      onClick={() => onCardClick(item)}
+                    />
                   </div>
                 );
               })}

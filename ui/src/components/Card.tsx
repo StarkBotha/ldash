@@ -3,6 +3,10 @@ import type { Item } from '../types';
 interface Props {
   item: Item;
   parentTitle?: string;
+  /** Number of direct children — only set for epics and stories */
+  childCount?: number;
+  collapsed?: boolean;
+  onToggleCollapse?: () => void;
   onClick: () => void;
 }
 
@@ -12,7 +16,8 @@ const TYPE_COLORS: Record<string, string> = {
   task: '#10b981',
 };
 
-export function Card({ item, parentTitle, onClick }: Props) {
+export function Card({ item, parentTitle, childCount, collapsed, onToggleCollapse, onClick }: Props) {
+  const childLabel = item.type === 'epic' ? 'stories' : 'tasks';
   return (
     <div
       onClick={onClick}
@@ -41,6 +46,27 @@ export function Card({ item, parentTitle, onClick }: Props) {
           <span style={{ fontSize: 12, color: '#999', fontWeight: 600, marginRight: 5 }}>{item.key}</span>
           {item.title}
         </span>
+        {childCount != null && childCount > 0 && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleCollapse?.();
+            }}
+            title={collapsed ? `Show ${childCount} ${childLabel}` : `Hide ${childCount} ${childLabel}`}
+            style={{
+              flexShrink: 0,
+              border: '1px solid #e0e0e0',
+              background: collapsed ? '#eee' : '#fff',
+              borderRadius: 4,
+              padding: '0 5px',
+              fontSize: 12,
+              color: '#666',
+              cursor: 'pointer',
+            }}
+          >
+            {collapsed ? '▸' : '▾'} {childCount}
+          </button>
+        )}
       </div>
       {parentTitle && (
         <div style={{

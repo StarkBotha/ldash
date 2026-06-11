@@ -28,12 +28,14 @@ export function Board({ projectId, onBack }: Props) {
   const [isPlanningMode, setIsPlanningMode] = useState(false);
   const [epicFilter, setEpicFilter] = useState<string>('all');
   const [search, setSearch] = useState('');
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const { status } = useSSE(projectId);
 
   // Reset filters when switching projects
   useEffect(() => {
     setEpicFilter('all');
     setSearch('');
+    setCollapsed(new Set());
   }, [projectId]);
 
   if (isPlanningMode) {
@@ -68,6 +70,26 @@ export function Board({ projectId, onBack }: Props) {
           i.key.toLowerCase().includes(q) ||
           i.description.toLowerCase().includes(q)
       );
+
+  // Hide items whose epic/story ancestor is collapsed (board-wide, across all columns)
+  const itemById = new Map(allItems.map((i) => [i.id, i]));
+  const displayedItems = searchedItems.filter((item) => {
+    let parentId = item.parent_id;
+    while (parentId != null) {
+      if (collapsed.has(parentId)) return false;
+      parentId = itemById.get(parentId)?.parent_id ?? null;
+    }
+    return true;
+  });
+
+  function toggleCollapse(id: string) {
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
 
   function openNewItemForm(colId: string) {
     setItemFormColId(colId);
@@ -130,8 +152,10 @@ export function Board({ projectId, onBack }: Props) {
           <Column
             key={col.id}
             column={col}
-            items={searchedItems.filter((item) => item.column_id === col.id)}
+            items={displayedItems.filter((item) => item.column_id === col.id)}
             allItems={allItems}
+            collapsedIds={collapsed}
+            onToggleCollapse={toggleCollapse}
             onCardClick={(item) => setSelectedItem(item)}
             onNewItem={() => openNewItemForm(col.id)}
           />
