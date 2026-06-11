@@ -3,13 +3,13 @@ import type { ItemService } from '../services/items.js';
 import type { ProjectService } from '../services/projects.js';
 import type { ColumnService } from '../services/columns.js';
 import type { ActivityService } from '../services/activity.js';
-import { EventTypes } from '../types.js';
+import { EventTypes, ITEM_TYPES, isWorkItemType, type ItemType } from '../types.js';
 import { eventBus as defaultBus } from '../events/bus.js';
 import type { EventBus } from '../events/bus.js';
 import { recomputeAncestors, recomputeAncestorsByParent } from '../services/rollup.js';
 import type Database from 'better-sqlite3';
 
-const VALID_TYPES = new Set(['epic', 'story', 'task']);
+const VALID_TYPES = new Set<string>(ITEM_TYPES);
 
 function makeError(msg: string, status: number): Error {
   const err = new Error(msg) as Error & { status: number };
@@ -71,7 +71,7 @@ export function itemsRouter(
     }
 
     if (!type || typeof type !== 'string' || !VALID_TYPES.has(type)) {
-      throw makeError('type must be one of: epic, story, task', 400);
+      throw makeError('type must be one of: epic, story, task, bug, investigation', 400);
     }
 
     if (!title || typeof title !== 'string' || title.trim() === '') {
@@ -91,7 +91,7 @@ export function itemsRouter(
     const item = itemService.create({
       project_id,
       parent_id: typeof parent_id === 'string' ? parent_id : null,
-      type: type as 'epic' | 'story' | 'task',
+      type: type as ItemType,
       title: title.trim(),
       description: typeof description === 'string' ? description : '',
       column_id,
@@ -111,8 +111,8 @@ export function itemsRouter(
       data: { item },
     });
 
-    // Rollup: after a task is created, recompute ancestor story/epic status
-    if (item.type === 'task' && db) {
+    // Rollup: after a work item is created, recompute ancestor story/epic status
+    if (isWorkItemType(item.type) && db) {
       recomputeAncestors(item.id, db, itemService, activityService, columnService, bus);
     }
 
@@ -253,8 +253,8 @@ export function itemsRouter(
       data: { item: updated, fromColumnId: existing.column_id, toColumnId: column_id },
     });
 
-    // Rollup: after a successful task move, recompute ancestor story/epic status
-    if (existing.type === 'task' && db) {
+    // Rollup: after a successful work item move, recompute ancestor story/epic status
+    if (isWorkItemType(existing.type) && db) {
       recomputeAncestors(id, db, itemService, activityService, columnService, bus);
     }
 
@@ -346,7 +346,7 @@ export function itemsRouter(
     }
 
     // Capture parent_id before deletion for rollup
-    const deletedParentId = existing.type === 'task' ? existing.parent_id : null;
+    const deletedParentId = isWorkItemType(existing.type) ? existing.parent_id : null;
     const deletedProjectId = existing.project_id;
 
     // Write activity BEFORE deletion
@@ -370,12 +370,13 @@ export function itemsRouter(
     // We use a sibling task of the same parent (if any) as the proxy taskId.
     // If no siblings exist, use recomputeAncestors with a synthetic approach:
     // create a proxy item lookup by parent.
-    if (existing.type === 'task' && deletedParentId && db) {
-      const siblings = itemService.listFiltered({
-        project_id: deletedProjectId,
-        type: 'task',
-        parent_id: deletedParentId,
-      });
+    if (isWorkItemType(existing.type) && deletedParentId && db) {
+      const siblings = itemService
+        .listFiltered({
+          project_id: deletedProjectId,
+          parent_id: deletedParentId,
+        })
+        .filter((i) => isWorkItemType(i.type));
       if (siblings.length > 0) {
         recomputeAncestors(siblings[0].id, db, itemService, activityService, columnService, bus);
       } else {

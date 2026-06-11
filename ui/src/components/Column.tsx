@@ -1,4 +1,5 @@
 import { Card } from './Card';
+import { isWorkItemType } from '../types';
 import type { Column as ColumnType, Item } from '../types';
 
 interface Props {
@@ -35,23 +36,24 @@ interface EpicGroup {
   orderedItems: Item[];
 }
 
-/** Order a group's stories and tasks hierarchically: each story (by position)
- *  followed by its tasks in this column, then tasks whose parent story is not
- *  in the column. Ignores epics — the caller places the epic card first. */
+/** Order a group's stories and work items (tasks/bugs/investigations)
+ *  hierarchically: each story (by position) followed by its work items in this
+ *  column, then work items whose parent story is not in the column. Ignores
+ *  epics — the caller places the epic card first. */
 function orderStoriesAndTasks(members: Item[]): Item[] {
   const stories = members.filter((i) => i.type === 'story').sort((a, b) => a.position - b.position);
   const memberStoryIds = new Set(stories.map((s) => s.id));
-  // tasks whose parent story is NOT in this column's member set
+  // work items whose parent story is NOT in this column's member set
   const orphanTasks = members.filter(
-    (i) => i.type === 'task' && (i.parent_id == null || !memberStoryIds.has(i.parent_id))
+    (i) => isWorkItemType(i.type) && (i.parent_id == null || !memberStoryIds.has(i.parent_id))
   ).sort((a, b) => a.position - b.position);
 
   const ordered: Item[] = [];
   for (const story of stories) {
     ordered.push(story);
-    // Tasks in this column whose parent is this story
+    // Work items in this column whose parent is this story
     const storyTasks = members
-      .filter((i) => i.type === 'task' && i.parent_id === story.id)
+      .filter((i) => isWorkItemType(i.type) && i.parent_id === story.id)
       .sort((a, b) => a.position - b.position);
     ordered.push(...storyTasks);
   }
@@ -162,7 +164,7 @@ export function Column({ column, items, allItems, collapsedIds, onToggleCollapse
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 4 }}>
               {group.orderedItems.map((item) => {
                 const parent = item.parent_id ? allItems.find((i) => i.id === item.parent_id) : undefined;
-                const isTask = item.type === 'task';
+                const isTask = isWorkItemType(item.type);
                 const childCount = isTask
                   ? undefined
                   : allItems.filter((i) => i.parent_id === item.id).length;

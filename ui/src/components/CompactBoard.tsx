@@ -11,6 +11,8 @@ function TypeBadge({ type }: { type: Item['type'] }) {
     epic: '#7c3aed',
     story: '#0070f3',
     task: '#16a34a',
+    bug: '#dc2626',
+    investigation: '#0d9488',
   };
   return (
     <span

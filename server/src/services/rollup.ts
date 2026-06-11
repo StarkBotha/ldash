@@ -4,11 +4,21 @@ import type { ItemService } from './items.js';
 import type { ActivityService } from './activity.js';
 import type { ColumnService } from './columns.js';
 import type { EventBus } from '../events/bus.js';
-import type { Item } from '../types.js';
+import { isWorkItemType, type Item } from '../types.js';
+
+/**
+ * List the direct children of an item that are leaf work items
+ * (task/bug/investigation) — the inputs to status rollup.
+ */
+function listWorkChildren(itemService: ItemService, projectId: string, parentId: string): Item[] {
+  return itemService
+    .listFiltered({ project_id: projectId, parent_id: parentId })
+    .filter((i) => isWorkItemType(i.type));
+}
 
 /**
  * Derive the target column for an aggregate item (story or epic) based on
- * the column positions of its descendant tasks.
+ * the column positions of its descendant work items (tasks/bugs/investigations).
  *
  * Column semantics (by position):
  *   FIRST  (lowest position)  = not-started
@@ -125,11 +135,7 @@ export function recomputeAncestors(
   // Recompute story
   if (storyId) {
     const story = itemService.get(storyId)!;
-    const storyTasks = itemService.listFiltered({
-      project_id: story.project_id,
-      type: 'task',
-      parent_id: storyId,
-    });
+    const storyTasks = listWorkChildren(itemService, story.project_id, storyId);
 
     const derived = deriveColumnId(storyTasks, sortedColumns);
     if (derived !== null && derived !== story.column_id) {
@@ -152,21 +158,13 @@ export function recomputeAncestors(
     const storyIds = epicStories.map((s) => s.id);
     let allDescendantTasks: Item[] = [];
 
-    // Direct task children of epic
-    const directTasks = itemService.listFiltered({
-      project_id: epic.project_id,
-      type: 'task',
-      parent_id: epicId,
-    });
+    // Direct work item children of epic
+    const directTasks = listWorkChildren(itemService, epic.project_id, epicId);
     allDescendantTasks.push(...directTasks);
 
-    // Tasks of each story under this epic
+    // Work items of each story under this epic
     for (const sid of storyIds) {
-      const storyTasks = itemService.listFiltered({
-        project_id: epic.project_id,
-        type: 'task',
-        parent_id: sid,
-      });
+      const storyTasks = listWorkChildren(itemService, epic.project_id, sid);
       allDescendantTasks.push(...storyTasks);
     }
 
@@ -207,11 +205,7 @@ export function recomputeAncestorsByParent(
 
   if (storyId) {
     const story = itemService.get(storyId)!;
-    const storyTasks = itemService.listFiltered({
-      project_id: projectId,
-      type: 'task',
-      parent_id: storyId,
-    });
+    const storyTasks = listWorkChildren(itemService, projectId, storyId);
 
     const derived = deriveColumnId(storyTasks, sortedColumns);
     if (derived !== null && derived !== story.column_id) {
@@ -231,19 +225,11 @@ export function recomputeAncestorsByParent(
 
     let allDescendantTasks: Item[] = [];
 
-    const directTasks = itemService.listFiltered({
-      project_id: projectId,
-      type: 'task',
-      parent_id: epicId,
-    });
+    const directTasks = listWorkChildren(itemService, projectId, epicId);
     allDescendantTasks.push(...directTasks);
 
     for (const s of epicStories) {
-      const storyTasks = itemService.listFiltered({
-        project_id: projectId,
-        type: 'task',
-        parent_id: s.id,
-      });
+      const storyTasks = listWorkChildren(itemService, projectId, s.id);
       allDescendantTasks.push(...storyTasks);
     }
 
@@ -277,11 +263,7 @@ export function reconcileAllOnStartup(
     // Recompute all stories in this project
     const stories = itemService.listFiltered({ project_id: projectId, type: 'story' });
     for (const story of stories) {
-      const storyTasks = itemService.listFiltered({
-        project_id: projectId,
-        type: 'task',
-        parent_id: story.id,
-      });
+      const storyTasks = listWorkChildren(itemService, projectId, story.id);
 
       const derived = deriveColumnId(storyTasks, sortedColumns);
       if (derived !== null && derived !== story.column_id) {
@@ -304,19 +286,11 @@ export function reconcileAllOnStartup(
 
       let allDescendantTasks: Item[] = [];
 
-      const directTasks = itemService.listFiltered({
-        project_id: projectId,
-        type: 'task',
-        parent_id: epic.id,
-      });
+      const directTasks = listWorkChildren(itemService, projectId, epic.id);
       allDescendantTasks.push(...directTasks);
 
       for (const s of epicStories) {
-        const storyTasks = itemService.listFiltered({
-          project_id: projectId,
-          type: 'task',
-          parent_id: s.id,
-        });
+        const storyTasks = listWorkChildren(itemService, projectId, s.id);
         allDescendantTasks.push(...storyTasks);
       }
 

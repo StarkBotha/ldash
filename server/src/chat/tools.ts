@@ -1,7 +1,7 @@
 import type Database from 'better-sqlite3';
 import type { ToolDefinition } from '../gateway/types.js';
 import type { ToolHandler } from '../gateway/loop.js';
-import type { Services } from '../types.js';
+import { isWorkItemType, type Services } from '../types.js';
 import type { EventBus } from '../events/bus.js';
 import { getPlanningToolDefinitions, createPlanningToolHandler } from '../planning/tools.js';
 import { recomputeAncestors } from '../services/rollup.js';
@@ -16,14 +16,14 @@ export function getItemChatToolDefinitions(): ToolDefinition[] {
     {
       name: 'move_task',
       description:
-        'Move a TASK to a different status column. Only tasks can be moved — story and epic status is derived from their tasks automatically, so never call this on them. Use when the user asks to start, finish, or reprioritize a task.',
+        'Move a TASK, BUG, or INVESTIGATION to a different status column. Only these leaf work items can be moved — story and epic status is derived from their child work items automatically, so never call this on them. Use when the user asks to start, finish, or reprioritize a work item.',
       parameters: {
         type: 'object',
         required: ['item_id', 'column_id'],
         properties: {
           item_id: {
             type: 'string',
-            description: 'The id of the task to move, or its ticket key (e.g. "DUN-12").',
+            description: 'The id of the task/bug/investigation to move, or its ticket key (e.g. "DUN-12").',
           },
           column_id: {
             type: 'string',
@@ -136,7 +136,7 @@ export function createItemChatToolHandler(
         data: { item: movedItem, fromColumnId: item.column_id, toColumnId: resolvedColumn.id },
       });
 
-      if (item.type === 'task' && db) {
+      if (isWorkItemType(item.type) && db) {
         recomputeAncestors(item.id, db, services.items, services.activity, services.columns, bus);
       }
 

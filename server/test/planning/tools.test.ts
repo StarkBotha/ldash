@@ -186,7 +186,7 @@ describe('createPlanningToolHandler', () => {
         column_id: backlogCol.id,
       });
 
-      expect(result).toBe('Error: type must be epic, story, or task');
+      expect(result).toBe('Error: type must be epic, story, task, bug, or investigation');
       expect(services.items.listByProject(project.id)).toHaveLength(0);
     });
 
