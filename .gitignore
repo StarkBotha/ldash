@@ -8,3 +8,5 @@ exports/
 logs/
 .env
 .playwright-mcp/
+.claude/
+CLAUDE.md
