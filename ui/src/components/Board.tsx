@@ -14,9 +14,10 @@ import type { Item } from '../types';
 interface Props {
   projectId: string;
   onBack: () => void;
+  onShowKb: () => void;
 }
 
-export function Board({ projectId, onBack }: Props) {
+export function Board({ projectId, onBack, onShowKb }: Props) {
   const { data: project } = useProject(projectId);
   const { data: columns, isLoading: colsLoading } = useColumns();
   const { data: items, isLoading: itemsLoading } = useItems(projectId);
@@ -115,6 +116,10 @@ export function Board({ projectId, onBack }: Props) {
       }}>
         <button onClick={onBack}>← Back</button>
         <h1 style={{ margin: 0, fontSize: 20 }}>{project?.name}</h1>
+        <div className="view-tabs">
+          <button className="active" disabled>Board</button>
+          <button onClick={onShowKb}>Knowledgebase</button>
+        </div>
         <button onClick={() => setShowProjectForm(true)}>Edit</button>
         <select
           value={epicFilter}
