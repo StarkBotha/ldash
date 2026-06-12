@@ -174,6 +174,135 @@ describe('KbService', () => {
   });
 });
 
+describe('KbService.search', () => {
+  let ctx: App;
+  let projectId: string;
+
+  beforeEach(() => {
+    ctx = createTestApp();
+    projectId = createProject(ctx).id;
+  });
+
+  afterEach(() => {
+    ctx.db.close();
+  });
+
+  it('matches on title with an empty snippet when content does not match', () => {
+    const doc = ctx.kbService.create({ project_id: projectId, title: 'Deploy runbook', content: 'unrelated body' });
+    const results = ctx.kbService.search(projectId, 'deploy');
+    expect(results).toHaveLength(1);
+    expect(results[0]).toEqual({
+      id: doc.id,
+      project_id: projectId,
+      title: 'Deploy runbook',
+      updated_at: doc.updated_at,
+      snippet: '',
+    });
+  });
+
+  it('matches on content with a snippet centered on the first occurrence', () => {
+    const content = 'a'.repeat(150) + 'NEEDLE' + 'b'.repeat(150);
+    ctx.kbService.create({ project_id: projectId, title: 'Long doc', content });
+
+    const results = ctx.kbService.search(projectId, 'needle');
+    expect(results).toHaveLength(1);
+    const snippet = results[0].snippet;
+    expect(snippet.startsWith('…')).toBe(true);
+    expect(snippet.endsWith('…')).toBe(true);
+    expect(snippet).toContain('NEEDLE');
+    // 160 chars of content plus the two ellipses
+    expect(snippet.length).toBe(162);
+  });
+
+  it('omits the leading ellipsis when the match is at the start of content', () => {
+    const content = 'needle' + 'x'.repeat(300);
+    ctx.kbService.create({ project_id: projectId, title: 'Front doc', content });
+
+    const [result] = ctx.kbService.search(projectId, 'needle');
+    expect(result.snippet.startsWith('needle')).toBe(true);
+    expect(result.snippet.endsWith('…')).toBe(true);
+    expect(result.snippet.length).toBe(161);
+  });
+
+  it('omits the trailing ellipsis when the match is at the end of content', () => {
+    const content = 'x'.repeat(300) + 'needle';
+    ctx.kbService.create({ project_id: projectId, title: 'Back doc', content });
+
+    const [result] = ctx.kbService.search(projectId, 'needle');
+    expect(result.snippet.startsWith('…')).toBe(true);
+    expect(result.snippet.endsWith('needle')).toBe(true);
+    expect(result.snippet.length).toBe(161);
+  });
+
+  it('returns short content whole, with no ellipses', () => {
+    ctx.kbService.create({ project_id: projectId, title: 'Short doc', content: 'a tiny needle here' });
+    const [result] = ctx.kbService.search(projectId, 'needle');
+    expect(result.snippet).toBe('a tiny needle here');
+  });
+
+  it('matches case-insensitively in both title and content', () => {
+    ctx.kbService.create({ project_id: projectId, title: 'ARCHITECTURE', content: 'nothing' });
+    ctx.kbService.create({ project_id: projectId, title: 'Other', content: 'the Architecture diagram' });
+
+    const results = ctx.kbService.search(projectId, 'architecture');
+    expect(results).toHaveLength(2);
+    // Content match snippet windows on the original casing
+    expect(results.find((r) => r.title === 'Other')?.snippet).toBe('the Architecture diagram');
+  });
+
+  it('escapes LIKE wildcards — % and _ in the query match literally', () => {
+    ctx.kbService.create({ project_id: projectId, title: 'Percent doc', content: 'progress is 50% complete' });
+    ctx.kbService.create({ project_id: projectId, title: 'Underscore doc', content: 'uses snake_case names' });
+    ctx.kbService.create({ project_id: projectId, title: 'Plain doc', content: 'progress is 50 percent' });
+
+    const percent = ctx.kbService.search(projectId, '50%');
+    expect(percent.map((r) => r.title)).toEqual(['Percent doc']);
+
+    const underscore = ctx.kbService.search(projectId, 'snake_case');
+    expect(underscore.map((r) => r.title)).toEqual(['Underscore doc']);
+  });
+
+  it('orders title matches before content-only matches, alphabetically within each group', () => {
+    ctx.kbService.create({ project_id: projectId, title: 'Body only B', content: 'mentions needle here' });
+    ctx.kbService.create({ project_id: projectId, title: 'Zebra needle', content: 'no match in body' });
+    ctx.kbService.create({ project_id: projectId, title: 'Alpha needle', content: 'no match in body' });
+    ctx.kbService.create({ project_id: projectId, title: 'Body only A', content: 'another needle mention' });
+
+    const results = ctx.kbService.search(projectId, 'needle');
+    expect(results.map((r) => r.title)).toEqual([
+      'Alpha needle',
+      'Zebra needle',
+      'Body only A',
+      'Body only B',
+    ]);
+  });
+
+  it('scopes results to the project', () => {
+    ctx.kbService.create({ project_id: projectId, title: 'Mine', content: 'needle' });
+    const other = createProject(ctx, 'Other Project');
+    ctx.kbService.create({ project_id: other.id, title: 'Theirs', content: 'needle' });
+
+    const results = ctx.kbService.search(projectId, 'needle');
+    expect(results.map((r) => r.title)).toEqual(['Mine']);
+  });
+
+  it('is read-only — writes no activity and emits no bus events', () => {
+    ctx.kbService.create({ project_id: projectId, title: 'Doc', content: 'needle' });
+    const before = ctx.activityService.listByProject(projectId, { limit: 50 }).length;
+
+    const events: BoardEvent[] = [];
+    const unsubscribe = eventBus.subscribe((e) => events.push(e));
+    try {
+      ctx.kbService.search(projectId, 'needle');
+    } finally {
+      unsubscribe();
+    }
+
+    expect(events).toEqual([]);
+    expect(ctx.activityService.listByProject(projectId, { limit: 50 }).length).toBe(before);
+  });
+});
+
 describe('kb routes', () => {
   let ctx: App;
   let projectId: string;
@@ -229,6 +358,31 @@ describe('kb routes', () => {
 
   it('POST returns 404 for a missing project', async () => {
     const res = await req(ctx.app, 'POST', '/api/projects/nope/kb', { title: 'Doc' });
+    expect(res.status).toBe(404);
+  });
+
+  it('GET /api/projects/:projectId/kb/search returns matching results with snippets', async () => {
+    ctx.kbService.create({ project_id: projectId, title: 'Runbook', content: 'restart the needle service' });
+    ctx.kbService.create({ project_id: projectId, title: 'Unrelated', content: 'nothing here' });
+
+    const res = await req(ctx.app, 'GET', `/api/projects/${projectId}/kb/search?q=needle`);
+    expect(res.status).toBe(200);
+    const results = res.body as Record<string, unknown>[];
+    expect(results).toHaveLength(1);
+    expect(Object.keys(results[0]).sort()).toEqual(['id', 'project_id', 'snippet', 'title', 'updated_at']);
+    expect(results[0].title).toBe('Runbook');
+    expect(results[0].snippet).toBe('restart the needle service');
+  });
+
+  it('GET /api/projects/:projectId/kb/search returns 400 for a missing or blank q', async () => {
+    const missing = await req(ctx.app, 'GET', `/api/projects/${projectId}/kb/search`);
+    expect(missing.status).toBe(400);
+    const blank = await req(ctx.app, 'GET', `/api/projects/${projectId}/kb/search?q=%20%20`);
+    expect(blank.status).toBe(400);
+  });
+
+  it('GET /api/projects/:projectId/kb/search returns 404 for a missing project', async () => {
+    const res = await req(ctx.app, 'GET', '/api/projects/nope/kb/search?q=needle');
     expect(res.status).toBe(404);
   });
 
@@ -308,12 +462,13 @@ describe('kb MCP tools', () => {
     ctx.db.close();
   });
 
-  it('registers the four kb tools', () => {
+  it('registers the five kb tools', () => {
     expect([...tools.keys()].sort()).toEqual([
       'ldash_delete_kb_doc',
       'ldash_get_kb_doc',
       'ldash_list_kb_docs',
       'ldash_save_kb_doc',
+      'ldash_search_kb_docs',
     ]);
   });
 
@@ -390,9 +545,38 @@ describe('kb MCP tools', () => {
     expect(missing.isError).toBe(true);
   });
 
-  it('all four tools error on a missing project', async () => {
+  it('ldash_search_kb_docs returns matching docs with snippets', async () => {
+    ctx.kbService.create({ project_id: projectId, title: 'Deploy runbook', content: 'restart the needle service' });
+    ctx.kbService.create({ project_id: projectId, title: 'Unrelated', content: 'nothing here' });
+
+    const search = tools.get('ldash_search_kb_docs')!;
+    const result = await search({ project_id: projectId, query: 'needle' });
+    expect(result.isError).toBeUndefined();
+
+    const docs = JSON.parse(textOf(result)) as Record<string, unknown>[];
+    expect(docs).toHaveLength(1);
+    expect(Object.keys(docs[0]).sort()).toEqual(['id', 'snippet', 'title', 'updated_at']);
+    expect(docs[0].title).toBe('Deploy runbook');
+    expect(docs[0].snippet).toBe('restart the needle service');
+  });
+
+  it('ldash_search_kb_docs errors on a blank query', async () => {
+    const search = tools.get('ldash_search_kb_docs')!;
+    const result = await search({ project_id: projectId, query: '   ' });
+    expect(result.isError).toBe(true);
+    expect(textOf(result)).toContain('query must not be empty');
+  });
+
+  it('ldash_search_kb_docs errors on a missing project', async () => {
+    const search = tools.get('ldash_search_kb_docs')!;
+    const result = await search({ project_id: 'nope', query: 'needle' });
+    expect(result.isError).toBe(true);
+    expect(textOf(result)).toContain('project not found');
+  });
+
+  it('all five tools error on a missing project', async () => {
     for (const [name, handler] of tools) {
-      const input: Record<string, unknown> = { project_id: 'nope', title: 'x', content: 'x', doc: 'x' };
+      const input: Record<string, unknown> = { project_id: 'nope', title: 'x', content: 'x', doc: 'x', query: 'x' };
       const result = await handler(input);
       expect(result.isError, `${name} should error`).toBe(true);
       expect(textOf(result)).toContain('project not found');
