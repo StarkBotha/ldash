@@ -37,6 +37,7 @@ vi.mock('../api/client', () => ({
       create: vi.fn(),
       update: vi.fn(),
       remove: vi.fn(),
+      search: vi.fn(),
     },
   },
 }));
@@ -171,5 +172,78 @@ describe('KnowledgeBase', () => {
     await waitFor(() => expect(mockedApi.kb.remove).toHaveBeenCalledWith('d1'));
     expect(confirmSpy).toHaveBeenCalled();
     confirmSpy.mockRestore();
+  });
+
+  it('typing a query searches and shows result titles + snippets', async () => {
+    mockedApi.kb.search.mockResolvedValue([
+      { id: 'd1', project_id: 'p1', title: 'Architecture', updated_at: '', snippet: 'the api service runs on port 3000' },
+      { id: 'd2', project_id: 'p1', title: 'Hosting', updated_at: '', snippet: '' },
+    ]);
+
+    renderKb();
+    await screen.findByText('Architecture');
+    fireEvent.change(screen.getByPlaceholderText('Search docs…'), {
+      target: { value: 'port' },
+    });
+
+    await waitFor(() => expect(mockedApi.kb.search).toHaveBeenCalledWith('p1', 'port'));
+    expect(await screen.findByText('the api service runs on port 3000')).toBeTruthy();
+    expect(screen.getByText('Hosting')).toBeTruthy();
+  });
+
+  it('clicking a search result loads that doc', async () => {
+    mockedApi.kb.search.mockResolvedValue([
+      { id: 'd2', project_id: 'p1', title: 'Hosting', updated_at: '', snippet: 'deployed on a vps' },
+    ]);
+    const hostingDoc: KbDocument = {
+      id: 'd2',
+      project_id: 'p1',
+      title: 'Hosting',
+      content: '# Hosting notes',
+      created_at: '',
+      updated_at: '',
+    };
+    mockedApi.kb.get.mockResolvedValue(hostingDoc);
+
+    renderKb();
+    fireEvent.change(await screen.findByPlaceholderText('Search docs…'), {
+      target: { value: 'vps' },
+    });
+    fireEvent.click(await screen.findByText('deployed on a vps'));
+
+    await waitFor(() => expect(mockedApi.kb.get).toHaveBeenCalledWith('d2'));
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Hosting notes' })
+    ).toBeTruthy();
+  });
+
+  it('clearing the search restores the full doc list', async () => {
+    mockedApi.kb.search.mockResolvedValue([
+      { id: 'd1', project_id: 'p1', title: 'Architecture', updated_at: '', snippet: 'sys' },
+    ]);
+
+    renderKb();
+    await screen.findByText('Hosting');
+    fireEvent.change(screen.getByPlaceholderText('Search docs…'), {
+      target: { value: 'arch' },
+    });
+    await waitFor(() => expect(screen.queryByText('Hosting')).toBeNull());
+
+    fireEvent.click(screen.getByLabelText('Clear search'));
+
+    expect(await screen.findByText('Hosting')).toBeTruthy();
+    expect(screen.getByText('Architecture')).toBeTruthy();
+  });
+
+  it('shows "No matches" when the search returns nothing', async () => {
+    mockedApi.kb.search.mockResolvedValue([]);
+
+    renderKb();
+    await screen.findByText('Architecture');
+    fireEvent.change(screen.getByPlaceholderText('Search docs…'), {
+      target: { value: 'zzz' },
+    });
+
+    expect(await screen.findByText('No matches')).toBeTruthy();
   });
 });
