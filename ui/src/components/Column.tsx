@@ -126,7 +126,7 @@ export function Column({ column, items, allItems, collapsedIds, onToggleCollapse
       <div style={{ flex: 1, overflowY: 'auto', padding: 8, display: 'flex', flexDirection: 'column', gap: 0 }}>
         {groups.map((group) => (
           <div key={group.epicId ?? '__no_epic__'}>
-            {/* Epic group header — label only */}
+            {/* Epic group header — label + collapse toggle (skip "No epic") */}
             <div style={{
               display: 'flex',
               alignItems: 'center',
@@ -134,6 +134,26 @@ export function Column({ column, items, allItems, collapsedIds, onToggleCollapse
               marginTop: 8,
               marginBottom: 4,
             }}>
+              {group.epicId != null && (
+                <button
+                  onClick={() => onToggleCollapse(group.epicId!)}
+                  title={collapsedIds.has(group.epicId)
+                    ? `Show items in ${group.epicTitle}`
+                    : `Hide items in ${group.epicTitle}`}
+                  style={{
+                    flexShrink: 0,
+                    border: '1px solid #e0e0e0',
+                    background: collapsedIds.has(group.epicId) ? '#eee' : '#fff',
+                    borderRadius: 4,
+                    padding: '0 5px',
+                    fontSize: 11,
+                    color: '#666',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {collapsedIds.has(group.epicId) ? '▸' : '▾'}
+                </button>
+              )}
               <span style={{
                 fontSize: 11,
                 fontWeight: 600,
