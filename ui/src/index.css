@@ -72,6 +72,67 @@ button {
   gap: 8px;
 }
 
+.kb-search {
+  position: relative;
+}
+
+.kb-search-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 6px 28px 6px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #1f2937;
+  background: #fff;
+}
+
+.kb-search-input::placeholder {
+  color: #9ca3af;
+}
+
+.kb-search-clear {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: none;
+  background: none;
+  color: #9ca3af;
+  padding: 2px 6px;
+  font-size: 12px;
+  line-height: 1;
+  border-radius: 4px;
+}
+
+.kb-search-clear:hover {
+  color: #374151;
+  background: #f3f4f6;
+}
+
+/* Search hits stack a title over a snippet, so the one-line ellipsis rule
+   from .kb-doc-list button moves down onto the spans instead. */
+.kb-doc-list button.kb-search-result {
+  white-space: normal;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.kb-search-result-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kb-search-result-snippet {
+  font-size: 12px;
+  color: #6b7280;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .kb-new-doc {
   padding: 6px 10px;
   border: 1px dashed #9ca3af;

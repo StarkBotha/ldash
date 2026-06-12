@@ -8,6 +8,7 @@ import type {
   Attachment,
   KbDocument,
   KbDocSummary,
+  KbSearchResult,
 } from '../types';
 
 const BASE = '/api';
@@ -112,6 +113,8 @@ export const api = {
       apiFetch<KbDocument>(`/kb/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
     remove: (id: string) =>
       apiFetch<void>(`/kb/${id}`, { method: 'DELETE' }),
+    search: (projectId: string, q: string) =>
+      apiFetch<KbSearchResult[]>(`/projects/${projectId}/kb/search?q=${encodeURIComponent(q)}`),
   },
 
   activity: {

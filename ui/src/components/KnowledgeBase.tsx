@@ -2,7 +2,14 @@ import { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useProject } from '../hooks/useProjects';
-import { useKbDocs, useKbDoc, useCreateKbDoc, useUpdateKbDoc, useDeleteKbDoc } from '../hooks/useKb';
+import {
+  useKbDocs,
+  useKbDoc,
+  useKbSearch,
+  useCreateKbDoc,
+  useUpdateKbDoc,
+  useDeleteKbDoc,
+} from '../hooks/useKb';
 import { useSSE } from '../hooks/useSSE';
 import { ConnectionIndicator } from './ConnectionIndicator';
 import { Mermaid } from './Mermaid';
@@ -51,7 +58,11 @@ export function KnowledgeBase({ projectId, onBack, onShowBoard }: Props) {
   const [mode, setMode] = useState<'view' | 'edit' | 'create'>('view');
   const [draftTitle, setDraftTitle] = useState('');
   const [draftContent, setDraftContent] = useState('');
+  const [search, setSearch] = useState('');
   const { status } = useSSE(projectId);
+
+  const searching = search.trim() !== '';
+  const { data: searchResults, isLoading: searchLoading } = useKbSearch(projectId, search);
 
   const { data: selectedDoc } = useKbDoc(mode === 'create' ? null : selectedId);
 
@@ -121,10 +132,55 @@ export function KnowledgeBase({ projectId, onBack, onShowBoard }: Props) {
 
       <div className="kb-layout">
         <aside className="kb-sidebar">
+          <div className="kb-search">
+            <input
+              className="kb-search-input"
+              type="text"
+              placeholder="Search docs…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+            {search !== '' && (
+              <button
+                className="kb-search-clear"
+                aria-label="Clear search"
+                onClick={() => setSearch('')}
+              >
+                ✕
+              </button>
+            )}
+          </div>
           <button className="kb-new-doc" onClick={startCreate}>
             + New document
           </button>
-          {isLoading ? (
+          {searching ? (
+            searchLoading ? (
+              <div className="kb-sidebar-empty">Searching…</div>
+            ) : !searchResults || searchResults.length === 0 ? (
+              <div className="kb-sidebar-empty">No matches</div>
+            ) : (
+              <ul className="kb-doc-list">
+                {searchResults.map((result) => (
+                  <li key={result.id}>
+                    <button
+                      className={`kb-search-result${
+                        result.id === selectedId && mode !== 'create' ? ' active' : ''
+                      }`}
+                      onClick={() => {
+                        setSelectedId(result.id);
+                        setMode('view');
+                      }}
+                    >
+                      <span className="kb-search-result-title">{result.title}</span>
+                      {result.snippet !== '' && (
+                        <span className="kb-search-result-snippet">{result.snippet}</span>
+                      )}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )
+          ) : isLoading ? (
             <div className="kb-sidebar-empty">Loading…</div>
           ) : sortedDocs.length === 0 ? (
             <div className="kb-sidebar-empty">No documents yet</div>
