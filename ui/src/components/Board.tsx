@@ -4,6 +4,7 @@ import { useColumns, useItems } from '../hooks/useBoard';
 import { useSSE } from '../hooks/useSSE';
 import { Column } from './Column';
 import { ConnectionIndicator } from './ConnectionIndicator';
+import { HelpTip } from './HelpTip';
 import { ItemDetailPanel } from './ItemDetailPanel';
 import { ItemForm } from './ItemForm';
 import { ProjectForm } from './ProjectForm';
@@ -138,6 +139,16 @@ export function Board({ projectId, onBack, onShowKb }: Props) {
           onChange={(e) => setSearch(e.target.value)}
           style={{ marginLeft: 8, padding: '4px 8px', width: 200 }}
         />
+        <HelpTip>
+          <p>
+            Filters the board as you type — nothing is sent to the server. Case-insensitive;
+            matches your text anywhere in a ticket's title, key (e.g. LDA-12), or description.
+          </p>
+          <p>
+            Stacks with the epic filter: only tickets matching both are shown. Clear the box to
+            show everything.
+          </p>
+        </HelpTip>
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
           <button onClick={() => setIsPlanningMode(true)}>Plan</button>
           <button

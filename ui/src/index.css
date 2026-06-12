@@ -377,3 +377,83 @@ button {
   margin-top: 4px;
 }
 
+/* ---- Search help popover ---- */
+
+.help-tip {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+.help-tip-button {
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 1px solid #d1d5db;
+  border-radius: 50%;
+  background: #fff;
+  color: #9ca3af;
+  font-size: 11px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.help-tip-button:hover {
+  color: #374151;
+  border-color: #9ca3af;
+  background: #f3f4f6;
+}
+
+.help-tip-panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 1000;
+  width: 280px;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  font-size: 13px;
+  line-height: 1.45;
+  color: #374151;
+  text-align: left;
+}
+
+.help-tip-panel p {
+  margin: 0 0 8px;
+}
+
+.help-tip-panel p:last-child {
+  margin-bottom: 0;
+}
+
+/* In the kb sidebar a 280px right-anchored panel would spill past the sidebar's
+   left edge and get clipped by its overflow — anchor the panel to the full
+   .kb-search row instead so it fits inside the 260px sidebar. */
+.kb-search .help-tip {
+  position: static;
+}
+
+.kb-search .help-tip-panel {
+  left: 0;
+  right: 0;
+  width: auto;
+}
+
+/* The kb search row gains a "?" button beside the input; the input + clear
+   button keep their own relative wrapper so the clear stays inside the input. */
+.kb-search {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.kb-search-field {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+

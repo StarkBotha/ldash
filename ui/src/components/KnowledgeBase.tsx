@@ -12,6 +12,7 @@ import {
 } from '../hooks/useKb';
 import { useSSE } from '../hooks/useSSE';
 import { ConnectionIndicator } from './ConnectionIndicator';
+import { HelpTip } from './HelpTip';
 import { Mermaid } from './Mermaid';
 import type { Components } from 'react-markdown';
 
@@ -133,22 +134,36 @@ export function KnowledgeBase({ projectId, onBack, onShowBoard }: Props) {
       <div className="kb-layout">
         <aside className="kb-sidebar">
           <div className="kb-search">
-            <input
-              className="kb-search-input"
-              type="text"
-              placeholder="Search docs…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-            {search !== '' && (
-              <button
-                className="kb-search-clear"
-                aria-label="Clear search"
-                onClick={() => setSearch('')}
-              >
-                ✕
-              </button>
-            )}
+            <div className="kb-search-field">
+              <input
+                className="kb-search-input"
+                type="text"
+                placeholder="Search docs…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+              {search !== '' && (
+                <button
+                  className="kb-search-clear"
+                  aria-label="Clear search"
+                  onClick={() => setSearch('')}
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+            <HelpTip>
+              <p>
+                Searches document titles and content on the server. Case-insensitive; matches your
+                text anywhere it appears (plain substring — no wildcards, % and _ are matched
+                literally).
+              </p>
+              <p>
+                Results show a short snippet around the first match in the content; documents whose
+                title matches are listed first. Click a result to open it; clear the box to show
+                all documents.
+              </p>
+            </HelpTip>
           </div>
           <button className="kb-new-doc" onClick={startCreate}>
             + New document

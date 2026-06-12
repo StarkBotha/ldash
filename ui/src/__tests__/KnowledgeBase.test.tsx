@@ -235,6 +235,14 @@ describe('KnowledgeBase', () => {
     expect(screen.getByText('Architecture')).toBeTruthy();
   });
 
+  it('the search "?" opens a help popover explaining the search', async () => {
+    renderKb();
+    await screen.findByText('Architecture');
+
+    fireEvent.click(screen.getByLabelText('Search help'));
+    expect(screen.getByText(/Searches document titles and content on the server/)).toBeTruthy();
+  });
+
   it('shows "No matches" when the search returns nothing', async () => {
     mockedApi.kb.search.mockResolvedValue([]);
 
