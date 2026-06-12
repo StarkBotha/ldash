@@ -86,6 +86,30 @@ export function registerKbTools(server: McpServer, services: Services): void {
     }
   );
 
+  // ldash_search_kb_docs
+  server.tool(
+    'ldash_search_kb_docs',
+    'Search the knowledgebase documents in a project by free text. Matches against document titles AND markdown content (case-insensitive substring) and returns a snippet of content around the first match for each hit. Use this to find which document covers a topic, then read it with ldash_get_kb_doc.',
+    {
+      project_id: z.string().describe('The id of the project whose knowledgebase to search.'),
+      query: z.string().min(1).describe('Text to search for in document titles and content. Required and must not be empty.'),
+    },
+    async (input) => {
+      const project = services.projects.get(input.project_id);
+      if (!project) {
+        return { content: [{ type: 'text' as const, text: 'Error: project not found' }], isError: true };
+      }
+      if (input.query.trim() === '') {
+        return { content: [{ type: 'text' as const, text: 'Error: query must not be empty' }], isError: true };
+      }
+
+      const results = services.kb
+        .search(input.project_id, input.query)
+        .map((r) => ({ id: r.id, title: r.title, snippet: r.snippet, updated_at: r.updated_at }));
+      return { content: [{ type: 'text' as const, text: JSON.stringify(results, null, 2) }] };
+    }
+  );
+
   // ldash_delete_kb_doc
   server.tool(
     'ldash_delete_kb_doc',

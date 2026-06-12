@@ -1,6 +1,6 @@
 import type Database from 'better-sqlite3';
 import { nanoid } from 'nanoid';
-import type { ActorType, KbDocument, KbDocumentSummary } from '../types.js';
+import type { ActorType, KbDocument, KbDocumentSummary, KbSearchResult } from '../types.js';
 import { EventTypes } from '../types.js';
 import type { ActivityService } from './activity.js';
 import type { EventBus } from '../events/bus.js';
@@ -28,6 +28,25 @@ function rowToDoc(row: KbDocumentRow): KbDocument {
 }
 
 const SUMMARY_COLUMNS = 'id, project_id, title, created_at, updated_at';
+
+const SNIPPET_LENGTH = 160;
+
+/** ~160 chars of content centered on the first case-insensitive occurrence of query, or '' when content does not match. */
+function makeSnippet(content: string, query: string): string {
+  const index = content.toLowerCase().indexOf(query.toLowerCase());
+  if (index === -1) return '';
+
+  const half = Math.max(0, Math.floor((SNIPPET_LENGTH - query.length) / 2));
+  let start = Math.max(0, index - half);
+  const end = Math.min(content.length, start + SNIPPET_LENGTH);
+  if (end - start < SNIPPET_LENGTH) {
+    start = Math.max(0, end - SNIPPET_LENGTH);
+  }
+
+  const prefix = start > 0 ? '…' : '';
+  const suffix = end < content.length ? '…' : '';
+  return prefix + content.slice(start, end) + suffix;
+}
 
 interface Actor {
   actor_type?: ActorType;
@@ -83,6 +102,23 @@ export class KbService {
       .prepare('SELECT * FROM kb_documents WHERE project_id = ? AND lower(title) = lower(?)')
       .get(projectId, title) as KbDocumentRow | undefined;
     return row ? rowToDoc(row) : undefined;
+  }
+
+  /** Read-only search over titles and content — writes no activity and emits no events. */
+  search(projectId: string, query: string): KbSearchResult[] {
+    const like = '%' + query.replace(/[\\%_]/g, (m) => '\\' + m) + '%';
+    const rows = this.db
+      .prepare(
+        "SELECT * FROM kb_documents WHERE project_id = ? AND (title LIKE ? ESCAPE '\\' OR content LIKE ? ESCAPE '\\') ORDER BY (title LIKE ? ESCAPE '\\') DESC, title ASC"
+      )
+      .all(projectId, like, like, like) as KbDocumentRow[];
+    return rows.map((row) => ({
+      id: row.id,
+      project_id: row.project_id,
+      title: row.title,
+      updated_at: row.updated_at,
+      snippet: makeSnippet(row.content, query),
+    }));
   }
 
   list(projectId: string): KbDocumentSummary[] {

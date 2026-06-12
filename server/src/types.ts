@@ -80,6 +80,15 @@ export interface KbDocument {
 /** Listing shape for knowledgebase documents — content is omitted. */
 export type KbDocumentSummary = Omit<KbDocument, 'content'>;
 
+/** Search result shape for knowledgebase documents — a snippet of content around the first match, or '' when only the title matched. */
+export interface KbSearchResult {
+  id: string;
+  project_id: string;
+  title: string;
+  updated_at: string;
+  snippet: string;
+}
+
 export interface ActivityEntry {
   id: string;
   item_id: string | null;

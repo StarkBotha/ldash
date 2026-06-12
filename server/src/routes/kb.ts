@@ -21,6 +21,22 @@ export function projectKbRouter(kbService: KbService, projectService: ProjectSer
     return c.json(kbService.list(projectId));
   });
 
+  // GET /api/projects/:projectId/kb/search?q=term
+  app.get('/search', (c) => {
+    const projectId = c.req.param('projectId') as string;
+    const project = projectService.get(projectId);
+    if (!project) {
+      throw makeError('Project not found', 404);
+    }
+
+    const q = c.req.query('q');
+    if (!q || q.trim() === '') {
+      throw makeError('q is required and must be a non-empty string', 400);
+    }
+
+    return c.json(kbService.search(projectId, q));
+  });
+
   // POST /api/projects/:projectId/kb
   app.post('/', async (c) => {
     const projectId = c.req.param('projectId') as string;
