@@ -8,12 +8,14 @@ import { ItemService } from '../services/items.js';
 import { CommentService } from '../services/comments.js';
 import { AttachmentService } from '../services/attachments.js';
 import { ActivityService } from '../services/activity.js';
+import { KbService } from '../services/kb.js';
 import { projectsRouter } from '../routes/projects.js';
 import { columnsRouter } from '../routes/columns.js';
 import { itemsRouter, projectItemsRouter } from '../routes/items.js';
 import { commentsRouter, itemCommentsRouter } from '../routes/comments.js';
 import { attachmentsRouter, itemAttachmentsRouter } from '../routes/attachments.js';
 import { projectActivityRouter, itemActivityRouter } from '../routes/activity.js';
+import { kbRouter, projectKbRouter } from '../routes/kb.js';
 import { onError } from '../middleware/error.js';
 import { eventBus } from '../events/bus.js';
 import { Hono } from 'hono';
@@ -33,6 +35,7 @@ export function createTestApp() {
   const commentService = new CommentService(db);
   const activityService = new ActivityService(db);
   const attachmentService = new AttachmentService(db, activityService, eventBus);
+  const kbService = new KbService(db, activityService, eventBus);
 
   const app = new Hono();
 
@@ -43,6 +46,7 @@ export function createTestApp() {
   const projectNestedApp = new Hono();
   projectNestedApp.route('/items', projectItemsRouter(itemService, projectService, activityService));
   projectNestedApp.route('/activity', projectActivityRouter(activityService, projectService));
+  projectNestedApp.route('/kb', projectKbRouter(kbService, projectService));
   app.route('/api/projects/:projectId', projectNestedApp);
 
   const itemNestedApp = new Hono();
@@ -53,10 +57,11 @@ export function createTestApp() {
 
   app.route('/api/comments', commentsRouter(commentService, itemService, activityService));
   app.route('/api/attachments', attachmentsRouter(attachmentService));
+  app.route('/api/kb', kbRouter(kbService));
 
   app.onError(onError);
 
-  return { app, db, projectService, columnService, itemService, commentService, attachmentService, activityService };
+  return { app, db, projectService, columnService, itemService, commentService, attachmentService, activityService, kbService };
 }
 
 export async function req(
