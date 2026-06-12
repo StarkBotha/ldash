@@ -86,6 +86,15 @@ export interface KbDocument {
 /** The KB list endpoint returns docs without their content. */
 export type KbDocSummary = Omit<KbDocument, 'content'>;
 
+/** A KB search hit; snippet is '' when only the title matched. */
+export interface KbSearchResult {
+  id: string;
+  project_id: string;
+  title: string;
+  updated_at: string;
+  snippet: string;
+}
+
 export type ConversationType = 'item' | 'planning';
 
 export interface Conversation {
