@@ -6,6 +6,7 @@ import {
   useKbDocs,
   useKbDoc,
   useKbSearch,
+  useKbSearchAll,
   useCreateKbDoc,
   useUpdateKbDoc,
   useDeleteKbDoc,
@@ -15,6 +16,12 @@ import { ConnectionIndicator } from './ConnectionIndicator';
 import { HelpTip } from './HelpTip';
 import { Mermaid } from './Mermaid';
 import type { Components } from 'react-markdown';
+import type { KbSearchResult, KbGlobalSearchResult } from '../types';
+
+// Global ("all projects") search hits carry the owning project's name
+function isGlobalResult(r: KbSearchResult | KbGlobalSearchResult): r is KbGlobalSearchResult {
+  return 'project_name' in r;
+}
 
 interface Props {
   projectId: string;
@@ -60,10 +67,22 @@ export function KnowledgeBase({ projectId, onBack, onShowBoard }: Props) {
   const [draftTitle, setDraftTitle] = useState('');
   const [draftContent, setDraftContent] = useState('');
   const [search, setSearch] = useState('');
+  // "All projects" search mode — results come from the global endpoint instead
+  const [allProjects, setAllProjects] = useState(false);
+  // Project name of a cross-project doc opened from a global search result
+  // (only known when it came from the search result — list/local docs are null)
+  const [selectedProjectName, setSelectedProjectName] = useState<string | null>(null);
   const { status } = useSSE(projectId);
 
   const searching = search.trim() !== '';
-  const { data: searchResults, isLoading: searchLoading } = useKbSearch(projectId, search);
+  // Passing an empty query disables the per-project search while the toggle is on
+  const { data: localResults, isLoading: localLoading } = useKbSearch(
+    projectId,
+    allProjects ? '' : search
+  );
+  const { data: globalResults, isLoading: globalLoading } = useKbSearchAll(search, allProjects);
+  const searchResults = allProjects ? globalResults : localResults;
+  const searchLoading = allProjects ? globalLoading : localLoading;
 
   const { data: selectedDoc } = useKbDoc(mode === 'create' ? null : selectedId);
 
@@ -163,8 +182,20 @@ export function KnowledgeBase({ projectId, onBack, onShowBoard }: Props) {
                 title matches are listed first. Click a result to open it; clear the box to show
                 all documents.
               </p>
+              <p>
+                "All projects" searches every project's knowledgebase; results show which project
+                each document belongs to.
+              </p>
             </HelpTip>
           </div>
+          <label className="kb-search-all">
+            <input
+              type="checkbox"
+              checked={allProjects}
+              onChange={(e) => setAllProjects(e.target.checked)}
+            />
+            All projects
+          </label>
           <button className="kb-new-doc" onClick={startCreate}>
             + New document
           </button>
@@ -184,9 +215,19 @@ export function KnowledgeBase({ projectId, onBack, onShowBoard }: Props) {
                       onClick={() => {
                         setSelectedId(result.id);
                         setMode('view');
+                        setSelectedProjectName(
+                          isGlobalResult(result) && result.project_id !== projectId
+                            ? result.project_name
+                            : null
+                        );
                       }}
                     >
-                      <span className="kb-search-result-title">{result.title}</span>
+                      <span className="kb-search-result-title">
+                        {result.title}
+                        {isGlobalResult(result) && (
+                          <span className="kb-search-result-project">{result.project_name}</span>
+                        )}
+                      </span>
                       {result.snippet !== '' && (
                         <span className="kb-search-result-snippet">{result.snippet}</span>
                       )}
@@ -208,6 +249,7 @@ export function KnowledgeBase({ projectId, onBack, onShowBoard }: Props) {
                     onClick={() => {
                       setSelectedId(doc.id);
                       setMode('view');
+                      setSelectedProjectName(null);
                     }}
                   >
                     {doc.title}
@@ -246,6 +288,9 @@ export function KnowledgeBase({ projectId, onBack, onShowBoard }: Props) {
           ) : selectedDoc ? (
             <article className="kb-doc">
               <div className="kb-doc-toolbar">
+                {selectedProjectName !== null && selectedDoc.project_id !== projectId && (
+                  <span className="kb-doc-project">{selectedProjectName}</span>
+                )}
                 <button onClick={startEdit}>Edit</button>
                 <button onClick={remove} disabled={deleteDoc.isPending}>
                   Delete

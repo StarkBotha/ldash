@@ -38,6 +38,7 @@ vi.mock('../api/client', () => ({
       update: vi.fn(),
       remove: vi.fn(),
       search: vi.fn(),
+      searchAll: vi.fn(),
     },
   },
 }));
@@ -253,5 +254,97 @@ describe('KnowledgeBase', () => {
     });
 
     expect(await screen.findByText('No matches')).toBeTruthy();
+  });
+
+  it('"All projects" toggle searches globally and shows project badges', async () => {
+    mockedApi.kb.searchAll.mockResolvedValue([
+      {
+        id: 'd1',
+        project_id: 'p1',
+        project_name: 'demo',
+        title: 'Architecture',
+        updated_at: '',
+        snippet: 'the api service',
+      },
+      {
+        id: 'x1',
+        project_id: 'p2',
+        project_name: 'otherproj',
+        title: 'Deploy guide',
+        updated_at: '',
+        snippet: 'api deploy steps',
+      },
+    ]);
+
+    renderKb();
+    await screen.findByText('Hosting');
+    fireEvent.click(screen.getByLabelText('All projects'));
+    fireEvent.change(screen.getByPlaceholderText('Search docs…'), {
+      target: { value: 'api' },
+    });
+
+    await waitFor(() => expect(mockedApi.kb.searchAll).toHaveBeenCalledWith('api'));
+    expect(mockedApi.kb.search).not.toHaveBeenCalled();
+    expect(await screen.findByText('Deploy guide')).toBeTruthy();
+    expect(screen.getByText('otherproj')).toBeTruthy();
+    // 'demo' appears in the page header too — the second hit is the result badge
+    expect(screen.getAllByText('demo')).toHaveLength(2);
+  });
+
+  it('clicking a cross-project result opens that doc by id', async () => {
+    mockedApi.kb.searchAll.mockResolvedValue([
+      {
+        id: 'x1',
+        project_id: 'p2',
+        project_name: 'otherproj',
+        title: 'Deploy guide',
+        updated_at: '',
+        snippet: 'api deploy steps',
+      },
+    ]);
+    const crossDoc: KbDocument = {
+      id: 'x1',
+      project_id: 'p2',
+      title: 'Deploy guide',
+      content: '# Deploy notes',
+      created_at: '',
+      updated_at: '',
+    };
+    mockedApi.kb.get.mockResolvedValue(crossDoc);
+
+    renderKb();
+    await screen.findByText('Hosting');
+    fireEvent.click(screen.getByLabelText('All projects'));
+    fireEvent.change(screen.getByPlaceholderText('Search docs…'), {
+      target: { value: 'deploy' },
+    });
+    fireEvent.click(await screen.findByText('api deploy steps'));
+
+    await waitFor(() => expect(mockedApi.kb.get).toHaveBeenCalledWith('x1'));
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Deploy notes' })
+    ).toBeTruthy();
+    // 'otherproj' renders on the sidebar result badge AND the viewer toolbar badge
+    expect(screen.getAllByText('otherproj')).toHaveLength(2);
+  });
+
+  it('toggling "All projects" off restores the per-project search', async () => {
+    mockedApi.kb.searchAll.mockResolvedValue([]);
+    mockedApi.kb.search.mockResolvedValue([
+      { id: 'd1', project_id: 'p1', title: 'Architecture', updated_at: '', snippet: 'local hit' },
+    ]);
+
+    renderKb();
+    await screen.findByText('Hosting');
+    fireEvent.click(screen.getByLabelText('All projects'));
+    fireEvent.change(screen.getByPlaceholderText('Search docs…'), {
+      target: { value: 'arch' },
+    });
+    await waitFor(() => expect(mockedApi.kb.searchAll).toHaveBeenCalledWith('arch'));
+
+    fireEvent.click(screen.getByLabelText('All projects'));
+
+    await waitFor(() => expect(mockedApi.kb.search).toHaveBeenCalledWith('p1', 'arch'));
+    expect(await screen.findByText('local hit')).toBeTruthy();
   });
 });
