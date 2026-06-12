@@ -3,6 +3,7 @@ import { useCreateItem, useUpdateItem } from '../hooks/useBoard';
 import { useAttachments, useUploadAttachment } from '../hooks/useItemDetail';
 import { api } from '../api/client';
 import { logClientError } from '../clientLog';
+import { isWorkItemType, WORK_ITEM_TYPES } from '../types';
 import type { Item, Column, ItemType } from '../types';
 
 interface Props {
@@ -91,6 +92,7 @@ export function ItemForm({ projectId, columnId, columns, items, item, onClose }:
             title,
             description,
             parent_id: parentId || null,
+            ...(isWorkItemType(item.type) && type !== item.type ? { type } : {}),
           },
         });
       } else {
@@ -145,7 +147,7 @@ export function ItemForm({ projectId, columnId, columns, items, item, onClose }:
             />
           </div>
 
-          {!item && (
+          {!item ? (
             <div style={{ marginBottom: 12 }}>
               <label style={{ display: 'block', marginBottom: 4 }}>Type</label>
               <select
@@ -158,6 +160,19 @@ export function ItemForm({ projectId, columnId, columns, items, item, onClose }:
                 <option value="task">Task</option>
                 <option value="bug">Bug</option>
                 <option value="investigation">Investigation</option>
+              </select>
+            </div>
+          ) : isWorkItemType(item.type) && (
+            <div style={{ marginBottom: 12 }}>
+              <label style={{ display: 'block', marginBottom: 4 }}>Type</label>
+              <select
+                value={type}
+                onChange={(e) => setType(e.target.value as ItemType)}
+                style={{ width: '100%', padding: 8 }}
+              >
+                {WORK_ITEM_TYPES.map((t) => (
+                  <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>
+                ))}
               </select>
             </div>
           )}
