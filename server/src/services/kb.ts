@@ -1,6 +1,6 @@
 import type Database from 'better-sqlite3';
 import { nanoid } from 'nanoid';
-import type { ActorType, KbDocument, KbDocumentSummary, KbSearchResult } from '../types.js';
+import type { ActorType, KbDocument, KbDocumentSummary, KbGlobalSearchResult, KbSearchResult } from '../types.js';
 import { EventTypes } from '../types.js';
 import type { ActivityService } from './activity.js';
 import type { EventBus } from '../events/bus.js';
@@ -115,6 +115,24 @@ export class KbService {
     return rows.map((row) => ({
       id: row.id,
       project_id: row.project_id,
+      title: row.title,
+      updated_at: row.updated_at,
+      snippet: makeSnippet(row.content, query),
+    }));
+  }
+
+  /** Read-only search over titles and content across ALL projects — writes no activity and emits no events. */
+  searchAll(query: string): KbGlobalSearchResult[] {
+    const like = '%' + query.replace(/[\\%_]/g, (m) => '\\' + m) + '%';
+    const rows = this.db
+      .prepare(
+        "SELECT d.*, p.name AS project_name FROM kb_documents d JOIN projects p ON p.id = d.project_id WHERE d.title LIKE ? ESCAPE '\\' OR d.content LIKE ? ESCAPE '\\' ORDER BY (d.title LIKE ? ESCAPE '\\') DESC, d.title ASC"
+      )
+      .all(like, like, like) as (KbDocumentRow & { project_name: string })[];
+    return rows.map((row) => ({
+      id: row.id,
+      project_id: row.project_id,
+      project_name: row.project_name,
       title: row.title,
       updated_at: row.updated_at,
       snippet: makeSnippet(row.content, query),

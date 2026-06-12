@@ -89,18 +89,26 @@ export function registerKbTools(server: McpServer, services: Services): void {
   // ldash_search_kb_docs
   server.tool(
     'ldash_search_kb_docs',
-    'Search the knowledgebase documents in a project by free text. Matches against document titles AND markdown content (case-insensitive substring) and returns a snippet of content around the first match for each hit. Use this to find which document covers a topic, then read it with ldash_get_kb_doc.',
+    'Search knowledgebase documents by free text. Matches against document titles AND markdown content (case-insensitive substring) and returns a snippet of content around the first match for each hit. Use this to find which document covers a topic, then read it with ldash_get_kb_doc. The default is a per-project search of the current working project: pass its id as project_id. Only when the user has explicitly asked to consult another project\'s knowledgebase or to search across all projects — never by default — pass that other project\'s id (resolve names to ids via ldash_list_projects) or omit project_id entirely for an all-projects search; all-projects results include each hit\'s project_name.',
     {
-      project_id: z.string().describe('The id of the project whose knowledgebase to search.'),
+      project_id: z.string().optional().describe('The id of the project whose knowledgebase to search. Pass the current working project\'s id by default. Omit ONLY for an explicitly requested all-projects search.'),
       query: z.string().min(1).describe('Text to search for in document titles and content. Required and must not be empty.'),
     },
     async (input) => {
+      if (input.query.trim() === '') {
+        return { content: [{ type: 'text' as const, text: 'Error: query must not be empty' }], isError: true };
+      }
+
+      if (input.project_id === undefined) {
+        const results = services.kb
+          .searchAll(input.query)
+          .map((r) => ({ id: r.id, project_name: r.project_name, title: r.title, snippet: r.snippet, updated_at: r.updated_at }));
+        return { content: [{ type: 'text' as const, text: JSON.stringify(results, null, 2) }] };
+      }
+
       const project = services.projects.get(input.project_id);
       if (!project) {
         return { content: [{ type: 'text' as const, text: 'Error: project not found' }], isError: true };
-      }
-      if (input.query.trim() === '') {
-        return { content: [{ type: 'text' as const, text: 'Error: query must not be empty' }], isError: true };
       }
 
       const results = services.kb

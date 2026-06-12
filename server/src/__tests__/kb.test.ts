@@ -303,6 +303,86 @@ describe('KbService.search', () => {
   });
 });
 
+describe('KbService.searchAll', () => {
+  let ctx: App;
+  let projectId: string;
+
+  beforeEach(() => {
+    ctx = createTestApp();
+    projectId = createProject(ctx).id;
+  });
+
+  afterEach(() => {
+    ctx.db.close();
+  });
+
+  it('returns hits from all projects with the owning project name, ordered title-matches-first then alphabetically', () => {
+    const other = createProject(ctx, 'Other Project');
+    ctx.kbService.create({ project_id: other.id, title: 'Zebra needle', content: 'no match in body' });
+    ctx.kbService.create({ project_id: projectId, title: 'Body only B', content: 'mentions needle here' });
+    ctx.kbService.create({ project_id: projectId, title: 'Alpha needle', content: 'no match in body' });
+    ctx.kbService.create({ project_id: other.id, title: 'Body only A', content: 'another needle mention' });
+
+    const results = ctx.kbService.searchAll('needle');
+    // Title matches first, alphabetical within each group — project is NOT an ordering key
+    expect(results.map((r) => r.title)).toEqual([
+      'Alpha needle',
+      'Zebra needle',
+      'Body only A',
+      'Body only B',
+    ]);
+    expect(results.map((r) => r.project_name)).toEqual([
+      'KB Test Project',
+      'Other Project',
+      'Other Project',
+      'KB Test Project',
+    ]);
+    expect(results.map((r) => r.project_id)).toEqual([projectId, other.id, other.id, projectId]);
+  });
+
+  it('reuses the snippet semantics — content match snippets, title-only match yields empty snippet', () => {
+    const doc = ctx.kbService.create({ project_id: projectId, title: 'Runbook', content: 'restart the needle service' });
+    ctx.kbService.create({ project_id: projectId, title: 'Needle title only', content: 'unrelated body' });
+
+    const results = ctx.kbService.searchAll('needle');
+    expect(results).toHaveLength(2);
+    expect(results[0]).toEqual({
+      id: results[0].id,
+      project_id: projectId,
+      project_name: 'KB Test Project',
+      title: 'Needle title only',
+      updated_at: results[0].updated_at,
+      snippet: '',
+    });
+    expect(results[1].id).toBe(doc.id);
+    expect(results[1].snippet).toBe('restart the needle service');
+  });
+
+  it('escapes LIKE wildcards in the query', () => {
+    ctx.kbService.create({ project_id: projectId, title: 'Percent doc', content: 'progress is 50% complete' });
+    ctx.kbService.create({ project_id: projectId, title: 'Plain doc', content: 'progress is 50 percent' });
+
+    const results = ctx.kbService.searchAll('50%');
+    expect(results.map((r) => r.title)).toEqual(['Percent doc']);
+  });
+
+  it('is read-only — writes no activity and emits no bus events', () => {
+    ctx.kbService.create({ project_id: projectId, title: 'Doc', content: 'needle' });
+    const before = ctx.activityService.listByProject(projectId, { limit: 50 }).length;
+
+    const events: BoardEvent[] = [];
+    const unsubscribe = eventBus.subscribe((e) => events.push(e));
+    try {
+      ctx.kbService.searchAll('needle');
+    } finally {
+      unsubscribe();
+    }
+
+    expect(events).toEqual([]);
+    expect(ctx.activityService.listByProject(projectId, { limit: 50 }).length).toBe(before);
+  });
+});
+
 describe('kb routes', () => {
   let ctx: App;
   let projectId: string;
@@ -384,6 +464,40 @@ describe('kb routes', () => {
   it('GET /api/projects/:projectId/kb/search returns 404 for a missing project', async () => {
     const res = await req(ctx.app, 'GET', '/api/projects/nope/kb/search?q=needle');
     expect(res.status).toBe(404);
+  });
+
+  it('GET /api/kb/search returns cross-project results with project_name', async () => {
+    const other = createProject(ctx, 'Other Project');
+    ctx.kbService.create({ project_id: projectId, title: 'Runbook', content: 'restart the needle service' });
+    ctx.kbService.create({ project_id: other.id, title: 'Needle notes', content: 'nothing else' });
+
+    const res = await req(ctx.app, 'GET', '/api/kb/search?q=needle');
+    expect(res.status).toBe(200);
+    const results = res.body as Record<string, unknown>[];
+    expect(results).toHaveLength(2);
+    expect(Object.keys(results[0]).sort()).toEqual([
+      'id',
+      'project_id',
+      'project_name',
+      'snippet',
+      'title',
+      'updated_at',
+    ]);
+    // Title match first
+    expect(results[0].title).toBe('Needle notes');
+    expect(results[0].project_name).toBe('Other Project');
+    expect(results[1].title).toBe('Runbook');
+    expect(results[1].project_name).toBe('KB Test Project');
+    expect(results[1].snippet).toBe('restart the needle service');
+  });
+
+  it('GET /api/kb/search returns 400 for a missing or blank q — not shadowed by /:id', async () => {
+    // A blank q must hit the search handler (400), not fall through to the
+    // GET /api/kb/:id doc lookup (which would 404 on a "search" id).
+    const missing = await req(ctx.app, 'GET', '/api/kb/search');
+    expect(missing.status).toBe(400);
+    const blank = await req(ctx.app, 'GET', '/api/kb/search?q=%20%20');
+    expect(blank.status).toBe(400);
   });
 
   it('GET /api/kb/:id returns the full doc', async () => {
@@ -560,11 +674,52 @@ describe('kb MCP tools', () => {
     expect(docs[0].snippet).toBe('restart the needle service');
   });
 
-  it('ldash_search_kb_docs errors on a blank query', async () => {
+  it('ldash_search_kb_docs with project_id stays scoped to that project', async () => {
+    const other = createProject(ctx, 'Other Project');
+    ctx.kbService.create({ project_id: projectId, title: 'Mine', content: 'needle' });
+    ctx.kbService.create({ project_id: other.id, title: 'Theirs', content: 'needle' });
+
     const search = tools.get('ldash_search_kb_docs')!;
-    const result = await search({ project_id: projectId, query: '   ' });
-    expect(result.isError).toBe(true);
-    expect(textOf(result)).toContain('query must not be empty');
+    const result = await search({ project_id: projectId, query: 'needle' });
+    expect(result.isError).toBeUndefined();
+
+    const docs = JSON.parse(textOf(result)) as Record<string, unknown>[];
+    expect(docs.map((d) => d.title)).toEqual(['Mine']);
+    expect(docs[0]).not.toHaveProperty('project_name');
+  });
+
+  it('ldash_search_kb_docs without project_id searches all projects and includes project_name', async () => {
+    const other = createProject(ctx, 'Other Project');
+    ctx.kbService.create({ project_id: projectId, title: 'Mine', content: 'restart the needle service' });
+    ctx.kbService.create({ project_id: other.id, title: 'Needle theirs', content: 'no body match' });
+
+    const search = tools.get('ldash_search_kb_docs')!;
+    const result = await search({ query: 'needle' });
+    expect(result.isError).toBeUndefined();
+
+    const docs = JSON.parse(textOf(result)) as Record<string, unknown>[];
+    expect(docs).toHaveLength(2);
+    for (const d of docs) {
+      expect(Object.keys(d).sort()).toEqual(['id', 'project_name', 'snippet', 'title', 'updated_at']);
+    }
+    // Title match first, with each hit carrying its owning project's name
+    expect(docs[0].title).toBe('Needle theirs');
+    expect(docs[0].project_name).toBe('Other Project');
+    expect(docs[1].title).toBe('Mine');
+    expect(docs[1].project_name).toBe('KB Test Project');
+    expect(docs[1].snippet).toBe('restart the needle service');
+  });
+
+  it('ldash_search_kb_docs errors on a blank query in both modes', async () => {
+    const search = tools.get('ldash_search_kb_docs')!;
+
+    const scoped = await search({ project_id: projectId, query: '   ' });
+    expect(scoped.isError).toBe(true);
+    expect(textOf(scoped)).toContain('query must not be empty');
+
+    const global = await search({ query: '   ' });
+    expect(global.isError).toBe(true);
+    expect(textOf(global)).toContain('query must not be empty');
   });
 
   it('ldash_search_kb_docs errors on a missing project', async () => {

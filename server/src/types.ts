@@ -89,6 +89,11 @@ export interface KbSearchResult {
   snippet: string;
 }
 
+/** Cross-project search result shape — KbSearchResult plus the owning project's name. */
+export interface KbGlobalSearchResult extends KbSearchResult {
+  project_name: string;
+}
+
 export interface ActivityEntry {
   id: string;
   item_id: string | null;

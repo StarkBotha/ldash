@@ -70,6 +70,16 @@ export function projectKbRouter(kbService: KbService, projectService: ProjectSer
 export function kbRouter(kbService: KbService): Hono {
   const app = new Hono();
 
+  // GET /api/kb/search?q=term — registered before /:id so it cannot be shadowed by the doc lookup.
+  app.get('/search', (c) => {
+    const q = c.req.query('q');
+    if (!q || q.trim() === '') {
+      throw makeError('q is required and must be a non-empty string', 400);
+    }
+
+    return c.json(kbService.searchAll(q));
+  });
+
   // GET /api/kb/:id
   app.get('/:id', (c) => {
     const { id } = c.req.param();
