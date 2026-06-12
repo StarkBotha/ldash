@@ -9,6 +9,7 @@ import type {
   KbDocument,
   KbDocSummary,
   KbSearchResult,
+  KbGlobalSearchResult,
 } from '../types';
 
 const BASE = '/api';
@@ -115,6 +116,8 @@ export const api = {
       apiFetch<void>(`/kb/${id}`, { method: 'DELETE' }),
     search: (projectId: string, q: string) =>
       apiFetch<KbSearchResult[]>(`/projects/${projectId}/kb/search?q=${encodeURIComponent(q)}`),
+    searchAll: (q: string) =>
+      apiFetch<KbGlobalSearchResult[]>(`/kb/search?q=${encodeURIComponent(q)}`),
   },
 
   activity: {

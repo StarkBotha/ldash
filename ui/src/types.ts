@@ -95,6 +95,11 @@ export interface KbSearchResult {
   snippet: string;
 }
 
+/** A cross-project KB search hit — like KbSearchResult plus the owning project's name. */
+export interface KbGlobalSearchResult extends KbSearchResult {
+  project_name: string;
+}
+
 export type ConversationType = 'item' | 'planning';
 
 export interface Conversation {

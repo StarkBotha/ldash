@@ -25,6 +25,14 @@ export function useKbSearch(projectId: string, q: string) {
   });
 }
 
+export function useKbSearchAll(q: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ['kb-search-all', q],
+    queryFn: () => api.kb.searchAll(q),
+    enabled: enabled && q.trim() !== '',
+  });
+}
+
 export function useCreateKbDoc(projectId: string) {
   const qc = useQueryClient();
   return useMutation({
