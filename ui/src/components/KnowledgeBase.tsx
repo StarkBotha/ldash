@@ -16,6 +16,20 @@ interface Props {
 
 // ```mermaid fences render as diagrams; everything else stays a code block
 const markdownComponents: Components = {
+  // react-markdown wraps every fence in <pre>; mermaid fences must escape it
+  // so the diagram doesn't sit in the dark code-block container (a <pre> also
+  // can't legally contain the rendered <div>)
+  pre({ node, children, ...rest }) {
+    const child = node?.children[0];
+    if (
+      child?.type === 'element' &&
+      Array.isArray(child.properties.className) &&
+      child.properties.className.includes('language-mermaid')
+    ) {
+      return <>{children}</>;
+    }
+    return <pre {...rest}>{children}</pre>;
+  },
   code({ node, className, children, ...rest }) {
     void node;
     if (/language-mermaid/.test(className ?? '')) {

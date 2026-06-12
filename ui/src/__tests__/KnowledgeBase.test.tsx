@@ -46,6 +46,11 @@ vi.mock('../hooks/useSSE', () => ({
   useSSE: () => ({ status: 'connected' }),
 }));
 
+// The real component lazy-loads the mermaid library, which jsdom can't render
+vi.mock('../components/Mermaid', () => ({
+  Mermaid: ({ code }: { code: string }) => <div data-testid="mermaid-stub">{code}</div>,
+}));
+
 import { api } from '../api/client';
 
 const mockedApi = vi.mocked(api, true);
@@ -90,6 +95,19 @@ describe('KnowledgeBase', () => {
     expect(screen.getByRole('table')).toBeTruthy();
     expect(screen.getByText('api')).toBeTruthy();
     expect(mockedApi.kb.get).toHaveBeenCalledWith('d1');
+  });
+
+  it('mermaid fences escape the pre wrapper; regular fences keep it', async () => {
+    mockedApi.kb.get.mockResolvedValue({
+      ...archDoc,
+      content: '```mermaid\nflowchart LR\nA-->B\n```\n\n```js\nconst x = 1;\n```\n',
+    });
+    renderKb();
+    fireEvent.click(await screen.findByText('Architecture'));
+
+    const stub = await screen.findByTestId('mermaid-stub');
+    expect(stub.closest('pre')).toBeNull();
+    expect(screen.getByText('const x = 1;').closest('pre')).not.toBeNull();
   });
 
   it('create flow fires POST with title and content', async () => {
