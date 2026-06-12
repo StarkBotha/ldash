@@ -100,3 +100,61 @@ describe('buildGroups (Column hierarchy grouping)', () => {
     expect(groups[1].orderedItems.map((i) => i.id)).toEqual(['free']);
   });
 });
+
+describe('buildGroups indentedIds (leaf indent only under rendered parent story)', () => {
+  it('does not indent a parentless leaf rendered after a story and its children', () => {
+    const s1 = makeItem({ id: 's1', type: 'story', position: 1 });
+    const t1 = makeItem({ id: 't1', type: 'task', parent_id: 's1', position: 2 });
+    const orphanBug = makeItem({ id: 'orphanBug', type: 'bug', parent_id: null, position: 3 });
+    const all = [s1, t1, orphanBug];
+
+    const groups = buildGroups(all, all);
+
+    expect(groups).toHaveLength(1);
+    expect(groups[0].orderedItems.map((i) => i.id)).toEqual(['s1', 't1', 'orphanBug']);
+    expect(groups[0].indentedIds.has('t1')).toBe(true);
+    expect(groups[0].indentedIds.has('orphanBug')).toBe(false);
+  });
+
+  it("indents a story's own children rendered beneath it", () => {
+    const s1 = makeItem({ id: 's1', type: 'story', position: 1 });
+    const t1 = makeItem({ id: 't1', type: 'task', parent_id: 's1', position: 2 });
+    const b1 = makeItem({ id: 'b1', type: 'bug', parent_id: 's1', position: 3 });
+    const i1 = makeItem({ id: 'i1', type: 'investigation', parent_id: 's1', position: 4 });
+    const all = [s1, t1, b1, i1];
+
+    const groups = buildGroups(all, all);
+
+    expect(groups[0].orderedItems.map((i) => i.id)).toEqual(['s1', 't1', 'b1', 'i1']);
+    expect(groups[0].indentedIds.has('t1')).toBe(true);
+    expect(groups[0].indentedIds.has('b1')).toBe(true);
+    expect(groups[0].indentedIds.has('i1')).toBe(true);
+    expect(groups[0].indentedIds.has('s1')).toBe(false);
+  });
+
+  it('does not indent a leaf whose parent story is in another column', () => {
+    const storyElsewhere = makeItem({ id: 'storyX', type: 'story', column_id: 'progress', position: 1 });
+    const task = makeItem({ id: 'taskX', type: 'task', parent_id: 'storyX', position: 2 });
+    const all = [storyElsewhere, task];
+
+    // Column only contains the task — its parent story lives elsewhere
+    const groups = buildGroups([task], all);
+
+    expect(groups).toHaveLength(1);
+    expect(groups[0].orderedItems.map((i) => i.id)).toEqual(['taskX']);
+    expect(groups[0].indentedIds.has('taskX')).toBe(false);
+  });
+
+  it('does not indent a leaf parented directly to an epic', () => {
+    const epic = makeItem({ id: 'epic1', type: 'epic', position: 0, title: 'Epic One' });
+    const epicTask = makeItem({ id: 'epicTask', type: 'task', parent_id: 'epic1', position: 1 });
+    const all = [epic, epicTask];
+
+    const groups = buildGroups(all, all);
+
+    expect(groups).toHaveLength(1);
+    expect(groups[0].epicId).toBe('epic1');
+    expect(groups[0].orderedItems.map((i) => i.id)).toEqual(['epic1', 'epicTask']);
+    expect(groups[0].indentedIds.has('epicTask')).toBe(false);
+  });
+});

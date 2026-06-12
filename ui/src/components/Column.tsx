@@ -34,13 +34,18 @@ interface EpicGroup {
   epicTitle: string;
   /** Cards to render in order for this group */
   orderedItems: Item[];
+  /** Ids of work items rendered directly under their parent story in this
+   *  group — only these get the child indent. Orphans (no parent, parent in
+   *  another column, or parented straight to the epic) render top-level. */
+  indentedIds: Set<string>;
 }
 
 /** Order a group's stories and work items (tasks/bugs/investigations)
  *  hierarchically: each story (by position) followed by its work items in this
  *  column, then work items whose parent story is not in the column. Ignores
- *  epics — the caller places the epic card first. */
-function orderStoriesAndTasks(members: Item[]): Item[] {
+ *  epics — the caller places the epic card first. Work items emitted under
+ *  their own story are recorded in indentedIds. */
+function orderStoriesAndTasks(members: Item[], indentedIds: Set<string>): Item[] {
   const stories = members.filter((i) => i.type === 'story').sort((a, b) => a.position - b.position);
   const memberStoryIds = new Set(stories.map((s) => s.id));
   // work items whose parent story is NOT in this column's member set
@@ -55,6 +60,7 @@ function orderStoriesAndTasks(members: Item[]): Item[] {
     const storyTasks = members
       .filter((i) => isWorkItemType(i.type) && i.parent_id === story.id)
       .sort((a, b) => a.position - b.position);
+    for (const t of storyTasks) indentedIds.add(t.id);
     ordered.push(...storyTasks);
   }
   ordered.push(...orphanTasks);
@@ -88,16 +94,19 @@ export function buildGroups(columnItems: Item[], allItems: Item[]): EpicGroup[] 
     // it a higher position), then stories with their tasks nested.
     const epicCard = members.find((i) => i.id === epic.id) ?? null;
     const orderedItems: Item[] = [];
+    const indentedIds = new Set<string>();
     if (epicCard) orderedItems.push(epicCard);
-    orderedItems.push(...orderStoriesAndTasks(members));
+    orderedItems.push(...orderStoriesAndTasks(members, indentedIds));
 
-    groups.push({ epicId: epic.id, epicTitle: epic.title, orderedItems });
+    groups.push({ epicId: epic.id, epicTitle: epic.title, orderedItems, indentedIds });
   }
 
   // "No epic" group last — same hierarchical ordering, so a parent story
   // never sinks below its own tasks just because its position is higher.
   if (groupMap.has(null)) {
-    groups.push({ epicId: null, epicTitle: 'No epic', orderedItems: orderStoriesAndTasks(groupMap.get(null)!) });
+    const indentedIds = new Set<string>();
+    const orderedItems = orderStoriesAndTasks(groupMap.get(null)!, indentedIds);
+    groups.push({ epicId: null, epicTitle: 'No epic', orderedItems, indentedIds });
   }
 
   return groups;
@@ -169,10 +178,13 @@ export function Column({ column, items, allItems, collapsedIds, onToggleCollapse
                 const childCount = isTask
                   ? undefined
                   : allItems.filter((i) => i.parent_id === item.id).length;
+                // Indent only when the parent story card is rendered directly
+                // above in this group — orphan leaves stay top-level.
+                const indented = group.indentedIds.has(item.id);
                 return (
                   <div
                     key={item.id}
-                    style={isTask ? {
+                    style={indented ? {
                       marginLeft: 14,
                       borderLeft: '2px solid #d0d0d0',
                       paddingLeft: 6,
