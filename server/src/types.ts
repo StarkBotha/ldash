@@ -68,6 +68,18 @@ export interface Attachment {
   created_at: string;
 }
 
+export interface KbDocument {
+  id: string;
+  project_id: string;
+  title: string;
+  content: string;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Listing shape for knowledgebase documents — content is omitted. */
+export type KbDocumentSummary = Omit<KbDocument, 'content'>;
+
 export interface ActivityEntry {
   id: string;
   item_id: string | null;
@@ -98,6 +110,9 @@ export const EventTypes = {
   COLUMN_CREATED: 'column.created',
   COLUMN_UPDATED: 'column.updated',
   COLUMN_REORDERED: 'column.reordered',
+  KB_DOC_CREATED: 'kb_doc.created',
+  KB_DOC_UPDATED: 'kb_doc.updated',
+  KB_DOC_DELETED: 'kb_doc.deleted',
 } as const;
 
 export type EventType = typeof EventTypes[keyof typeof EventTypes];
@@ -150,6 +165,7 @@ import type { AttachmentService } from './services/attachments.js';
 import type { ActivityService } from './services/activity.js';
 import type { ConversationService } from './services/conversations.js';
 import type { SettingsService } from './services/settings.js';
+import type { KbService } from './services/kb.js';
 
 export interface Services {
   projects: ProjectService;
@@ -160,4 +176,5 @@ export interface Services {
   activity: ActivityService;
   conversations: ConversationService;
   settings: SettingsService;
+  kb: KbService;
 }

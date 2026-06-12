@@ -17,7 +17,10 @@ export type BoardEventType =
   | 'project.deleted'
   | 'column.created'
   | 'column.updated'
-  | 'column.reordered';
+  | 'column.reordered'
+  | 'kb_doc.created'
+  | 'kb_doc.updated'
+  | 'kb_doc.deleted';
 
 export interface BoardEvent {
   type: BoardEventType;
