@@ -7,6 +7,7 @@ import { registerProjectTools } from './tools/projects.js';
 import { registerItemTools } from './tools/items.js';
 import { registerCommentTools } from './tools/comments.js';
 import { registerFlagTools } from './tools/flags.js';
+import { registerKbTools } from './tools/kb.js';
 import { createLogger, redact } from '../logger.js';
 
 const logger = createLogger('mcp');
@@ -68,6 +69,7 @@ export function createMcpServer(services: Services, bus: EventBus = defaultBus, 
   registerItemTools(server, services, bus, db);
   registerCommentTools(server, services, bus);
   registerFlagTools(server, services, bus);
+  registerKbTools(server, services);
 
   return server;
 }
