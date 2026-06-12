@@ -32,7 +32,7 @@ export function Card({ item, parentTitle, childCount, collapsed, onToggleCollaps
         position: 'relative',
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
         <span style={{
           fontSize: 12,
           fontWeight: 600,
@@ -43,10 +43,6 @@ export function Card({ item, parentTitle, childCount, collapsed, onToggleCollaps
           flexShrink: 0,
         }}>
           {item.type}
-        </span>
-        <span style={{ fontSize: 15, flex: 1 }}>
-          <span style={{ fontSize: 12, color: '#999', fontWeight: 600, marginRight: 5 }}>{item.key}</span>
-          {item.title}
         </span>
         {childCount != null && childCount > 0 && (
           <button
@@ -69,6 +65,10 @@ export function Card({ item, parentTitle, childCount, collapsed, onToggleCollaps
             {collapsed ? '▸' : '▾'} {childCount}
           </button>
         )}
+      </div>
+      <div style={{ marginTop: 4, fontSize: 15 }}>
+        <span style={{ fontSize: 12, color: '#999', fontWeight: 600, marginRight: 5 }}>{item.key}</span>
+        {item.title}
       </div>
       {parentTitle && (
         <div style={{
