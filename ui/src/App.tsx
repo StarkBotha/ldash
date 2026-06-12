@@ -1,16 +1,19 @@
 import { useEffect, useState } from 'react';
 import { ProjectList } from './components/ProjectList';
 import { Board } from './components/Board';
+import { KnowledgeBase } from './components/KnowledgeBase';
 import { SettingsPage } from './components/SettingsPage';
 import { useProjects } from './hooks/useProjects';
 
-function boardPath(name: string): string {
-  return `/projects/${encodeURIComponent(name)}/board`;
+type ProjectView = 'board' | 'kb';
+
+function projectPath(name: string, view: ProjectView): string {
+  return `/projects/${encodeURIComponent(name)}/${view}`;
 }
 
-function projectNameFromPath(pathname: string): string | null {
-  const match = pathname.match(/^\/projects\/([^/]+)\/board\/?$/);
-  return match ? decodeURIComponent(match[1]) : null;
+function projectRouteFromPath(pathname: string): { name: string; view: ProjectView } | null {
+  const match = pathname.match(/^\/projects\/([^/]+)\/(board|kb)\/?$/);
+  return match ? { name: decodeURIComponent(match[1]), view: match[2] as ProjectView } : null;
 }
 
 export function App() {
@@ -25,7 +28,8 @@ export function App() {
     return () => window.removeEventListener('popstate', onPopState);
   }, []);
 
-  const routeName = projectNameFromPath(path);
+  const route = projectRouteFromPath(path);
+  const routeName = route?.name ?? null;
   const selectedProject =
     routeName && projects ? projects.find((p) => p.name === routeName) : undefined;
 
@@ -48,7 +52,7 @@ export function App() {
 
   const openProject = (id: string) => {
     const project = projects?.find((p) => p.id === id);
-    navigate(project ? boardPath(project.name) : '/');
+    navigate(project ? projectPath(project.name, 'board') : '/');
   };
 
   return (
@@ -77,10 +81,19 @@ export function App() {
       )}
 
       {selectedProject ? (
-        <Board
-          projectId={selectedProject.id}
-          onBack={() => navigate('/')}
-        />
+        route?.view === 'kb' ? (
+          <KnowledgeBase
+            projectId={selectedProject.id}
+            onBack={() => navigate('/')}
+            onShowBoard={() => navigate(projectPath(selectedProject.name, 'board'))}
+          />
+        ) : (
+          <Board
+            projectId={selectedProject.id}
+            onBack={() => navigate('/')}
+            onShowKb={() => navigate(projectPath(selectedProject.name, 'kb'))}
+          />
+        )
       ) : routeName && !projects ? (
         <div style={{ padding: 24 }}>Loading…</div>
       ) : (

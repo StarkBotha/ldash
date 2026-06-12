@@ -1,4 +1,14 @@
-import type { Project, Column, Item, ItemType, Comment, ActivityEntry, Attachment } from '../types';
+import type {
+  Project,
+  Column,
+  Item,
+  ItemType,
+  Comment,
+  ActivityEntry,
+  Attachment,
+  KbDocument,
+  KbDocSummary,
+} from '../types';
 
 const BASE = '/api';
 
@@ -87,6 +97,21 @@ export const api = {
     delete: (id: string) =>
       apiFetch<void>(`/attachments/${id}`, { method: 'DELETE' }),
     url: (id: string) => `${BASE}/attachments/${id}`,
+  },
+
+  kb: {
+    list: (projectId: string) =>
+      apiFetch<KbDocSummary[]>(`/projects/${projectId}/kb`),
+    get: (id: string) => apiFetch<KbDocument>(`/kb/${id}`),
+    create: (projectId: string, data: { title: string; content?: string }) =>
+      apiFetch<KbDocument>(`/projects/${projectId}/kb`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    update: (id: string, data: Partial<{ title: string; content: string }>) =>
+      apiFetch<KbDocument>(`/kb/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+    remove: (id: string) =>
+      apiFetch<void>(`/kb/${id}`, { method: 'DELETE' }),
   },
 
   activity: {

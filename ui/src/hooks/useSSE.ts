@@ -64,6 +64,16 @@ function invalidateForEvent(
     case 'column.reordered':
       queryClient.invalidateQueries({ queryKey: ['columns'] });
       break;
+
+    case 'kb_doc.created':
+    case 'kb_doc.deleted':
+      queryClient.invalidateQueries({ queryKey: ['kb', projectId] });
+      break;
+
+    case 'kb_doc.updated':
+      queryClient.invalidateQueries({ queryKey: ['kb', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['kb-doc', entityId] });
+      break;
   }
 }
 

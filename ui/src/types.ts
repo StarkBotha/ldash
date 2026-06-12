@@ -74,6 +74,18 @@ export interface Attachment {
   created_at: string;
 }
 
+export interface KbDocument {
+  id: string;
+  project_id: string;
+  title: string;
+  content: string;
+  created_at: string;
+  updated_at: string;
+}
+
+/** The KB list endpoint returns docs without their content. */
+export type KbDocSummary = Omit<KbDocument, 'content'>;
+
 export type ConversationType = 'item' | 'planning';
 
 export interface Conversation {
@@ -152,7 +164,10 @@ export type BoardEventType =
   | 'project.deleted'
   | 'column.created'
   | 'column.updated'
-  | 'column.reordered';
+  | 'column.reordered'
+  | 'kb_doc.created'
+  | 'kb_doc.updated'
+  | 'kb_doc.deleted';
 
 export interface BoardEvent {
   type: BoardEventType;
