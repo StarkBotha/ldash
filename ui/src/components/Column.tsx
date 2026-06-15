@@ -6,115 +6,133 @@ interface Props {
   column: ColumnType;
   items: Item[];
   allItems: Item[];
+  /** Per-column collapse keys, each "<columnId>::<itemId>". */
   collapsedIds: Set<string>;
-  onToggleCollapse: (id: string) => void;
+  onToggleCollapse: (key: string) => void;
   onCardClick: (item: Item) => void;
   onNewItem: () => void;
 }
 
-/** Walk parent_id up through allItems to find the root epic ancestor id.
- *  Returns the epic's id, or null if no epic ancestor exists. */
-function getRootEpicId(item: Item, allItems: Item[]): string | null {
-  const byId = new Map(allItems.map((i) => [i.id, i]));
+/** Walk parent_id up to find the root epic ancestor id, or null if none. */
+function rootEpicId(item: Item, byId: Map<string, Item>): string | null {
   let current: Item | undefined = item;
-  let epicId: string | null = null;
   while (current) {
-    if (current.type === 'epic') {
-      epicId = current.id;
-      break;
-    }
-    if (current.parent_id == null) break;
+    if (current.type === 'epic') return current.id;
+    if (current.parent_id == null) return null;
     current = byId.get(current.parent_id);
   }
-  return epicId;
+  return null;
+}
+
+/** Walk parent_id up to find the nearest story ancestor id, or null if none. */
+function nearestStoryId(item: Item, byId: Map<string, Item>): string | null {
+  let parentId = item.parent_id;
+  while (parentId != null) {
+    const parent = byId.get(parentId);
+    if (!parent) break;
+    if (parent.type === 'story') return parent.id;
+    parentId = parent.parent_id;
+  }
+  return null;
+}
+
+/** A story header within a column plus the leaf work items it owns there. */
+interface StorySection {
+  story: Item;
+  tasks: Item[];
 }
 
 interface EpicGroup {
   epicId: string | null; // null = "No epic"
   epicTitle: string;
-  /** Cards to render in order for this group */
-  orderedItems: Item[];
-  /** Ids of work items rendered directly under their parent story in this
-   *  group — only these get the child indent. Orphans (no parent, parent in
-   *  another column, or parented straight to the epic) render top-level. */
-  indentedIds: Set<string>;
+  /** The epic's own card, only when its derived status is this column. */
+  epicCard: Item | null;
+  /** Story sections, ordered by story position. A story appears here whenever it
+   *  has leaf work items in this column OR its own derived status is this column,
+   *  so every column carries its own header "copy" of the story. */
+  stories: StorySection[];
+  /** Leaf work items in this column with no story ancestor (parented to the epic
+   *  directly, or to nothing) — rendered top-level. */
+  looseLeaves: Item[];
 }
 
-/** Order a group's stories and work items (tasks/bugs/investigations)
- *  hierarchically: each story (by position) followed by its work items in this
- *  column, then work items whose parent story is not in the column. Ignores
- *  epics — the caller places the epic card first. Work items emitted under
- *  their own story are recorded in indentedIds. */
-function orderStoriesAndTasks(members: Item[], indentedIds: Set<string>): Item[] {
-  const stories = members.filter((i) => i.type === 'story').sort((a, b) => a.position - b.position);
-  const memberStoryIds = new Set(stories.map((s) => s.id));
-  // work items whose parent story is NOT in this column's member set
-  const orphanTasks = members.filter(
-    (i) => isWorkItemType(i.type) && (i.parent_id == null || !memberStoryIds.has(i.parent_id))
-  ).sort((a, b) => a.position - b.position);
-
-  const ordered: Item[] = [];
-  for (const story of stories) {
-    ordered.push(story);
-    // Work items in this column whose parent is this story
-    const storyTasks = members
-      .filter((i) => isWorkItemType(i.type) && i.parent_id === story.id)
-      .sort((a, b) => a.position - b.position);
-    for (const t of storyTasks) indentedIds.add(t.id);
-    ordered.push(...storyTasks);
-  }
-  ordered.push(...orphanTasks);
-  return ordered;
-}
-
+/** Group a column's items under their epic and story ancestors. Headers are
+ *  synthesized per-column: a story/epic that lives (by derived status) in
+ *  another column still gets a header here when it has descendants here, so its
+ *  in-column items can be collapsed independently of the other columns. */
 export function buildGroups(columnItems: Item[], allItems: Item[]): EpicGroup[] {
-  // All epics in the entire project (not just this column), for ordering groups
-  const allEpics = allItems
-    .filter((i) => i.type === 'epic')
-    .sort((a, b) => a.position - b.position);
+  const byId = new Map(allItems.map((i) => [i.id, i]));
 
-  // Assign each column item to its root epic group
-  const groupMap = new Map<string | null, Item[]>();
+  interface Acc {
+    epicCard: Item | null;
+    storyTasks: Map<string, Item[]>; // storyId -> in-column leaves
+    ownStoryCards: Set<string>; // stories whose own status is this column
+    looseLeaves: Item[];
+  }
+  const groups = new Map<string | null, Acc>();
+  const ensure = (epicId: string | null): Acc => {
+    let acc = groups.get(epicId);
+    if (!acc) {
+      acc = { epicCard: null, storyTasks: new Map(), ownStoryCards: new Set(), looseLeaves: [] };
+      groups.set(epicId, acc);
+    }
+    return acc;
+  };
+
   for (const item of columnItems) {
-    const epicId = getRootEpicId(item, allItems);
-    if (!groupMap.has(epicId)) groupMap.set(epicId, []);
-    groupMap.get(epicId)!.push(item);
+    if (item.type === 'epic') {
+      ensure(item.id).epicCard = item;
+      continue;
+    }
+    const acc = ensure(rootEpicId(item, byId));
+    if (item.type === 'story') {
+      acc.ownStoryCards.add(item.id);
+      if (!acc.storyTasks.has(item.id)) acc.storyTasks.set(item.id, []);
+      continue;
+    }
+    if (isWorkItemType(item.type)) {
+      const storyId = nearestStoryId(item, byId);
+      if (storyId == null) {
+        acc.looseLeaves.push(item);
+      } else {
+        const list = acc.storyTasks.get(storyId) ?? [];
+        list.push(item);
+        acc.storyTasks.set(storyId, list);
+      }
+    }
   }
 
-  const groups: EpicGroup[] = [];
+  const toGroup = (epicId: string | null, acc: Acc): EpicGroup => {
+    const storyIds = new Set<string>([...acc.storyTasks.keys(), ...acc.ownStoryCards]);
+    const stories: StorySection[] = [...storyIds]
+      .map((id) => byId.get(id))
+      .filter((s): s is Item => !!s)
+      .sort((a, b) => a.position - b.position)
+      .map((story) => ({
+        story,
+        tasks: (acc.storyTasks.get(story.id) ?? []).slice().sort((a, b) => a.position - b.position),
+      }));
+    const looseLeaves = acc.looseLeaves.slice().sort((a, b) => a.position - b.position);
+    const epic = epicId != null ? byId.get(epicId) : undefined;
+    return { epicId, epicTitle: epic?.title ?? 'No epic', epicCard: acc.epicCard, stories, looseLeaves };
+  };
 
-  // Process epic groups in project-level epic position order
-  for (const epic of allEpics) {
-    if (!groupMap.has(epic.id)) continue;
-
-    const members = groupMap.get(epic.id)!;
-
-    // Epic card always renders first in its group (regardless of its position
-    // value — the rollup can move it into a column after its children, giving
-    // it a higher position), then stories with their tasks nested.
-    const epicCard = members.find((i) => i.id === epic.id) ?? null;
-    const orderedItems: Item[] = [];
-    const indentedIds = new Set<string>();
-    if (epicCard) orderedItems.push(epicCard);
-    orderedItems.push(...orderStoriesAndTasks(members, indentedIds));
-
-    groups.push({ epicId: epic.id, epicTitle: epic.title, orderedItems, indentedIds });
+  const result: EpicGroup[] = [];
+  // Epic groups in project-level epic position order, "No epic" last.
+  for (const epic of allItems.filter((i) => i.type === 'epic').sort((a, b) => a.position - b.position)) {
+    const acc = groups.get(epic.id);
+    if (acc) result.push(toGroup(epic.id, acc));
   }
+  const noEpic = groups.get(null);
+  if (noEpic) result.push(toGroup(null, noEpic));
 
-  // "No epic" group last — same hierarchical ordering, so a parent story
-  // never sinks below its own tasks just because its position is higher.
-  if (groupMap.has(null)) {
-    const indentedIds = new Set<string>();
-    const orderedItems = orderStoriesAndTasks(groupMap.get(null)!, indentedIds);
-    groups.push({ epicId: null, epicTitle: 'No epic', orderedItems, indentedIds });
-  }
-
-  return groups;
+  return result;
 }
 
 export function Column({ column, items, allItems, collapsedIds, onToggleCollapse, onCardClick, onNewItem }: Props) {
   const groups = buildGroups(items, allItems);
   const isCancelled = column.role === 'cancelled';
+  const key = (id: string) => `${column.id}::${id}`;
 
   return (
     <div
@@ -146,84 +164,112 @@ export function Column({ column, items, allItems, collapsedIds, onToggleCollapse
         </button>
       </div>
       <div style={{ flex: 1, overflowY: 'auto', padding: 8, display: 'flex', flexDirection: 'column', gap: 0, opacity: isCancelled ? 0.6 : 1 }}>
-        {groups.map((group) => (
-          <div key={group.epicId ?? '__no_epic__'}>
-            {/* Epic group header — label + collapse toggle (skip "No epic") */}
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-              marginTop: 8,
-              marginBottom: 4,
-            }}>
+        {groups.map((group) => {
+          const epicCollapsed = group.epicId != null && collapsedIds.has(key(group.epicId));
+          return (
+            <div key={group.epicId ?? '__no_epic__'}>
+              {/* Epic group header — label + per-column collapse toggle (skip "No epic") */}
               {group.epicId != null && (
-                <button
-                  onClick={() => onToggleCollapse(group.epicId!)}
-                  title={collapsedIds.has(group.epicId)
-                    ? `Show items in ${group.epicTitle}`
-                    : `Hide items in ${group.epicTitle}`}
-                  style={{
-                    flexShrink: 0,
-                    border: '1px solid #e0e0e0',
-                    background: collapsedIds.has(group.epicId) ? '#eee' : '#fff',
-                    borderRadius: 4,
-                    padding: '0 5px',
-                    fontSize: 11,
-                    color: '#666',
-                    cursor: 'pointer',
-                  }}
-                >
-                  {collapsedIds.has(group.epicId) ? '▸' : '▾'}
-                </button>
-              )}
-              <span style={{
-                fontSize: 11,
-                fontWeight: 600,
-                color: '#aaa',
-                textTransform: 'uppercase',
-                letterSpacing: '0.07em',
-                whiteSpace: 'nowrap',
-                flexShrink: 0,
-              }}>
-                {group.epicTitle}
-              </span>
-              <div style={{ flex: 1, height: 1, background: '#e0e0e0' }} />
-            </div>
-
-            {/* Cards in this group */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 4 }}>
-              {group.orderedItems.map((item) => {
-                const parent = item.parent_id ? allItems.find((i) => i.id === item.parent_id) : undefined;
-                const isTask = isWorkItemType(item.type);
-                const childCount = isTask
-                  ? undefined
-                  : allItems.filter((i) => i.parent_id === item.id).length;
-                // Indent only when the parent story card is rendered directly
-                // above in this group — orphan leaves stay top-level.
-                const indented = group.indentedIds.has(item.id);
-                return (
-                  <div
-                    key={item.id}
-                    style={indented ? {
-                      marginLeft: 14,
-                      borderLeft: '2px solid #d0d0d0',
-                      paddingLeft: 6,
-                    } : undefined}
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  marginTop: 8,
+                  marginBottom: 4,
+                }}>
+                  <button
+                    onClick={() => onToggleCollapse(key(group.epicId!))}
+                    title={epicCollapsed
+                      ? `Show items in ${group.epicTitle}`
+                      : `Hide items in ${group.epicTitle}`}
+                    style={{
+                      flexShrink: 0,
+                      border: '1px solid #e0e0e0',
+                      background: epicCollapsed ? '#eee' : '#fff',
+                      borderRadius: 4,
+                      padding: '0 5px',
+                      fontSize: 11,
+                      color: '#666',
+                      cursor: 'pointer',
+                    }}
                   >
+                    {epicCollapsed ? '▸' : '▾'}
+                  </button>
+                  <span style={{
+                    fontSize: 11,
+                    fontWeight: 600,
+                    color: '#aaa',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.07em',
+                    whiteSpace: 'nowrap',
+                    flexShrink: 0,
+                  }}>
+                    {group.epicTitle}
+                  </span>
+                  <div style={{ flex: 1, height: 1, background: '#e0e0e0' }} />
+                </div>
+              )}
+
+              {!epicCollapsed && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 4 }}>
+                  {/* The epic's own card, when its derived status is this column */}
+                  {group.epicCard && (
                     <Card
-                      item={item}
-                      parentTitle={parent?.title}
-                      childCount={childCount}
-                      collapsed={collapsedIds.has(item.id)}
-                      onToggleCollapse={() => onToggleCollapse(item.id)}
-                      onClick={() => onCardClick(item)}
+                      item={group.epicCard}
+                      childCount={group.stories.length}
+                      collapsed={epicCollapsed}
+                      onToggleCollapse={() => onToggleCollapse(key(group.epicId!))}
+                      onClick={() => onCardClick(group.epicCard!)}
                     />
-                  </div>
-                );
-              })}
+                  )}
+
+                  {/* Story sections — each story is a header for its in-column items */}
+                  {group.stories.map((section) => {
+                    const storyCollapsed = collapsedIds.has(key(section.story.id));
+                    const epicTitle = group.epicId != null ? group.epicTitle : undefined;
+                    return (
+                      <div key={section.story.id} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        <Card
+                          item={section.story}
+                          parentTitle={epicTitle}
+                          childCount={section.tasks.length}
+                          collapsed={storyCollapsed}
+                          onToggleCollapse={() => onToggleCollapse(key(section.story.id))}
+                          onClick={() => onCardClick(section.story)}
+                        />
+                        {!storyCollapsed && section.tasks.map((task) => (
+                          <div
+                            key={task.id}
+                            style={{ marginLeft: 14, borderLeft: '2px solid #d0d0d0', paddingLeft: 6 }}
+                          >
+                            <Card
+                              item={task}
+                              parentTitle={section.story.title}
+                              onClick={() => onCardClick(task)}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })}
+
+                  {/* Leaves with no story ancestor — rendered top-level */}
+                  {group.looseLeaves.map((leaf) => {
+                    const parent = leaf.parent_id ? allItems.find((i) => i.id === leaf.parent_id) : undefined;
+                    return (
+                      <Card
+                        key={leaf.id}
+                        item={leaf}
+                        parentTitle={parent?.title}
+                        onClick={() => onCardClick(leaf)}
+                      />
+                    );
+                  })}
+                </div>
+              )}
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

@@ -59,17 +59,30 @@ export function Board({ projectId, onBack, onShowKb }: Props) {
     collapseInitRef.current = null;
   }, [projectId]);
 
-  // Collapse all epics and stories by default — once per project, after its
-  // items load. Guarded against stale data from the previous project, and
-  // against re-collapsing once the user has started expanding things.
+  // Collapse all epic/story headers by default — once per project, after its
+  // items load. Collapse keys are per-column ("<columnId>::<itemId>") so each
+  // column's copy of a story/epic header collapses independently. We seed the
+  // key for every column where a header will render: the header's own column
+  // (when its status is that column) and every column holding a descendant.
+  // Guarded against stale data and against re-collapsing after the user acts.
   useEffect(() => {
     if (!items || items.length === 0) return;
     if (items[0].project_id !== projectId) return;
     if (collapseInitRef.current === projectId) return;
-    const ids = new Set(
-      items.filter((i) => i.type === 'epic' || i.type === 'story').map((i) => i.id)
-    );
-    setCollapsed(ids);
+    const byId = new Map(items.map((i) => [i.id, i]));
+    const keys = new Set<string>();
+    for (const it of items) {
+      if (it.type === 'epic' || it.type === 'story') keys.add(`${it.column_id}::${it.id}`);
+      let parentId = it.parent_id;
+      while (parentId != null) {
+        const parent = byId.get(parentId);
+        if (parent && (parent.type === 'epic' || parent.type === 'story')) {
+          keys.add(`${it.column_id}::${parent.id}`);
+        }
+        parentId = parent?.parent_id ?? null;
+      }
+    }
+    setCollapsed(keys);
     collapseInitRef.current = projectId;
   }, [projectId, items]);
 
@@ -115,22 +128,14 @@ export function Board({ projectId, onBack, onShowKb }: Props) {
           i.description.toLowerCase().includes(q)
       );
 
-  // Hide items whose epic/story ancestor is collapsed (board-wide, across all columns)
-  const itemById = new Map(allItems.map((i) => [i.id, i]));
-  const displayedItems = searchedItems.filter((item) => {
-    let parentId = item.parent_id;
-    while (parentId != null) {
-      if (collapsed.has(parentId)) return false;
-      parentId = itemById.get(parentId)?.parent_id ?? null;
-    }
-    return true;
-  });
+  // Collapse is applied per-column inside <Column> (headers always render; only
+  // that column's descendants hide), so no board-wide hiding happens here.
 
-  function toggleCollapse(id: string) {
+  function toggleCollapse(key: string) {
     setCollapsed((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
       return next;
     });
   }
@@ -228,7 +233,7 @@ export function Board({ projectId, onBack, onShowKb }: Props) {
           <Column
             key={col.id}
             column={col}
-            items={displayedItems.filter((item) => {
+            items={searchedItems.filter((item) => {
               if (item.column_id !== col.id) return false;
               // In the Done column, hide items not moved there today unless the
               // user opted to show all. Other columns are unaffected.
