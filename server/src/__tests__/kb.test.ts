@@ -350,6 +350,29 @@ describe('KbService.search', () => {
     expect(results.map((r) => r.title)).toEqual(['Mine']);
   });
 
+  it('matches on the doc key, including a bare number fragment (LDA-63)', () => {
+    const doc = ctx.kbService.create({ project_id: projectId, title: 'Plain title', content: 'plain body' });
+    expect(doc.key).toMatch(/-KB-1$/);
+
+    // full key, a key fragment, and the bare number all match
+    expect(ctx.kbService.search(projectId, doc.key).map((r) => r.id)).toContain(doc.id);
+    expect(ctx.kbService.search(projectId, 'KB').map((r) => r.id)).toContain(doc.id);
+    expect(ctx.kbService.search(projectId, '1').map((r) => r.id)).toContain(doc.id);
+
+    // a key-only hit (no title/content match) has an empty snippet
+    const hit = ctx.kbService.search(projectId, doc.key).find((r) => r.id === doc.id)!;
+    expect(hit.snippet).toBe('');
+  });
+
+  it('sorts key matches ahead of content-only matches', () => {
+    const keyed = ctx.kbService.create({ project_id: projectId, title: 'Zeta', content: 'no body match' });
+    ctx.kbService.create({ project_id: projectId, title: 'Alpha', content: `mentions ${keyed.key} in the body` });
+
+    const results = ctx.kbService.search(projectId, keyed.key);
+    // The doc whose KEY matches ranks above the doc that only mentions it in content
+    expect(results[0].id).toBe(keyed.id);
+  });
+
   it('is read-only — writes no activity and emits no bus events', () => {
     ctx.kbService.create({ project_id: projectId, title: 'Doc', content: 'needle' });
     const before = ctx.activityService.listByProject(projectId, { limit: 50 }).length;
@@ -429,6 +452,12 @@ describe('KbService.searchAll', () => {
 
     const results = ctx.kbService.searchAll('50%');
     expect(results.map((r) => r.title)).toEqual(['Percent doc']);
+  });
+
+  it('matches on the doc key across projects', () => {
+    const doc = ctx.kbService.create({ project_id: projectId, title: 'Plain', content: 'plain body' });
+    const results = ctx.kbService.searchAll(doc.key);
+    expect(results.map((r) => r.id)).toContain(doc.id);
   });
 
   it('is read-only — writes no activity and emits no bus events', () => {

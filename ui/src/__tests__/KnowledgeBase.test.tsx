@@ -292,7 +292,7 @@ describe('KnowledgeBase', () => {
     await screen.findByText('Architecture');
 
     fireEvent.click(screen.getByLabelText('Search help'));
-    expect(screen.getByText(/Searches document titles and content on the server/)).toBeTruthy();
+    expect(screen.getByText(/Searches document titles, keys/)).toBeTruthy();
   });
 
   it('shows "No matches" when the search returns nothing', async () => {

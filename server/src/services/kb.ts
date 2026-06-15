@@ -131,14 +131,14 @@ export class KbService {
     return row ? rowToDoc(row) : undefined;
   }
 
-  /** Read-only search over titles and content — writes no activity and emits no events. */
+  /** Read-only search over titles, keys, and content — writes no activity and emits no events. */
   search(projectId: string, query: string): KbSearchResult[] {
     const like = '%' + query.replace(/[\\%_]/g, (m) => '\\' + m) + '%';
     const rows = this.db
       .prepare(
-        "SELECT * FROM kb_documents WHERE project_id = ? AND (title LIKE ? ESCAPE '\\' OR content LIKE ? ESCAPE '\\') ORDER BY (title LIKE ? ESCAPE '\\') DESC, title ASC"
+        "SELECT * FROM kb_documents WHERE project_id = ? AND (title LIKE ? ESCAPE '\\' OR key LIKE ? ESCAPE '\\' OR content LIKE ? ESCAPE '\\') ORDER BY (title LIKE ? ESCAPE '\\' OR key LIKE ? ESCAPE '\\') DESC, title ASC"
       )
-      .all(projectId, like, like, like) as KbDocumentRow[];
+      .all(projectId, like, like, like, like, like) as KbDocumentRow[];
     return rows.map((row) => ({
       id: row.id,
       project_id: row.project_id,
@@ -149,14 +149,14 @@ export class KbService {
     }));
   }
 
-  /** Read-only search over titles and content across ALL projects — writes no activity and emits no events. */
+  /** Read-only search over titles, keys, and content across ALL projects — writes no activity and emits no events. */
   searchAll(query: string): KbGlobalSearchResult[] {
     const like = '%' + query.replace(/[\\%_]/g, (m) => '\\' + m) + '%';
     const rows = this.db
       .prepare(
-        "SELECT d.*, p.name AS project_name FROM kb_documents d JOIN projects p ON p.id = d.project_id WHERE d.title LIKE ? ESCAPE '\\' OR d.content LIKE ? ESCAPE '\\' ORDER BY (d.title LIKE ? ESCAPE '\\') DESC, d.title ASC"
+        "SELECT d.*, p.name AS project_name FROM kb_documents d JOIN projects p ON p.id = d.project_id WHERE d.title LIKE ? ESCAPE '\\' OR d.key LIKE ? ESCAPE '\\' OR d.content LIKE ? ESCAPE '\\' ORDER BY (d.title LIKE ? ESCAPE '\\' OR d.key LIKE ? ESCAPE '\\') DESC, d.title ASC"
       )
-      .all(like, like, like) as (KbDocumentRow & { project_name: string })[];
+      .all(like, like, like, like, like) as (KbDocumentRow & { project_name: string })[];
     return rows.map((row) => ({
       id: row.id,
       project_id: row.project_id,

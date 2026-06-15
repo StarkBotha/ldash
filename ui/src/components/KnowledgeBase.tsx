@@ -197,14 +197,15 @@ export function KnowledgeBase({ projectId, onBack, onShowBoard }: Props) {
             </div>
             <HelpTip>
               <p>
-                Searches document titles and content on the server. Case-insensitive; matches your
-                text anywhere it appears (plain substring — no wildcards, % and _ are matched
-                literally).
+                Searches document titles, keys (e.g. LDA-KB-1), and content on the server.
+                Case-insensitive; matches your text anywhere it appears (plain substring — no
+                wildcards, % and _ are matched literally). Searching a number like "40" finds
+                LDA-KB-40.
               </p>
               <p>
                 Results show a short snippet around the first match in the content; documents whose
-                title matches are listed first. Click a result to open it; clear the box to show
-                all documents.
+                title or key matches are listed first. Click a result to open it; clear the box to
+                show all documents.
               </p>
               <p>
                 "All projects" searches every project's knowledgebase; results show which project
