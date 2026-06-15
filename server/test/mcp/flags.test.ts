@@ -8,6 +8,7 @@ function getText(result: { content: Array<{ type: string; text?: string }> }): s
 describe('flag and block MCP tools', () => {
   let ctx: TestContext;
   let itemId: string;
+  let itemKey: string;
 
   beforeEach(async () => {
     ctx = await createTestContext();
@@ -20,6 +21,7 @@ describe('flag and block MCP tools', () => {
       column_id: columns[0].id,
     });
     itemId = item.id;
+    itemKey = item.key;
   });
 
   afterEach(async () => {
@@ -39,6 +41,16 @@ describe('flag and block MCP tools', () => {
 
       const stored = ctx.services.items.get(itemId);
       expect(stored!.flagged).toBe(true);
+    });
+
+    it('resolves the item by ticket key', async () => {
+      const result = await ctx.client.callTool({
+        name: 'ldash_flag_item',
+        arguments: { item_id: itemKey, flagged: true },
+      });
+      expect(result.isError).toBeFalsy();
+      expect(JSON.parse(getText(result)).id).toBe(itemId);
+      expect(ctx.services.items.get(itemId)!.flagged).toBe(true);
     });
 
     it('clears flagged to false', async () => {
@@ -92,6 +104,16 @@ describe('flag and block MCP tools', () => {
       const item = JSON.parse(getText(result));
       expect(item.blocked).toBe(true);
       expect(item.blocked_reason).toBe('Waiting for API keys');
+    });
+
+    it('resolves the item by ticket key', async () => {
+      const result = await ctx.client.callTool({
+        name: 'ldash_block_item',
+        arguments: { item_id: itemKey, blocked: true, reason: 'Keyed block' },
+      });
+      expect(result.isError).toBeFalsy();
+      expect(JSON.parse(getText(result)).id).toBe(itemId);
+      expect(ctx.services.items.get(itemId)!.blocked).toBe(true);
     });
 
     it('returns isError when blocked=true and no reason given', async () => {

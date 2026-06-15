@@ -210,6 +210,18 @@ describe('item MCP tools', () => {
       expect(updated.key).toBe(item.key);
     });
 
+    it('resolves the item by ticket key', async () => {
+      const item = ctx.services.items.create({ project_id: projectId, type: 'task', title: 'Old Title', column_id: columns[0].id });
+
+      const result = await ctx.client.callTool({
+        name: 'ldash_update_item_fields',
+        arguments: { item_id: item.key, title: 'Keyed Title' },
+      });
+      expect(result.isError).toBeFalsy();
+      expect(JSON.parse(getText(result)).title).toBe('Keyed Title');
+      expect(ctx.services.items.get(item.id)!.title).toBe('Keyed Title');
+    });
+
     it('rejects converting a story to a task', async () => {
       const story = ctx.services.items.create({ project_id: projectId, type: 'story', title: 'Story', column_id: columns[0].id });
 
@@ -261,6 +273,20 @@ describe('item MCP tools', () => {
       expect(result.isError).toBe(true);
       expect(getText(result)).toContain('not found');
       expect(getText(result)).toContain('Available columns');
+    });
+
+    it('resolves the item by ticket key (LDA-39)', async () => {
+      const item = ctx.services.items.create({ project_id: projectId, type: 'task', title: 'Task', column_id: columns[0].id });
+      const doneCol = columns.find(c => c.name === 'Done')!;
+
+      const result = await ctx.client.callTool({
+        name: 'ldash_update_item_status',
+        arguments: { item_id: item.key, column_id: 'Done' },
+      });
+      expect(result.isError).toBeFalsy();
+      const movedItem = JSON.parse(getText(result));
+      expect(movedItem.id).toBe(item.id);
+      expect(movedItem.column_id).toBe(doneCol.id);
     });
 
     it('writes item.moved activity with actor_type === "claude"', async () => {

@@ -200,13 +200,13 @@ export function registerItemTools(server: McpServer, services: Services, bus: Ev
     'ldash_update_item_fields',
     'Update the title, description, and/or type of an item. Use this to correct a title, add detail to a description, or reclassify a work item (e.g. a task that turned out to be a bug). Type changes are only allowed between task, bug, and investigation — epics and stories cannot be converted. Does not change status — use ldash_update_item_status for that.',
     {
-      item_id: z.string().describe('The id of the item to update.'),
+      item_id: z.string().describe('The id of the item to update, or its ticket key (e.g. "DUN-12").'),
       title: z.string().min(1).optional().describe('New title. Optional — omit to leave unchanged.'),
       description: z.string().optional().describe('New description. Optional — omit to leave unchanged. Pass an empty string to clear the description.'),
       type: z.enum(WORK_ITEM_TYPES).optional().describe('New item type. Optional — omit to leave unchanged. Only conversions between task, bug, and investigation are allowed; epics and stories cannot be converted.'),
     },
     async (input) => {
-      const oldItem = services.items.get(input.item_id);
+      const oldItem = services.items.get(input.item_id) ?? services.items.getByKey(input.item_id);
       if (!oldItem) {
         return { content: [{ type: 'text' as const, text: 'Error: item not found' }], isError: true };
       }
@@ -219,7 +219,7 @@ export function registerItemTools(server: McpServer, services: Services, bus: Ev
         return { content: [{ type: 'text' as const, text: `Error: type can only be changed between work item types (task, bug, investigation) — cannot convert ${oldItem.type} to ${input.type}` }], isError: true };
       }
 
-      const updatedItem = services.items.update(input.item_id, {
+      const updatedItem = services.items.update(oldItem.id, {
         title: input.title,
         description: input.description,
         type: input.type,
@@ -238,7 +238,7 @@ export function registerItemTools(server: McpServer, services: Services, bus: Ev
       }
 
       services.activity.append({
-        item_id: input.item_id,
+        item_id: oldItem.id,
         project_id: oldItem.project_id,
         actor_type: 'claude',
         actor_id: 'claude-code',
@@ -249,7 +249,7 @@ export function registerItemTools(server: McpServer, services: Services, bus: Ev
       bus.emit({
         type: 'item.updated',
         projectId: oldItem.project_id,
-        entityId: input.item_id,
+        entityId: oldItem.id,
         data: { item: updatedItem },
       });
 
@@ -262,11 +262,11 @@ export function registerItemTools(server: McpServer, services: Services, bus: Ev
     'ldash_update_item_status',
     'Move a TASK, BUG, or INVESTIGATION to a different status column. Use this to advance a work item through the board — for example, moving a task from "In Progress" to "Review" after completing the implementation. Accepts either a column id or a column name. Stories and epics derive their status automatically from their child work items — do not call this tool on them.',
     {
-      item_id: z.string().describe('The id of the item to move.'),
+      item_id: z.string().describe('The id of the item to move, or its ticket key (e.g. "DUN-12").'),
       column_id: z.string().describe('The target column. Accepts either a column id or a column name (case-insensitive match). Examples: "Done", "In Progress", or the raw id.'),
     },
     async (input) => {
-      const oldItem = services.items.get(input.item_id);
+      const oldItem = services.items.get(input.item_id) ?? services.items.getByKey(input.item_id);
       if (!oldItem) {
         return { content: [{ type: 'text' as const, text: 'Error: item not found' }], isError: true };
       }
@@ -284,7 +284,7 @@ export function registerItemTools(server: McpServer, services: Services, bus: Ev
 
       let movedItem;
       try {
-        movedItem = services.items.move(input.item_id, { column_id: resolvedColumn.id });
+        movedItem = services.items.move(oldItem.id, { column_id: resolvedColumn.id });
       } catch (err) {
         if (err instanceof Error && err.message.startsWith('Status of a ')) {
           return { content: [{ type: 'text' as const, text: 'Error: ' + err.message }], isError: true };
@@ -297,7 +297,7 @@ export function registerItemTools(server: McpServer, services: Services, bus: Ev
       const toColumnName = resolvedColumn.name;
 
       services.activity.append({
-        item_id: input.item_id,
+        item_id: oldItem.id,
         project_id: oldItem.project_id,
         actor_type: 'claude',
         actor_id: 'claude-code',
@@ -313,13 +313,13 @@ export function registerItemTools(server: McpServer, services: Services, bus: Ev
       bus.emit({
         type: 'item.moved',
         projectId: oldItem.project_id,
-        entityId: input.item_id,
+        entityId: oldItem.id,
         data: { item: movedItem, fromColumnId: oldItem.column_id, toColumnId: resolvedColumn.id },
       });
 
       // Rollup: after a successful work item move, recompute ancestor story/epic status
       if (isWorkItemType(oldItem.type) && db) {
-        recomputeAncestors(input.item_id, db, services.items, services.activity, services.columns, bus);
+        recomputeAncestors(oldItem.id, db, services.items, services.activity, services.columns, bus);
       }
 
       return { content: [{ type: 'text' as const, text: JSON.stringify(movedItem, null, 2) }] };

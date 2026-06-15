@@ -9,25 +9,23 @@ export function registerCommentTools(server: McpServer, services: Services, bus:
     'ldash_add_comment',
     'Post a comment on an item. Use this to leave notes about implementation decisions, blockers encountered, questions for the human reviewer, or a summary of what was done. Comments are visible to the user in the item detail panel.',
     {
-      item_id: z.string().describe('The id of the item to comment on.'),
+      item_id: z.string().describe('The id of the item to comment on, or its ticket key (e.g. "DUN-12").'),
       body: z.string().min(1).describe('The comment text. Markdown is accepted. Must not be empty.'),
     },
     async (input) => {
-      const itemCheck = services.items.get(input.item_id);
-      if (!itemCheck) {
+      const item = services.items.get(input.item_id) ?? services.items.getByKey(input.item_id);
+      if (!item) {
         return { content: [{ type: 'text' as const, text: 'Error: item not found' }], isError: true };
       }
 
       const comment = services.comments.create({
-        item_id: input.item_id,
+        item_id: item.id,
         body: input.body,
         author: 'claude-code',
       });
 
-      const item = services.items.get(input.item_id)!;
-
       services.activity.append({
-        item_id: input.item_id,
+        item_id: item.id,
         project_id: item.project_id,
         actor_type: 'claude',
         actor_id: 'claude-code',

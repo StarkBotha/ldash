@@ -8,6 +8,7 @@ function getText(result: { content: Array<{ type: string; text?: string }> }): s
 describe('ldash_add_comment', () => {
   let ctx: TestContext;
   let itemId: string;
+  let itemKey: string;
 
   beforeEach(async () => {
     ctx = await createTestContext();
@@ -20,6 +21,7 @@ describe('ldash_add_comment', () => {
       column_id: columns[0].id,
     });
     itemId = item.id;
+    itemKey = item.key;
   });
 
   afterEach(async () => {
@@ -46,6 +48,16 @@ describe('ldash_add_comment', () => {
 
     const comments = ctx.services.comments.listByItem(itemId);
     expect(comments.some(c => c.body === 'HTTP visible comment')).toBe(true);
+  });
+
+  it('resolves the item by ticket key', async () => {
+    const result = await ctx.client.callTool({
+      name: 'ldash_add_comment',
+      arguments: { item_id: itemKey, body: 'Keyed comment' },
+    });
+    expect(result.isError).toBeFalsy();
+    expect(JSON.parse(getText(result)).item_id).toBe(itemId);
+    expect(ctx.services.comments.listByItem(itemId).some(c => c.body === 'Keyed comment')).toBe(true);
   });
 
   it('returns isError for empty body (Zod validation)', async () => {
