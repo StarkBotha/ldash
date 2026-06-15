@@ -325,4 +325,138 @@ export function registerItemTools(server: McpServer, services: Services, bus: Ev
       return { content: [{ type: 'text' as const, text: JSON.stringify(movedItem, null, 2) }] };
     }
   );
+
+  // ldash_delete_item
+  server.tool(
+    'ldash_delete_item',
+    'Permanently delete an item (epic, story, task, bug, or investigation) from the board. Use this only for items created by mistake or genuinely no longer wanted — prefer moving a finished item to Done, or a dropped one to the Cancelled column, over deleting it. Deleting a story or epic does NOT delete its children: they are orphaned to the top level (their parent link is cleared). Comments and attachments on the deleted item are removed with it. This cannot be undone. Accepts either an item id or a ticket key like "DUN-12".',
+    {
+      item_id: z.string().describe('The id of the item to delete, or its ticket key (e.g. "DUN-12").'),
+    },
+    async (input) => {
+      const item = services.items.get(input.item_id) ?? services.items.getByKey(input.item_id);
+      if (!item) {
+        return { content: [{ type: 'text' as const, text: 'Error: item not found' }], isError: true };
+      }
+
+      // Children are orphaned (parent_id is ON DELETE SET NULL), not cascade-deleted.
+      const orphanedCount = services.items.listFiltered({ project_id: item.project_id, parent_id: item.id }).length;
+      const deletedParentId = isWorkItemType(item.type) ? item.parent_id : null;
+      const deletedProjectId = item.project_id;
+
+      // Activity is written BEFORE deletion so the row's item_id still resolves.
+      services.activity.append({
+        item_id: item.id,
+        project_id: item.project_id,
+        actor_type: 'claude',
+        actor_id: 'claude-code',
+        event_type: 'item.deleted',
+        payload: { title: item.title, type: item.type },
+      });
+
+      services.items.delete(item.id);
+
+      bus.emit({
+        type: 'item.deleted',
+        projectId: item.project_id,
+        entityId: item.id,
+        data: { itemId: item.id, title: item.title, type: item.type },
+      });
+
+      // Rollup: deleting a leaf work item changes its parent's derived status.
+      if (isWorkItemType(item.type) && deletedParentId && db) {
+        const siblings = services.items
+          .listFiltered({ project_id: deletedProjectId, parent_id: deletedParentId })
+          .filter((i) => isWorkItemType(i.type));
+        if (siblings.length > 0) {
+          recomputeAncestors(siblings[0].id, db, services.items, services.activity, services.columns, bus);
+        } else {
+          recomputeAncestorsByParent(deletedParentId, deletedProjectId, db, services.items, services.activity, services.columns, bus);
+        }
+      }
+
+      const note =
+        orphanedCount > 0
+          ? ` ${orphanedCount} child item${orphanedCount === 1 ? ' was' : 's were'} orphaned to the top level.`
+          : '';
+      return { content: [{ type: 'text' as const, text: `Deleted ${item.key} "${item.title}" (${item.type}).${note}` }] };
+    }
+  );
+
+  // ldash_reparent_item
+  server.tool(
+    'ldash_reparent_item',
+    "Change an item's parent — move a story under a different epic, a task/bug/investigation under a different story or epic, or detach an item to the top level. The new parent must be a story or epic in the same project (work items cannot be parents). Pass new_parent as null or an empty string to make the item top-level (no parent). Story/epic status is re-derived afterwards so both the old and new parents' rollups stay correct. Accepts ids or ticket keys for both the item and the new parent.",
+    {
+      item_id: z.string().describe('The id of the item to re-parent, or its ticket key (e.g. "DUN-12").'),
+      new_parent: z
+        .string()
+        .nullable()
+        .describe('The new parent — a story or epic id or ticket key. Pass null or an empty string to detach the item to the top level (no parent).'),
+    },
+    async (input) => {
+      const item = services.items.get(input.item_id) ?? services.items.getByKey(input.item_id);
+      if (!item) {
+        return { content: [{ type: 'text' as const, text: 'Error: item not found' }], isError: true };
+      }
+
+      const oldParentId = item.parent_id;
+      let newParentId: string | null = null;
+
+      const ref = input.new_parent;
+      if (ref !== null && ref.trim() !== '') {
+        const parent = services.items.get(ref) ?? services.items.getByKey(ref);
+        if (!parent || parent.project_id !== item.project_id) {
+          return { content: [{ type: 'text' as const, text: 'Error: new parent not found or belongs to a different project' }], isError: true };
+        }
+        if (parent.type !== 'story' && parent.type !== 'epic') {
+          return { content: [{ type: 'text' as const, text: `Error: parent must be a story or epic (got ${parent.type})` }], isError: true };
+        }
+        // Cycle guard: walking up from the new parent must never reach the item
+        // itself, or we'd create a parent loop (which would hang the rollup walk).
+        let cursor: typeof parent | undefined = parent;
+        while (cursor) {
+          if (cursor.id === item.id) {
+            return { content: [{ type: 'text' as const, text: 'Error: cannot parent an item under itself or one of its own descendants' }], isError: true };
+          }
+          cursor = cursor.parent_id ? services.items.get(cursor.parent_id) : undefined;
+        }
+        newParentId = parent.id;
+      }
+
+      if (newParentId === oldParentId) {
+        return { content: [{ type: 'text' as const, text: `No change: ${item.key} already has that parent.` }] };
+      }
+
+      const updated = services.items.update(item.id, { parent_id: newParentId });
+
+      services.activity.append({
+        item_id: item.id,
+        project_id: item.project_id,
+        actor_type: 'claude',
+        actor_id: 'claude-code',
+        event_type: 'item.updated',
+        payload: { fields: { old: { parent_id: oldParentId }, new: { parent_id: newParentId } } },
+      });
+
+      bus.emit({
+        type: 'item.updated',
+        projectId: item.project_id,
+        entityId: item.id,
+        data: { item: updated },
+      });
+
+      // Rollup: both the old and new parent chains can change derived status.
+      if (db) {
+        if (oldParentId) {
+          recomputeAncestorsByParent(oldParentId, item.project_id, db, services.items, services.activity, services.columns, bus);
+        }
+        if (newParentId) {
+          recomputeAncestorsByParent(newParentId, item.project_id, db, services.items, services.activity, services.columns, bus);
+        }
+      }
+
+      return { content: [{ type: 'text' as const, text: JSON.stringify(updated, null, 2) }] };
+    }
+  );
 }
