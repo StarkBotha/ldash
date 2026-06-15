@@ -11,6 +11,8 @@ interface Props {
   onToggleCollapse: (key: string) => void;
   onCardClick: (item: Item) => void;
   onNewItem: () => void;
+  /** Open the new-item form parented to a story/epic. */
+  onAddChild: (parent: Item) => void;
 }
 
 /** Walk parent_id up to find the root epic ancestor id, or null if none. */
@@ -129,7 +131,7 @@ export function buildGroups(columnItems: Item[], allItems: Item[]): EpicGroup[] 
   return result;
 }
 
-export function Column({ column, items, allItems, collapsedIds, onToggleCollapse, onCardClick, onNewItem }: Props) {
+export function Column({ column, items, allItems, collapsedIds, onToggleCollapse, onCardClick, onNewItem, onAddChild }: Props) {
   const groups = buildGroups(items, allItems);
   const isCancelled = column.role === 'cancelled';
   const key = (id: string) => `${column.id}::${id}`;
@@ -219,6 +221,7 @@ export function Column({ column, items, allItems, collapsedIds, onToggleCollapse
                       childCount={group.stories.length}
                       collapsed={epicCollapsed}
                       onToggleCollapse={() => onToggleCollapse(key(group.epicId!))}
+                      onAddChild={() => onAddChild(group.epicCard!)}
                       onClick={() => onCardClick(group.epicCard!)}
                     />
                   )}
@@ -235,6 +238,7 @@ export function Column({ column, items, allItems, collapsedIds, onToggleCollapse
                           childCount={section.tasks.length}
                           collapsed={storyCollapsed}
                           onToggleCollapse={() => onToggleCollapse(key(section.story.id))}
+                          onAddChild={() => onAddChild(section.story)}
                           onClick={() => onCardClick(section.story)}
                         />
                         {!storyCollapsed && section.tasks.map((task) => (

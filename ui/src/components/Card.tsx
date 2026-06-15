@@ -7,6 +7,8 @@ interface Props {
   childCount?: number;
   collapsed?: boolean;
   onToggleCollapse?: () => void;
+  /** When set, renders a "+" that opens the new-item form parented to this card. */
+  onAddChild?: () => void;
   onClick: () => void;
 }
 
@@ -18,7 +20,7 @@ export const TYPE_COLORS: Record<string, string> = {
   investigation: '#14b8a6',
 };
 
-export function Card({ item, parentTitle, childCount, collapsed, onToggleCollapse, onClick }: Props) {
+export function Card({ item, parentTitle, childCount, collapsed, onToggleCollapse, onAddChild, onClick }: Props) {
   const childLabel = item.type === 'epic' ? 'stories' : 'work items';
   return (
     <div
@@ -44,27 +46,49 @@ export function Card({ item, parentTitle, childCount, collapsed, onToggleCollaps
         }}>
           {item.type}
         </span>
-        {childCount != null && childCount > 0 && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleCollapse?.();
-            }}
-            title={collapsed ? `Show ${childCount} ${childLabel}` : `Hide ${childCount} ${childLabel}`}
-            style={{
-              flexShrink: 0,
-              border: '1px solid #e0e0e0',
-              background: collapsed ? '#eee' : '#fff',
-              borderRadius: 4,
-              padding: '0 5px',
-              fontSize: 12,
-              color: '#666',
-              cursor: 'pointer',
-            }}
-          >
-            {collapsed ? '▸' : '▾'} {childCount}
-          </button>
-        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+          {onAddChild && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onAddChild();
+              }}
+              title={`Add a child to ${item.title}`}
+              style={{
+                border: '1px solid #e0e0e0',
+                background: '#fff',
+                borderRadius: 4,
+                padding: '0 6px',
+                fontSize: 14,
+                lineHeight: '18px',
+                color: '#666',
+                cursor: 'pointer',
+              }}
+            >
+              +
+            </button>
+          )}
+          {childCount != null && childCount > 0 && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleCollapse?.();
+              }}
+              title={collapsed ? `Show ${childCount} ${childLabel}` : `Hide ${childCount} ${childLabel}`}
+              style={{
+                border: '1px solid #e0e0e0',
+                background: collapsed ? '#eee' : '#fff',
+                borderRadius: 4,
+                padding: '0 5px',
+                fontSize: 12,
+                color: '#666',
+                cursor: 'pointer',
+              }}
+            >
+              {collapsed ? '▸' : '▾'} {childCount}
+            </button>
+          )}
+        </div>
       </div>
       <div style={{ marginTop: 4, fontSize: 15 }}>
         <span style={{ fontSize: 12, color: '#999', fontWeight: 600, marginRight: 5 }}>{item.key}</span>

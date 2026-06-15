@@ -10,7 +10,7 @@ import { ItemForm } from './ItemForm';
 import { ProjectForm } from './ProjectForm';
 import { PlanView } from './PlanView';
 import { triggerExport } from '../api/export';
-import type { Item } from '../types';
+import type { Item, ItemType } from '../types';
 
 interface Props {
   projectId: string;
@@ -37,6 +37,9 @@ export function Board({ projectId, onBack, onShowKb }: Props) {
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
   const [showItemForm, setShowItemForm] = useState(false);
   const [itemFormColId, setItemFormColId] = useState<string>('');
+  // Seeds for a new item opened via a "+" button: parent and/or type to preselect.
+  const [itemFormParentId, setItemFormParentId] = useState<string>('');
+  const [itemFormType, setItemFormType] = useState<ItemType | undefined>(undefined);
   const [editingItem, setEditingItem] = useState<Item | null>(null);
   const [showProjectForm, setShowProjectForm] = useState(false);
   const [isPlanningMode, setIsPlanningMode] = useState(false);
@@ -140,10 +143,18 @@ export function Board({ projectId, onBack, onShowKb }: Props) {
     });
   }
 
-  function openNewItemForm(colId: string) {
+  function openNewItemForm(colId: string, opts?: { parentId?: string; type?: ItemType }) {
     setItemFormColId(colId);
+    setItemFormParentId(opts?.parentId ?? '');
+    setItemFormType(opts?.type);
     setEditingItem(null);
     setShowItemForm(true);
+  }
+
+  // A new item under a story/epic starts in the first column (Backlog) and
+  // defaults to a task, with the parent preselected.
+  function openAddChildForm(parent: Item) {
+    openNewItemForm(sortedColumns[0]?.id ?? '', { parentId: parent.id, type: 'task' });
   }
 
   return (
@@ -222,7 +233,7 @@ export function Board({ projectId, onBack, onShowKb }: Props) {
           >
             Export
           </button>
-          <button onClick={() => openNewItemForm(sortedColumns[0]?.id ?? '')}>
+          <button onClick={() => openNewItemForm(sortedColumns[0]?.id ?? '', { type: 'story' })}>
             New item
           </button>
         </div>
@@ -246,7 +257,8 @@ export function Board({ projectId, onBack, onShowKb }: Props) {
             collapsedIds={collapsed}
             onToggleCollapse={toggleCollapse}
             onCardClick={(item) => setSelectedItem(item)}
-            onNewItem={() => openNewItemForm(col.id)}
+            onNewItem={() => openNewItemForm(col.id, { type: 'story' })}
+            onAddChild={openAddChildForm}
           />
         ))}
       </div>
@@ -274,6 +286,8 @@ export function Board({ projectId, onBack, onShowKb }: Props) {
           columns={sortedColumns}
           items={items ?? []}
           item={editingItem ?? undefined}
+          defaultType={itemFormType}
+          defaultParentId={itemFormParentId}
           onClose={() => {
             setShowItemForm(false);
             setEditingItem(null);

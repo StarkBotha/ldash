@@ -12,14 +12,18 @@ interface Props {
   columns: Column[];
   items: Item[];
   item?: Item;
+  /** Pre-selected type for a new item (ignored when editing). Defaults to task. */
+  defaultType?: ItemType;
+  /** Pre-selected parent for a new item (ignored when editing). */
+  defaultParentId?: string;
   onClose: () => void;
 }
 
-export function ItemForm({ projectId, columnId, columns, items, item, onClose }: Props) {
+export function ItemForm({ projectId, columnId, columns, items, item, defaultType, defaultParentId, onClose }: Props) {
   const [title, setTitle] = useState(item?.title ?? '');
-  const [type, setType] = useState<ItemType>(item?.type ?? 'task');
+  const [type, setType] = useState<ItemType>(item?.type ?? defaultType ?? 'task');
   const [description, setDescription] = useState(item?.description ?? '');
-  const [parentId, setParentId] = useState<string>(item?.parent_id ?? '');
+  const [parentId, setParentId] = useState<string>(item?.parent_id ?? defaultParentId ?? '');
   const [colId, setColId] = useState(item?.column_id ?? columnId);
   const [error, setError] = useState('');
 
