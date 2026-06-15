@@ -126,6 +126,28 @@ export function ItemForm({ projectId, columnId, columns, items, item, defaultTyp
     }
   }
 
+  // Parent options: only stories/epics whose derived status is Backlog or
+  // In Progress — the first two non-cancelled columns by position (mirrors the
+  // server rollup, where index 0 = not-started, index 1 = in-progress).
+  const activeCols = [...columns]
+    .filter((c) => c.role !== 'cancelled')
+    .sort((a, b) => a.position - b.position);
+  const parentableColIds = new Set([activeCols[0]?.id, activeCols[1]?.id].filter(Boolean));
+  const parentCandidates = items.filter(
+    (i) =>
+      (i.type === 'story' || i.type === 'epic') &&
+      i.id !== item?.id &&
+      parentableColIds.has(i.column_id)
+  );
+  // Keep the currently-selected parent visible even if it falls outside the
+  // filter (editing an item whose parent is now Done, or a "+"-add launched
+  // from a Done story) so it isn't silently dropped on save.
+  const selectedParent = parentId ? items.find((i) => i.id === parentId) : undefined;
+  const parentOptions =
+    selectedParent && !parentCandidates.some((i) => i.id === selectedParent.id)
+      ? [selectedParent, ...parentCandidates]
+      : parentCandidates;
+
   const overlayStyle: React.CSSProperties = {
     position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)',
     display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000,
@@ -244,13 +266,11 @@ export function ItemForm({ projectId, columnId, columns, items, item, defaultTyp
               style={{ width: '100%', padding: 8 }}
             >
               <option value="">None</option>
-              {items
-                .filter((i) => i.id !== item?.id)
-                .map((i) => (
-                  <option key={i.id} value={i.id}>
-                    [{i.type}] {i.title}
-                  </option>
-                ))}
+              {parentOptions.map((i) => (
+                <option key={i.id} value={i.id}>
+                  {i.key} [{i.type}] {i.title}
+                </option>
+              ))}
             </select>
           </div>
 
