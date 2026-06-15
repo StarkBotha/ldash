@@ -1,218 +1,147 @@
 # ldash
 
-A local-first, Trello-like project planning board for a single developer. The board supports real-time live updates via SSE — any change made through the HTTP API or via the MCP tools (e.g. from Claude Code) appears on an open board within 2 seconds without a page reload. Cards can be dragged between columns with instant optimistic feedback. Each item has a built-in chat panel backed by a configurable LLM (Claude subscription, OpenAI, OpenRouter, Ollama, or any OpenAI-compatible API).
+**A local-first, Trello-like project planning board with AI built in.** A single Node process owns everything — the HTTP API, a Model Context Protocol (MCP) endpoint, Server-Sent-Events realtime, and an LLM gateway — with SQLite as the single source of truth. The result is a kanban board you run on your own machine that an AI coding agent (like Claude Code) can read and write directly, so the work it does shows up on your board as it happens.
 
-## What's here
+ldash treats the board as a **dashboard of fact**: only the leaf work items you actually do (tasks, bugs, investigations) carry a directly-set status, and the status of the stories and epics above them is *derived* by rolling up their children.
 
-- **server** — Hono HTTP API backed by SQLite (better-sqlite3). Listens on `127.0.0.1:3000`.
-- **ui** — React 19 + Vite SPA. Runs on `localhost:5273` in dev, proxies `/api` to the server.
-- Shared TypeScript types in both packages (identical copies; no cross-package dependency needed for Phase 1).
+---
 
-## Running in development
+## Features
 
-Requires Node 20+ and pnpm.
+- **Kanban board** with projects and a four-level item hierarchy: epic → story → task/bug/investigation.
+- **AI agent integration over MCP** — connect Claude Code (or any MCP client) and it gets 18 `ldash_*` tools to list/create/update items, move statuses, comment, flag, block, and manage a knowledgebase. Every write is attributed and shows up in the activity feed.
+- **Realtime updates over SSE** — any change, whether from the UI, the API, or an MCP tool, is pushed live to every open board without a reload.
+- **Built-in LLM chat** — a per-item chat panel and a project-level planning chat, backed by your Claude subscription (via the Claude Agent SDK) or any OpenAI-compatible endpoint (OpenAI, OpenRouter, Ollama, …).
+- **Per-project knowledgebase** — markdown docs with GitHub-flavored markdown and Mermaid diagram rendering, searchable and managed both from the UI and from MCP tools.
+- **Comments and a full activity log** on every item, with each entry attributed to who made it (you, Claude, the planning LLM, or the system).
+- **Markdown export** of a project for a human-readable, committable snapshot.
+- **Local-first and private** — SQLite file on disk, server bound to `127.0.0.1`. Nothing leaves your machine except the LLM calls you configure.
+
+---
+
+## Tech stack
+
+- **Server** — TypeScript on [Hono](https://hono.dev/) with [`better-sqlite3`](https://github.com/WiseLibs/better-sqlite3), the [MCP TypeScript SDK](https://github.com/modelcontextprotocol/typescript-sdk), and the [Claude Agent SDK](https://github.com/anthropics/claude-agent-sdk-typescript) for Claude-subscription chat. Validation with [Zod](https://zod.dev/).
+- **UI** — [React 19](https://react.dev/) + [Vite](https://vite.dev/) + [TanStack Query](https://tanstack.com/query), with `react-markdown` + `remark-gfm` and lazy-loaded [Mermaid](https://mermaid.js.org/) for the knowledgebase.
+- **Storage** — a single SQLite database file. It is the source of truth for everything.
+- **Tooling** — pnpm workspaces, TypeScript (strict), Vitest.
+
+---
+
+## Prerequisites
+
+- **Node.js 20+**
+- **[pnpm](https://pnpm.io/)**
+
+---
+
+## Getting started
 
 ```bash
-# Install all dependencies
+# Install all dependencies (server + ui workspaces)
 pnpm install
 
-# Start server + UI in parallel
+# Start the server and the Vite UI together
 pnpm dev
 ```
 
-The board is at http://localhost:5273. The API is at http://127.0.0.1:3000.
+- The **board UI** is at **http://localhost:5273**.
+- The **server** listens on **http://127.0.0.1:3000** by default (override with the `PORT` env var).
 
-The SQLite database file is created at `./ldash.db` in the working directory when you first start the server. Change the path with the `DB_PATH` env var.
+On first start the server creates the SQLite database file at `./ldash.db` in its working directory; change the location with `DB_PATH`.
 
-## Running tests
-
-```bash
-# Server tests only (vitest, all-green)
-pnpm --filter server test
-
-# Or from the root
-pnpm test
-```
-
-## Building
+### Build and run for production
 
 ```bash
-pnpm build
+pnpm build   # tsc for the server, tsc + vite build for the ui
+pnpm start   # runs the built server (node dist/index.js)
 ```
 
-This runs `tsc` and `vite build` in the ui package, and `tsc` in the server package.
+> When running the built server, rebuild `dist/` with `tsc` after any server code change — `pnpm start` runs the compiled output, not the source.
+
+### Configuration
+
+| Variable | Default | What it does |
+|----------|---------|--------------|
+| `PORT` | `3000` | Server listen port (bound to `127.0.0.1`) |
+| `DB_PATH` | `./ldash.db` | Path to the SQLite database file |
+
+(A `.env.example` is included with these two.)
+
+To use AI chat, open **Settings** (gear icon, top-right) and add a provider — either a Claude subscription (no API key; uses your existing Claude login) or any OpenAI-compatible endpoint with a base URL and key. API keys are stored locally in SQLite and masked in all API responses.
+
+---
+
+## The status model
+
+This is the load-bearing product decision in ldash, and it's worth understanding before you use it.
+
+- **Item types** are `epic`, `story`, `task`, `bug`, and `investigation`. The last three are *leaf work items* — the actual units of work.
+- **Only leaf work items have a directly-set status.** A story's or epic's column is **derived** by rolling up the columns of its descendant leaf items, never set by hand. The board shows you the true state of the work rather than a status someone remembered to update.
+- **There is deliberately no drag-and-drop.** A leaf item moves between columns only through an explicit action: an MCP tool, a planning/chat tool call, or the detail-panel dropdown. This keeps every move attributable and intentional.
+- **Columns are global** (one shared set, not per-project): **Backlog → In Progress → Review → Done → Cancelled**. The Cancelled column is special — cancelled leaves are excluded from the rollup, so cancelling a task doesn't drag its parent's derived status down. (To cancel work, move it to Cancelled rather than deleting it.)
+- Every item gets an **immutable key** like `LDA-12` (a per-project prefix plus a counter). Keys never change, and numbers are never reused.
+
+---
+
+## MCP integration (connect Claude Code)
+
+ldash exposes an MCP server at `/mcp`. With the server running, register it from inside your project repo:
+
+```sh
+claude mcp add --transport http ldash http://localhost:<PORT>/mcp
+```
+
+(Use the port the server is listening on — `3000` by default.)
+
+Claude Code then gets 18 `ldash_*` tools covering:
+
+- **Items** — list, search, get, create, update fields, and move status.
+- **Collaboration** — add and edit comments, flag an item for human review, block an item with a reason.
+- **Projects** — list and create.
+- **Knowledgebase** — save (upsert by title), get, list, search, and delete per-project markdown docs.
+
+Every write an agent makes is recorded in the activity log attributed to the agent, and fires an SSE event so your open board updates live as the agent works.
+
+---
 
 ## Project layout
 
 ```
 ldash/
-  package.json           workspace root (scripts only)
-  pnpm-workspace.yaml
-  tsconfig.base.json     shared strict TS config
+  package.json            workspace root (scripts)
+  pnpm-workspace.yaml      server + ui workspaces
+  tsconfig.base.json       shared strict TS config
   server/
     src/
-      index.ts           startup: DB, schema, seed, routes, listen
-      db/
-        connection.ts    opens the better-sqlite3 Database
-        schema.ts        CREATE TABLE IF NOT EXISTS for all tables
-        seed.ts          inserts default columns (Backlog, In Progress, Review, Done)
-      services/          pure synchronous service classes (one per entity)
-      routes/            Hono routers (one per entity group)
-      middleware/
-        error.ts         global onError handler
-      types.ts           shared TypeScript interfaces + EventTypes constants
-      __tests__/         vitest test files covering services + HTTP API
+      index.ts             startup: DB, schema, migrations, routes, listen
+      db/                   connection, schema, migrations, seed (default columns)
+      routes/               Hono routers (one per resource group)
+      services/             all writes go through these service classes
+      services/rollup.ts    derives story/epic status from leaf items
+      mcp/tools/            the ldash_* MCP tools (items, comments, flags, projects, kb)
+      gateway/              LLM gateway + adapters (Claude Agent SDK, OpenAI-compatible)
+      planning/             planning-chat system prompt + tools
+      events/               event bus (SSE feed)
+      export/               markdown export
   ui/
     src/
-      main.tsx           React root + QueryClient
-      App.tsx            top-level view switcher (project list vs board)
-      api/client.ts      typed fetch wrappers for all API endpoints
-      components/        ProjectList, ProjectForm, Board, Column, Card,
-                         ItemDetailPanel, CommentBox, ActivityFeed, ItemForm
-      hooks/             TanStack Query hooks (useProjects, useBoard, useItemDetail)
-      types.ts           copy of server types (identical)
-      __tests__/         smoke test for App render
+      components/           Board, Column, Card, detail panel, KnowledgeBase, …
+      hooks/useSSE.ts       SSE subscription that invalidates query keys
+      api/                  typed fetch client
 ```
 
-## Environment variables
+---
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `PORT` | `3000` | Server listen port |
-| `DB_PATH` | `./ldash.db` | SQLite database file path |
-| `LOG_LEVEL` | `info` | Log verbosity: `debug`, `info`, `warn`, `error`, or `silent` |
-| `LOG_DIR` | `<cwd>/logs` | Directory for the `ldash.log` file |
+## Testing
 
-## Logging & troubleshooting
-
-The server writes every log entry to two places simultaneously: a human-readable line to stdout and a structured NDJSON line appended to `logs/ldash.log` (relative to the server's working directory). The log file alone is enough to reconstruct what happened during a manual test session.
-
-**Log file location:** `logs/ldash.log` by default. Set `LOG_DIR` to override.
-
-**Full debug trail:** set `LOG_LEVEL=debug` before starting the server. This adds bus emissions, MCP tool arguments, system prompt previews, and user message previews to the log.
-
-**Client errors are captured too.** The browser installs a global `window.onerror` and `unhandledrejection` handler on startup. Any uncaught JS error in the UI is POSTed to `POST /api/client-log` and logged under scope `client`. You'll find these in the same `ldash.log` file.
-
-**What each scope covers:**
-- `http` — every HTTP request (method, path, status, duration_ms)
-- `sse` — SSE client connect/disconnect with active connection count
-- `events` — every event bus emission (debug level)
-- `mcp` — every MCP tool call (args at debug, outcome + duration_ms at info, errors at warn)
-- `gateway` — LLM adapter selection, per-stream summary, error chunks
-- `planning` — tool-loop turns and tool executions
-- `chat` — conversation create/fetch, user/assistant message persistence
-- `export` — export requests and files written
-- `db` — migration runs and startup banner (listening URL, DB path, log file path)
-- `client` — uncaught UI errors forwarded from the browser
-
-## Connect Claude Code
-
-After starting the server, register it as an MCP server in Claude Code from within your project repo:
-
-```sh
-claude mcp add ldash --transport http http://127.0.0.1:3000/mcp
+```bash
+pnpm test                  # server test suite (Vitest)
+cd ui && npx vitest run    # UI tests (Vitest + Testing Library)
 ```
 
-Claude Code will connect to the ldash MCP endpoint and discover nine tools: `ldash_list_projects` to browse available projects, `ldash_list_items` to view board items with optional filters, `ldash_get_item` to read the full detail of an item including comments and recent activity, `ldash_create_item` to file new tasks or stories directly from a session, `ldash_update_item_fields` to revise a title or description, `ldash_update_item_status` to move an item between columns (accepts a column name or id), `ldash_add_comment` to leave a note on an item, `ldash_flag_item` to mark an item for human review, and `ldash_block_item` to record a blocker and the reason for it. All write operations record an activity entry with `actor_type: "claude"` so every change the agent makes is visible in the board's activity feed.
+---
 
-## LLM chat
+## License
 
-Each item's detail panel has a Chat tab. The assistant has read-only context about the item: its title, type, status, description, flagged/blocked state, parent item, up to 10 child items, the last 10 comments, and the last 20 activity entries. The context is assembled fresh on every message so it always reflects the current board state.
-
-### Configuring a provider
-
-Click the gear icon (top-right corner) to open Settings. Add one or more providers, set one as active, and click Save.
-
-The model field is a free-text input backed by an autocomplete list. When you open a provider for editing, the server fetches the available models directly from that provider and populates the dropdown suggestions. You can always type any model id by hand — the autocomplete is optional. A hint line below the field shows how many models were loaded, or a note to type the id manually if the fetch failed.
-
-**Claude subscription** — authenticates via your existing Claude Code login (reads the `claude` CLI session). No API key needed. Available models are fetched from `api.anthropic.com/v1/models` when a `CLAUDE_CODE_OAUTH_TOKEN` or `ANTHROPIC_API_KEY` env var is present; otherwise a built-in list is shown.
-
-```
-Name:  My Claude
-Type:  claude-subscription
-Model: claude-sonnet-4-6
-```
-
-**OpenAI**
-
-```
-Name:    OpenAI GPT-4o
-Type:    openai-compatible
-Model:   gpt-4o
-BaseURL: https://api.openai.com/v1
-APIKey:  sk-...
-```
-
-**OpenRouter**
-
-```
-Name:    OpenRouter
-Type:    openai-compatible
-Model:   openai/gpt-4o
-BaseURL: https://openrouter.ai/api/v1
-APIKey:  sk-or-...
-```
-
-**Ollama (local)**
-
-```
-Name:    Ollama Llama3
-Type:    openai-compatible
-Model:   llama3
-BaseURL: http://localhost:11434/v1
-APIKey:  ollama
-```
-
-API keys are stored in the local SQLite database and masked in all API responses (`GET /api/settings` returns `sk-abcd...XXXX`). The full key is never sent to the UI after it is saved.
-
-## Features
-
-- Kanban board with projects, epics, stories, and tasks across configurable status columns
-- Real-time board updates via Server-Sent Events — changes from the API or MCP tools appear live without page reload
-- Drag-and-drop between columns with optimistic UI and automatic rollback on failure
-- MCP server at `/mcp` for Claude Code integration — all write operations also fire SSE events so the board stays in sync
-- Comments and activity log per item
-- Per-item LLM chat with streaming responses and full item context assembly
-- Settings page for provider configuration (Claude subscription, OpenAI-compatible, OpenRouter, Ollama)
-
-## Planning mode
-
-Click the **Plan** button in any project board header to open planning mode. This replaces the board layout with a split view: a full-height AI chat panel on top (roughly 60 % of the viewport) and a live, read-only compact board below (roughly 40 %).
-
-The planning assistant has read access to your project's current state — columns, existing items, and the item hierarchy — injected as context on every turn. Tell it what you want to build. It will ask clarifying questions, propose a breakdown in words, and only call the board tools (`create_item`, `update_item`, `list_items`) once you have agreed. Items created during a planning session appear on the compact board below in real time via the existing SSE stream, with a tool-call indicator line in the chat (e.g. `Creating story: "Implement auth endpoint"`).
-
-All items created by the planning assistant are written with `actor_type: 'llm'` and `actor_id: 'planning-llm'` in the activity log, so you can always distinguish them from items you or Claude Code created.
-
-Click **Close planning mode** to return to the normal kanban board. All items created during the session are already on the board.
-
-Use **Clear history** inside the planning chat to start a fresh conversation; board items previously created are not removed.
-
-## Markdown export
-
-Click the **Export** button in any project board header to generate a markdown snapshot of the project. The export is written synchronously to `exports/<project-slug>/` relative to the server's working directory:
-
-- `README.md` — project overview listing all epics with links
-- `epic-<slug>/README.md` — one file per epic, containing its stories and tasks with status labels
-- `orphans.md` — any stories or tasks whose parent item no longer exists (only present if orphans exist)
-
-Running the export again overwrites the existing files. The files are derived from the database state and are never read back by the server — treat them as disposable snapshots you can commit, share, or delete.
-
-## How it all fits together
-
-The workflow moves in one direction and each layer builds on the previous one:
-
-1. **Plan with AI** — Open planning mode on a project, describe what you want to build, and let the assistant break it down into epics, stories, and tasks. It populates the board while you talk.
-
-2. **Board** — Everything lands on the kanban board with drag-and-drop columns (Backlog, In Progress, Review, Done). You can create, edit, move, flag, and block items at any time.
-
-3. **Connect Claude Code via MCP** — Register the server as an MCP endpoint (`claude mcp add ldash --transport http http://127.0.0.1:3000/mcp`). Claude Code can then read and write board items during a coding session — filing tasks it discovers, updating statuses as it completes work, and leaving comments on items.
-
-4. **Watch realtime** — Any change — from the UI, from Claude Code, or from the planning assistant — triggers an SSE event. All open browser tabs update the board within 2 seconds without a page reload.
-
-5. **Chat per task** — Open any item's detail panel and use the Chat tab to ask about that specific item. The assistant receives the full item context (title, status, comments, activity, children) on every message.
-
-6. **Export** — When a planning sprint is complete, export the project to markdown for a human-readable record you can commit alongside the code.
-
-## Phases
-
-Phase 1: core board. Phase 2: MCP server. Phase 3: realtime SSE + drag-and-drop. Phase 4: LLM chat + provider gateway. Phase 5 (current): planning mode + markdown export.
+No license file is currently present in this repository, so the licensing terms are **TBD**. Until a `LICENSE` is added, treat the code as all-rights-reserved.
