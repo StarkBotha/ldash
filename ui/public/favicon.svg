@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <rect width="32" height="32" rx="7" fill="#c2410c"/>
+  <!-- big L: a bold bracket wrapping the lower-left -->
+  <rect x="6" y="4.5" width="5.2" height="21.5" rx="1.3" fill="#ffffff"/>
+  <rect x="6" y="20.8" width="17" height="5.2" rx="1.3" fill="#ffffff"/>
+  <!-- B nested in the crook, sitting on the foot, hugging the stem -->
+  <text x="11.4" y="20.2" font-family="Arial, Helvetica, sans-serif" font-weight="700" font-size="21" fill="#ffffff">B</text>
+</svg>
