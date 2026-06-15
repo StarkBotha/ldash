@@ -44,6 +44,9 @@ export interface Item {
   blocked_reason: string;
   created_at: string;
   updated_at: string;
+  /** When the item last changed columns (i.e. was moved). Powers the
+   *  Done-column "moved today" filter. Backfilled to created_at for old rows. */
+  column_changed_at: string;
 }
 
 export interface Comment {

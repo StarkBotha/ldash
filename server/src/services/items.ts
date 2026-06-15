@@ -18,6 +18,7 @@ interface ItemRow {
   blocked_reason: string;
   created_at: string;
   updated_at: string;
+  column_changed_at: string;
 }
 
 function rowToItem(row: ItemRow): Item {
@@ -37,6 +38,7 @@ function rowToItem(row: ItemRow): Item {
     blocked_reason: row.blocked_reason,
     created_at: row.created_at,
     updated_at: row.updated_at,
+    column_changed_at: row.column_changed_at,
   };
 }
 
@@ -98,7 +100,7 @@ export class ItemService {
 
       this.db
         .prepare(
-          'INSERT INTO items (id, project_id, parent_id, type, number, key, title, description, column_id, position) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+          "INSERT INTO items (id, project_id, parent_id, type, number, key, title, description, column_id, position, column_changed_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))"
         )
         .run(
           id,
@@ -180,7 +182,7 @@ export class ItemService {
     }
 
     this.db
-      .prepare("UPDATE items SET column_id = ?, position = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ?")
+      .prepare("UPDATE items SET column_id = ?, position = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), column_changed_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ?")
       .run(data.column_id, position, id);
 
     return this.get(id) as Item;

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useProject } from '../hooks/useProjects';
 import { useColumns, useItems } from '../hooks/useBoard';
 import { useSSE } from '../hooks/useSSE';
@@ -18,6 +18,18 @@ interface Props {
   onShowKb: () => void;
 }
 
+/** True if an ISO timestamp falls on the current local calendar day. */
+function isToday(iso: string | undefined): boolean {
+  if (!iso) return false;
+  const d = new Date(iso);
+  const now = new Date();
+  return (
+    d.getFullYear() === now.getFullYear() &&
+    d.getMonth() === now.getMonth() &&
+    d.getDate() === now.getDate()
+  );
+}
+
 export function Board({ projectId, onBack, onShowKb }: Props) {
   const { data: project } = useProject(projectId);
   const { data: columns, isLoading: colsLoading } = useColumns();
@@ -31,6 +43,11 @@ export function Board({ projectId, onBack, onShowKb }: Props) {
   const [epicFilter, setEpicFilter] = useState<string>('all');
   const [search, setSearch] = useState('');
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  // Done column shows only items moved to Done today; this reveals all of them.
+  const [showAllDone, setShowAllDone] = useState(false);
+  // Tracks the project whose collapse defaults have been applied, so the
+  // collapse-by-default only seeds once per project and never fights the user.
+  const collapseInitRef = useRef<string | null>(null);
   const { status } = useSSE(projectId);
 
   // Reset filters when switching projects
@@ -38,7 +55,23 @@ export function Board({ projectId, onBack, onShowKb }: Props) {
     setEpicFilter('all');
     setSearch('');
     setCollapsed(new Set());
+    setShowAllDone(false);
+    collapseInitRef.current = null;
   }, [projectId]);
+
+  // Collapse all epics and stories by default — once per project, after its
+  // items load. Guarded against stale data from the previous project, and
+  // against re-collapsing once the user has started expanding things.
+  useEffect(() => {
+    if (!items || items.length === 0) return;
+    if (items[0].project_id !== projectId) return;
+    if (collapseInitRef.current === projectId) return;
+    const ids = new Set(
+      items.filter((i) => i.type === 'epic' || i.type === 'story').map((i) => i.id)
+    );
+    setCollapsed(ids);
+    collapseInitRef.current = projectId;
+  }, [projectId, items]);
 
   if (isPlanningMode) {
     return <PlanView projectId={projectId} onClose={() => setIsPlanningMode(false)} />;
@@ -47,6 +80,9 @@ export function Board({ projectId, onBack, onShowKb }: Props) {
   if (colsLoading || itemsLoading) return <div style={{ padding: 24 }}>Loading board…</div>;
 
   const sortedColumns = [...(columns ?? [])].sort((a, b) => a.position - b.position);
+  // The Done column is the last column whose role is not 'cancelled' (mirrors
+  // the server's rollup rule). Its cards are filtered to "moved today" by default.
+  const doneColId = [...sortedColumns].reverse().find((c) => c.role !== 'cancelled')?.id;
 
   const allItems = items ?? [];
 
@@ -149,6 +185,24 @@ export function Board({ projectId, onBack, onShowKb }: Props) {
             show everything.
           </p>
         </HelpTip>
+        <label style={{ marginLeft: 8, fontSize: 13, display: 'flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}>
+          <input
+            type="checkbox"
+            checked={showAllDone}
+            onChange={(e) => setShowAllDone(e.target.checked)}
+          />
+          Show all done
+        </label>
+        <HelpTip>
+          <p>
+            By default the <strong>Done</strong> column shows only items moved there today, so it
+            doesn't grow without bound. Tick this to show every done item.
+          </p>
+          <p>
+            This composes with search and the epic filter — searching still respects the "today"
+            limit unless this box is ticked.
+          </p>
+        </HelpTip>
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
           <button onClick={() => setIsPlanningMode(true)}>Plan</button>
           <button
@@ -174,7 +228,15 @@ export function Board({ projectId, onBack, onShowKb }: Props) {
           <Column
             key={col.id}
             column={col}
-            items={displayedItems.filter((item) => item.column_id === col.id)}
+            items={displayedItems.filter((item) => {
+              if (item.column_id !== col.id) return false;
+              // In the Done column, hide items not moved there today unless the
+              // user opted to show all. Other columns are unaffected.
+              if (col.id === doneColId && !showAllDone && !isToday(item.column_changed_at)) {
+                return false;
+              }
+              return true;
+            })}
             allItems={allItems}
             collapsedIds={collapsed}
             onToggleCollapse={toggleCollapse}

@@ -19,6 +19,7 @@ function makeItem(overrides: Partial<Item> & { id: string; type: ItemType }): It
     blocked_reason: '',
     created_at: '2026-01-01T00:00:00Z',
     updated_at: '2026-01-01T00:00:00Z',
+    column_changed_at: '2026-01-01T00:00:00Z',
     ...overrides,
   };
 }

@@ -49,6 +49,7 @@ export interface Item {
   blocked_reason: string;
   created_at: string;
   updated_at: string;
+  column_changed_at: string;
 }
 
 export interface Comment {
