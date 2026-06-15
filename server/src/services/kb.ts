@@ -8,6 +8,8 @@ import type { EventBus } from '../events/bus.js';
 interface KbDocumentRow {
   id: string;
   project_id: string;
+  number: number;
+  key: string;
   title: string;
   content: string;
   created_at: string;
@@ -20,6 +22,8 @@ function rowToDoc(row: KbDocumentRow): KbDocument {
   return {
     id: row.id,
     project_id: row.project_id,
+    number: row.number,
+    key: row.key,
     title: row.title,
     content: row.content,
     created_at: row.created_at,
@@ -27,7 +31,7 @@ function rowToDoc(row: KbDocumentRow): KbDocument {
   };
 }
 
-const SUMMARY_COLUMNS = 'id, project_id, title, created_at, updated_at';
+const SUMMARY_COLUMNS = 'id, project_id, number, key, title, created_at, updated_at';
 
 const SNIPPET_LENGTH = 160;
 
@@ -67,9 +71,25 @@ export class KbService {
     }
 
     const id = nanoid();
-    this.db
-      .prepare('INSERT INTO kb_documents (id, project_id, title, content) VALUES (?, ?, ?, ?)')
-      .run(id, data.project_id, title, data.content ?? '');
+    const insert = this.db.transaction(() => {
+      const proj = this.db
+        .prepare('SELECT prefix, next_kb_number FROM projects WHERE id = ?')
+        .get(data.project_id) as { prefix: string; next_kb_number: number } | undefined;
+      if (!proj) {
+        throw new Error('Project not found: ' + data.project_id);
+      }
+
+      this.db
+        .prepare(
+          'INSERT INTO kb_documents (id, project_id, number, key, title, content) VALUES (?, ?, ?, ?, ?, ?)'
+        )
+        .run(id, data.project_id, proj.next_kb_number, `${proj.prefix}-KB-${proj.next_kb_number}`, title, data.content ?? '');
+
+      this.db
+        .prepare('UPDATE projects SET next_kb_number = next_kb_number + 1 WHERE id = ?')
+        .run(data.project_id);
+    });
+    insert();
     const doc = this.get(id) as KbDocument;
 
     this.activityService.append({
@@ -104,6 +124,13 @@ export class KbService {
     return row ? rowToDoc(row) : undefined;
   }
 
+  getByKey(key: string): KbDocument | undefined {
+    const row = this.db
+      .prepare('SELECT * FROM kb_documents WHERE key = ? COLLATE NOCASE')
+      .get(key) as KbDocumentRow | undefined;
+    return row ? rowToDoc(row) : undefined;
+  }
+
   /** Read-only search over titles and content — writes no activity and emits no events. */
   search(projectId: string, query: string): KbSearchResult[] {
     const like = '%' + query.replace(/[\\%_]/g, (m) => '\\' + m) + '%';
@@ -115,6 +142,7 @@ export class KbService {
     return rows.map((row) => ({
       id: row.id,
       project_id: row.project_id,
+      key: row.key,
       title: row.title,
       updated_at: row.updated_at,
       snippet: makeSnippet(row.content, query),
@@ -133,6 +161,7 @@ export class KbService {
       id: row.id,
       project_id: row.project_id,
       project_name: row.project_name,
+      key: row.key,
       title: row.title,
       updated_at: row.updated_at,
       snippet: makeSnippet(row.content, query),

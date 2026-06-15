@@ -72,6 +72,26 @@ button {
   gap: 8px;
 }
 
+.kb-chat-drawer {
+  width: 380px;
+  flex-shrink: 0;
+  border-left: 1px solid #ddd;
+  background: #fafafa;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.kb-chat-drawer-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-bottom: 1px solid #ddd;
+  background: #fff;
+  font-size: 15px;
+}
+
 .kb-search {
   position: relative;
 }
@@ -160,11 +180,27 @@ button {
   white-space: nowrap;
 }
 
-/* The toolbar right-aligns its buttons; the project tag sits on the left */
+/* The toolbar right-aligns its buttons; the key (and project tag) sit on the
+   left — the key owns the margin-right:auto push, the tag follows it. */
 .kb-doc-toolbar .kb-doc-project {
   margin-left: 0;
+  align-self: center;
+}
+
+/* Immutable quotable key (e.g. LDA-KB-1) shown on docs and search hits */
+.kb-doc-key {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  color: #6b7280;
+  margin-right: 6px;
+}
+
+/* In the open-doc toolbar the key sits on the left, pushing buttons right */
+.kb-doc-toolbar .kb-doc-key {
   margin-right: auto;
   align-self: center;
+  font-size: 13px;
+  font-weight: 600;
 }
 
 .kb-new-doc {

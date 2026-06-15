@@ -174,6 +174,69 @@ describe('KbService', () => {
   });
 });
 
+describe('KbService keys', () => {
+  let ctx: App;
+
+  beforeEach(() => {
+    ctx = createTestApp();
+  });
+
+  afterEach(() => {
+    ctx.db.close();
+  });
+
+  it('stamps sequential KB keys per project', () => {
+    const p = ctx.projectService.create({ name: 'ldash' });
+    const a = ctx.kbService.create({ project_id: p.id, title: 'Arch' });
+    const b = ctx.kbService.create({ project_id: p.id, title: 'Runbook' });
+    expect(a.number).toBe(1);
+    expect(a.key).toBe('LDA-KB-1');
+    expect(b.number).toBe(2);
+    expect(b.key).toBe('LDA-KB-2');
+  });
+
+  it('keeps the KB counter independent of the item ticket counter', () => {
+    const p = ctx.projectService.create({ name: 'ldash' });
+    const col = ctx.columnService.list()[0];
+    ctx.itemService.create({ project_id: p.id, type: 'task', title: 'T1', column_id: col.id });
+    ctx.itemService.create({ project_id: p.id, type: 'task', title: 'T2', column_id: col.id });
+    const doc = ctx.kbService.create({ project_id: p.id, title: 'Doc' });
+    // Items took LDA-1, LDA-2; the KB doc still starts at LDA-KB-1
+    expect(doc.key).toBe('LDA-KB-1');
+  });
+
+  it('keeps KB counters independent between projects', () => {
+    const p1 = ctx.projectService.create({ name: 'alpha beta' });
+    const p2 = ctx.projectService.create({ name: 'gamma delta' });
+    ctx.kbService.create({ project_id: p1.id, title: 'x' });
+    const d2 = ctx.kbService.create({ project_id: p2.id, title: 'y' });
+    expect(d2.key).toBe('GD-KB-1');
+  });
+
+  it('never reuses a KB number after deletion', () => {
+    const p = ctx.projectService.create({ name: 'reuse check' });
+    const a = ctx.kbService.create({ project_id: p.id, title: 'a' });
+    ctx.kbService.delete(a.id);
+    const b = ctx.kbService.create({ project_id: p.id, title: 'b' });
+    expect(b.number).toBe(2);
+    expect(b.key).toBe('RC-KB-2');
+  });
+
+  it('throws when creating a doc for a nonexistent project', () => {
+    expect(() => ctx.kbService.create({ project_id: 'no-such-project', title: 'x' })).toThrow(
+      /Project not found/
+    );
+  });
+
+  it('getByKey resolves case-insensitively', () => {
+    const p = ctx.projectService.create({ name: 'ldash' });
+    const doc = ctx.kbService.create({ project_id: p.id, title: 'Arch' });
+    expect(ctx.kbService.getByKey('LDA-KB-1')?.id).toBe(doc.id);
+    expect(ctx.kbService.getByKey('lda-kb-1')?.id).toBe(doc.id);
+    expect(ctx.kbService.getByKey('LDA-KB-99')).toBeUndefined();
+  });
+});
+
 describe('KbService.search', () => {
   let ctx: App;
   let projectId: string;
@@ -194,6 +257,7 @@ describe('KbService.search', () => {
     expect(results[0]).toEqual({
       id: doc.id,
       project_id: projectId,
+      key: doc.key,
       title: 'Deploy runbook',
       updated_at: doc.updated_at,
       snippet: '',
@@ -350,6 +414,7 @@ describe('KbService.searchAll', () => {
       id: results[0].id,
       project_id: projectId,
       project_name: 'KB Test Project',
+      key: results[0].key,
       title: 'Needle title only',
       updated_at: results[0].updated_at,
       snippet: '',
@@ -449,7 +514,7 @@ describe('kb routes', () => {
     expect(res.status).toBe(200);
     const results = res.body as Record<string, unknown>[];
     expect(results).toHaveLength(1);
-    expect(Object.keys(results[0]).sort()).toEqual(['id', 'project_id', 'snippet', 'title', 'updated_at']);
+    expect(Object.keys(results[0]).sort()).toEqual(['id', 'key', 'project_id', 'snippet', 'title', 'updated_at']);
     expect(results[0].title).toBe('Runbook');
     expect(results[0].snippet).toBe('restart the needle service');
   });
@@ -477,6 +542,7 @@ describe('kb routes', () => {
     expect(results).toHaveLength(2);
     expect(Object.keys(results[0]).sort()).toEqual([
       'id',
+      'key',
       'project_id',
       'project_name',
       'snippet',
@@ -633,6 +699,34 @@ describe('kb MCP tools', () => {
     expect(textOf(missing)).toContain('document not found');
   });
 
+  it('ldash_get_kb_doc resolves by key (e.g. LDA-KB-1)', async () => {
+    const doc = ctx.kbService.create({ project_id: projectId, title: 'Keyed', content: '# K' });
+    const get = tools.get('ldash_get_kb_doc')!;
+
+    const byKey = await get({ project_id: projectId, doc: doc.key });
+    expect((JSON.parse(textOf(byKey)) as KbDocument).id).toBe(doc.id);
+
+    const byKeyLower = await get({ project_id: projectId, doc: doc.key.toLowerCase() });
+    expect((JSON.parse(textOf(byKeyLower)) as KbDocument).id).toBe(doc.id);
+  });
+
+  it('ldash_save_kb_doc returns the key on create and update', async () => {
+    const save = tools.get('ldash_save_kb_doc')!;
+    const created = JSON.parse(textOf(await save({ project_id: projectId, title: 'Doc', content: 'v1' }))) as {
+      key: string;
+      action: string;
+    };
+    expect(created.action).toBe('created');
+    expect(created.key).toBeTruthy();
+
+    const updated = JSON.parse(textOf(await save({ project_id: projectId, title: 'Doc', content: 'v2' }))) as {
+      key: string;
+      action: string;
+    };
+    expect(updated.action).toBe('updated');
+    expect(updated.key).toBe(created.key);
+  });
+
   it('ldash_list_kb_docs returns id, title, and updated_at', async () => {
     ctx.kbService.create({ project_id: projectId, title: 'B doc', content: 'b' });
     ctx.kbService.create({ project_id: projectId, title: 'A doc', content: 'a' });
@@ -642,7 +736,7 @@ describe('kb MCP tools', () => {
     const docs = JSON.parse(textOf(result)) as Record<string, unknown>[];
     expect(docs.map((d) => d.title)).toEqual(['A doc', 'B doc']);
     for (const d of docs) {
-      expect(Object.keys(d).sort()).toEqual(['id', 'title', 'updated_at']);
+      expect(Object.keys(d).sort()).toEqual(['id', 'key', 'title', 'updated_at']);
     }
   });
 
@@ -669,7 +763,7 @@ describe('kb MCP tools', () => {
 
     const docs = JSON.parse(textOf(result)) as Record<string, unknown>[];
     expect(docs).toHaveLength(1);
-    expect(Object.keys(docs[0]).sort()).toEqual(['id', 'snippet', 'title', 'updated_at']);
+    expect(Object.keys(docs[0]).sort()).toEqual(['id', 'key', 'snippet', 'title', 'updated_at']);
     expect(docs[0].title).toBe('Deploy runbook');
     expect(docs[0].snippet).toBe('restart the needle service');
   });
@@ -700,7 +794,7 @@ describe('kb MCP tools', () => {
     const docs = JSON.parse(textOf(result)) as Record<string, unknown>[];
     expect(docs).toHaveLength(2);
     for (const d of docs) {
-      expect(Object.keys(d).sort()).toEqual(['id', 'project_name', 'snippet', 'title', 'updated_at']);
+      expect(Object.keys(d).sort()).toEqual(['id', 'key', 'project_name', 'snippet', 'title', 'updated_at']);
     }
     // Title match first, with each hit carrying its owning project's name
     expect(docs[0].title).toBe('Needle theirs');

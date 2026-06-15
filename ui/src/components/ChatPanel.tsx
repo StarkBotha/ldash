@@ -7,6 +7,9 @@ interface ChatPanelProps {
   projectId: string;
   itemId: string;
   providerLabel: string;
+  // When true this is the whole-knowledgebase chat (itemId is ignored).
+  kb?: boolean;
+  placeholder?: string;
 }
 
 function formatRelativeTime(isoString: string): string {
@@ -102,8 +105,8 @@ function buildHistoryChips(messages: Message[]): Map<string, ToolCallIndicator[]
   return map;
 }
 
-export function ChatPanel({ projectId, itemId, providerLabel }: ChatPanelProps) {
-  const { conversation, messages, streamingText, toolCallIndicators, isStreaming, error, stallNotice, sendMessage, dismissError, dismissStallNotice } = useChat(projectId, itemId);
+export function ChatPanel({ projectId, itemId, providerLabel, kb = false, placeholder }: ChatPanelProps) {
+  const { conversation, messages, streamingText, toolCallIndicators, isStreaming, error, stallNotice, sendMessage, dismissError, dismissStallNotice } = useChat(projectId, itemId, kb);
   const historyChips = buildHistoryChips(messages);
   const [inputValue, setInputValue] = useState('');
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -288,7 +291,7 @@ export function ChatPanel({ projectId, itemId, providerLabel }: ChatPanelProps) 
           onKeyDown={handleKeyDown}
           disabled={isStreaming}
           rows={2}
-          placeholder="Ask about this item... (Enter to send, Shift+Enter for newline)"
+          placeholder={placeholder ?? 'Ask about this item... (Enter to send, Shift+Enter for newline)'}
           style={{
             flex: 1,
             padding: '6px 10px',

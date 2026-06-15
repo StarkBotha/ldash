@@ -1,7 +1,10 @@
 import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useProject } from '../hooks/useProjects';
+import { getSettings } from '../api/settings';
+import { ChatPanel } from './ChatPanel';
 import {
   useKbDocs,
   useKbDoc,
@@ -72,7 +75,21 @@ export function KnowledgeBase({ projectId, onBack, onShowBoard }: Props) {
   // Project name of a cross-project doc opened from a global search result
   // (only known when it came from the search result — list/local docs are null)
   const [selectedProjectName, setSelectedProjectName] = useState<string | null>(null);
+  // The whole-KB chat drawer (one chat per project, scoped to all its docs)
+  const [chatOpen, setChatOpen] = useState(false);
   const { status } = useSSE(projectId);
+
+  const { data: settings } = useQuery({
+    queryKey: ['settings'],
+    queryFn: getSettings,
+    staleTime: 30_000,
+  });
+  const providerLabel = (() => {
+    if (!settings || !settings.activeProvider) return '';
+    const active = settings.providers.find((p) => p.name === settings.activeProvider);
+    if (!active) return '';
+    return `${active.name} / ${active.model || 'sonnet'}`;
+  })();
 
   const searching = search.trim() !== '';
   // Passing an empty query disables the per-project search while the toggle is on
@@ -148,6 +165,13 @@ export function KnowledgeBase({ projectId, onBack, onShowBoard }: Props) {
             Knowledgebase
           </button>
         </div>
+        <button
+          className="kb-chat-toggle"
+          onClick={() => setChatOpen((v) => !v)}
+          style={{ marginLeft: 'auto' }}
+        >
+          {chatOpen ? 'Close chat' : '💬 Ask the KB'}
+        </button>
       </div>
 
       <div className="kb-layout">
@@ -223,6 +247,7 @@ export function KnowledgeBase({ projectId, onBack, onShowBoard }: Props) {
                       }}
                     >
                       <span className="kb-search-result-title">
+                        <span className="kb-doc-key">{result.key}</span>
                         {result.title}
                         {isGlobalResult(result) && (
                           <span className="kb-search-result-project">{result.project_name}</span>
@@ -252,6 +277,7 @@ export function KnowledgeBase({ projectId, onBack, onShowBoard }: Props) {
                       setSelectedProjectName(null);
                     }}
                   >
+                    <span className="kb-doc-key">{doc.key}</span>
                     {doc.title}
                   </button>
                 </li>
@@ -288,6 +314,7 @@ export function KnowledgeBase({ projectId, onBack, onShowBoard }: Props) {
           ) : selectedDoc ? (
             <article className="kb-doc">
               <div className="kb-doc-toolbar">
+                <span className="kb-doc-key">{selectedDoc.key}</span>
                 {selectedProjectName !== null && selectedDoc.project_id !== projectId && (
                   <span className="kb-doc-project">{selectedProjectName}</span>
                 )}
@@ -310,6 +337,30 @@ export function KnowledgeBase({ projectId, onBack, onShowBoard }: Props) {
             </div>
           )}
         </main>
+
+        {chatOpen && (
+          <aside className="kb-chat-drawer">
+            <div className="kb-chat-drawer-header">
+              <strong>Knowledgebase chat</strong>
+              <HelpTip>
+                <p>
+                  One chat for the whole knowledgebase of this project. Ask it to find information,
+                  explain a document, or create and touch up documents — it can search, read, list,
+                  and write docs in this project's KB.
+                </p>
+              </HelpTip>
+            </div>
+            <div style={{ flex: 1, minHeight: 0 }}>
+              <ChatPanel
+                projectId={projectId}
+                itemId=""
+                kb
+                providerLabel={providerLabel}
+                placeholder="Ask about this knowledgebase, or ask to write a doc… (Enter to send)"
+              />
+            </div>
+          </aside>
+        )}
       </div>
 
       <ConnectionIndicator status={status} />

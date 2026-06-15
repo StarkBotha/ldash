@@ -25,7 +25,7 @@ function rowToConversation(row: ConversationRow): Conversation {
     id: row.id,
     project_id: row.project_id,
     item_id: row.item_id,
-    type: row.type as 'item' | 'planning',
+    type: row.type as 'item' | 'planning' | 'kb',
     created_at: row.created_at,
   };
 }
@@ -84,6 +84,25 @@ export class ConversationService {
     this.db
       .prepare('INSERT INTO conversations (id, project_id, item_id, type) VALUES (?, ?, NULL, ?)')
       .run(id, projectId, 'planning');
+
+    return rowToConversation(
+      this.db.prepare('SELECT * FROM conversations WHERE id = ?').get(id) as ConversationRow
+    );
+  }
+
+  getOrCreateKbConversation(projectId: string): Conversation {
+    const existing = this.db
+      .prepare('SELECT * FROM conversations WHERE project_id = ? AND item_id IS NULL AND type = ?')
+      .get(projectId, 'kb') as ConversationRow | undefined;
+
+    if (existing) {
+      return rowToConversation(existing);
+    }
+
+    const id = nanoid();
+    this.db
+      .prepare('INSERT INTO conversations (id, project_id, item_id, type) VALUES (?, ?, NULL, ?)')
+      .run(id, projectId, 'kb');
 
     return rowToConversation(
       this.db.prepare('SELECT * FROM conversations WHERE id = ?').get(id) as ConversationRow

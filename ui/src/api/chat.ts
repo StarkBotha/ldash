@@ -13,6 +13,17 @@ export async function getOrCreateConversation(
   return res.json() as Promise<Conversation>;
 }
 
+// Whole-knowledgebase chat: one project-scoped conversation, no item.
+export async function getOrCreateKbConversation(projectId: string): Promise<Conversation> {
+  const res = await fetch('/api/conversations', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ projectId, kb: true }),
+  });
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  return res.json() as Promise<Conversation>;
+}
+
 export async function getConversation(
   conversationId: string
 ): Promise<{ conversation: Conversation; messages: Message[] }> {

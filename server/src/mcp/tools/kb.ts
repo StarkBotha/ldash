@@ -5,10 +5,12 @@ import type { KbDocument } from '../../types.js';
 
 const CLAUDE_ACTOR = { actor_type: 'claude' as const, actor_id: 'claude-code' };
 
-/** Resolve a doc reference that may be an id or a title (case-insensitive, within project). */
+/** Resolve a doc reference that may be an id, a key (e.g. LDA-KB-1), or a title (case-insensitive, within project). */
 function resolveDoc(services: Services, projectId: string, ref: string): KbDocument | undefined {
   const byId = services.kb.get(ref);
   if (byId && byId.project_id === projectId) return byId;
+  const byKey = services.kb.getByKey(ref);
+  if (byKey && byKey.project_id === projectId) return byKey;
   return services.kb.getByTitle(projectId, ref);
 }
 
@@ -34,14 +36,14 @@ export function registerKbTools(server: McpServer, services: Services): void {
       const existing = services.kb.getByTitle(input.project_id, input.title.trim());
       if (existing) {
         const doc = services.kb.update(existing.id, { title: input.title.trim(), content: input.content }, CLAUDE_ACTOR);
-        return { content: [{ type: 'text' as const, text: JSON.stringify({ id: doc.id, title: doc.title, action: 'updated' }) }] };
+        return { content: [{ type: 'text' as const, text: JSON.stringify({ id: doc.id, key: doc.key, title: doc.title, action: 'updated' }) }] };
       }
 
       const doc = services.kb.create(
         { project_id: input.project_id, title: input.title.trim(), content: input.content },
         CLAUDE_ACTOR
       );
-      return { content: [{ type: 'text' as const, text: JSON.stringify({ id: doc.id, title: doc.title, action: 'created' }) }] };
+      return { content: [{ type: 'text' as const, text: JSON.stringify({ id: doc.id, key: doc.key, title: doc.title, action: 'created' }) }] };
     }
   );
 
@@ -51,7 +53,7 @@ export function registerKbTools(server: McpServer, services: Services): void {
     'Read a knowledgebase document from a project. The knowledgebase holds persisted project knowledge: architecture notes, how-tos, runbooks, hosting info, and mermaid diagrams. Check it before starting work on an unfamiliar area — earlier agents may already have documented what you need. Accepts either a document id or a document title (case-insensitive match within the project). Returns the full document including its markdown content.',
     {
       project_id: z.string().describe('The id of the project to look in.'),
-      doc: z.string().describe('The document to fetch — either its id or its title (case-insensitive).'),
+      doc: z.string().describe('The document to fetch — its key (e.g. "LDA-KB-1"), its id, or its title (case-insensitive).'),
     },
     async (input) => {
       const project = services.projects.get(input.project_id);
@@ -71,7 +73,7 @@ export function registerKbTools(server: McpServer, services: Services): void {
   // ldash_list_kb_docs
   server.tool(
     'ldash_list_kb_docs',
-    'List the knowledgebase documents in a project (titles only, no content). The knowledgebase holds persisted project knowledge: architecture notes, how-tos, runbooks, hosting info, and diagrams. List it at the start of work to see what is already documented, then use ldash_get_kb_doc to read a specific document.',
+    'List the knowledgebase documents in a project (key and title only, no content). Each document has an immutable key like "LDA-KB-1" that can be quoted to refer to it. The knowledgebase holds persisted project knowledge: architecture notes, how-tos, runbooks, hosting info, and diagrams. List it at the start of work to see what is already documented, then use ldash_get_kb_doc to read a specific document by its key.',
     {
       project_id: z.string().describe('The id of the project whose knowledgebase to list.'),
     },
@@ -81,7 +83,7 @@ export function registerKbTools(server: McpServer, services: Services): void {
         return { content: [{ type: 'text' as const, text: 'Error: project not found' }], isError: true };
       }
 
-      const docs = services.kb.list(input.project_id).map((d) => ({ id: d.id, title: d.title, updated_at: d.updated_at }));
+      const docs = services.kb.list(input.project_id).map((d) => ({ id: d.id, key: d.key, title: d.title, updated_at: d.updated_at }));
       return { content: [{ type: 'text' as const, text: JSON.stringify(docs, null, 2) }] };
     }
   );
@@ -102,7 +104,7 @@ export function registerKbTools(server: McpServer, services: Services): void {
       if (input.project_id === undefined) {
         const results = services.kb
           .searchAll(input.query)
-          .map((r) => ({ id: r.id, project_name: r.project_name, title: r.title, snippet: r.snippet, updated_at: r.updated_at }));
+          .map((r) => ({ id: r.id, key: r.key, project_name: r.project_name, title: r.title, snippet: r.snippet, updated_at: r.updated_at }));
         return { content: [{ type: 'text' as const, text: JSON.stringify(results, null, 2) }] };
       }
 
@@ -113,7 +115,7 @@ export function registerKbTools(server: McpServer, services: Services): void {
 
       const results = services.kb
         .search(input.project_id, input.query)
-        .map((r) => ({ id: r.id, title: r.title, snippet: r.snippet, updated_at: r.updated_at }));
+        .map((r) => ({ id: r.id, key: r.key, title: r.title, snippet: r.snippet, updated_at: r.updated_at }));
       return { content: [{ type: 'text' as const, text: JSON.stringify(results, null, 2) }] };
     }
   );
@@ -124,7 +126,7 @@ export function registerKbTools(server: McpServer, services: Services): void {
     'Delete a knowledgebase document from a project. Use this only when a document is obsolete or was created by mistake — prefer updating a document with ldash_save_kb_doc over deleting it. Accepts either a document id or a document title (case-insensitive match within the project).',
     {
       project_id: z.string().describe('The id of the project the document belongs to.'),
-      doc: z.string().describe('The document to delete — either its id or its title (case-insensitive).'),
+      doc: z.string().describe('The document to delete — its key (e.g. "LDA-KB-1"), its id, or its title (case-insensitive).'),
     },
     async (input) => {
       const project = services.projects.get(input.project_id);

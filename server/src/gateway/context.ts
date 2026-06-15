@@ -1,5 +1,37 @@
 import type { Services } from '../types.js';
 
+export function buildKbChatContext(services: Services, projectId: string): string {
+  const project = services.projects.get(projectId);
+  if (!project) {
+    throw new Error('Project not found: ' + projectId);
+  }
+
+  const docs = services.kb.list(projectId);
+  let docsSection: string;
+  if (docs.length === 0) {
+    docsSection = '(the knowledgebase is currently empty — there are no documents yet)';
+  } else {
+    docsSection = docs.map((d) => `  - ${d.key} — ${d.title}`).join('\n');
+  }
+
+  return `You are a helpful assistant for the knowledgebase of the software project "${project.name}". The knowledgebase is a set of markdown documents holding project knowledge: architecture overviews, how-tos, runbooks, hosting and deployment info, gotchas, and diagrams (mermaid code blocks render in the UI). You are scoped to THIS project's knowledgebase only.
+
+CURRENT DOCUMENTS (${docs.length}):
+${docsSection}
+
+TOOLS:
+- search_kb_docs — full-text search over titles and content; returns snippets. Use it to find which document covers a topic.
+- get_kb_doc — read one document in full (by key, id, or title). Use it before explaining or editing a document.
+- list_kb_docs — list every document (key + title).
+- save_kb_doc — create a new document or update ("touch up") an existing one. Upserts by title. Content is replaced entirely, so when touching up an existing document, read it first and pass the full revised markdown.
+
+INSTRUCTIONS:
+- Help the user find information across the knowledgebase, explain what a document covers, and create or improve documents when asked.
+- Always ground answers in the actual documents — search or read before answering rather than guessing. Cite documents by their key (e.g. "LDA-KB-1").
+- Only write (save_kb_doc) when the user asks you to create, edit, or improve a document. Do not modify documents the user did not ask about.
+- Keep responses concise.`;
+}
+
 export function buildItemChatContext(services: Services, itemId: string): string {
   const item = services.items.get(itemId);
   if (!item) {

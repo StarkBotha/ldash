@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getOrCreateConversation, getConversation, streamMessage } from '../api/chat';
+import { getOrCreateConversation, getOrCreateKbConversation, getConversation, streamMessage } from '../api/chat';
 import type { Conversation, Message } from '../types';
 import type { ToolCallIndicator } from './usePlanningChat';
 
@@ -18,7 +18,9 @@ export interface UseChatReturn {
   dismissStallNotice: () => void;
 }
 
-export function useChat(projectId: string, itemId: string): UseChatReturn {
+// When kb is true this is the whole-knowledgebase chat (project-scoped, no item)
+// and itemId is ignored; otherwise it is the per-item chat.
+export function useChat(projectId: string, itemId: string, kb = false): UseChatReturn {
   const [conversation, setConversation] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [streamingText, setStreamingText] = useState('');
@@ -28,13 +30,16 @@ export function useChat(projectId: string, itemId: string): UseChatReturn {
   const [stallNotice, setStallNotice] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!projectId || !itemId) return;
+    if (!projectId) return;
+    if (!kb && !itemId) return;
 
     let cancelled = false;
 
     async function init() {
       try {
-        const convo = await getOrCreateConversation(projectId, itemId);
+        const convo = kb
+          ? await getOrCreateKbConversation(projectId)
+          : await getOrCreateConversation(projectId, itemId);
         if (cancelled) return;
         const { messages: msgs } = await getConversation(convo.id);
         if (cancelled) return;
@@ -51,7 +56,7 @@ export function useChat(projectId: string, itemId: string): UseChatReturn {
     return () => {
       cancelled = true;
     };
-  }, [projectId, itemId]);
+  }, [projectId, itemId, kb]);
 
   const sendMessage = useCallback(async (content: string) => {
     if (isStreaming || !conversation) return;

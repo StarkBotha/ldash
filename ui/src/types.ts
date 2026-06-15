@@ -77,6 +77,8 @@ export interface Attachment {
 export interface KbDocument {
   id: string;
   project_id: string;
+  number: number;
+  key: string;
   title: string;
   content: string;
   created_at: string;
@@ -90,6 +92,7 @@ export type KbDocSummary = Omit<KbDocument, 'content'>;
 export interface KbSearchResult {
   id: string;
   project_id: string;
+  key: string;
   title: string;
   updated_at: string;
   snippet: string;

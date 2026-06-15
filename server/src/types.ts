@@ -71,6 +71,8 @@ export interface Attachment {
 export interface KbDocument {
   id: string;
   project_id: string;
+  number: number;
+  key: string;
   title: string;
   content: string;
   created_at: string;
@@ -84,6 +86,7 @@ export type KbDocumentSummary = Omit<KbDocument, 'content'>;
 export interface KbSearchResult {
   id: string;
   project_id: string;
+  key: string;
   title: string;
   updated_at: string;
   snippet: string;
@@ -134,7 +137,7 @@ export type EventType = typeof EventTypes[keyof typeof EventTypes];
 // Re-export ToolCallRequest from gateway types so callers don't need to import from gateway module
 export type { ToolCallRequest } from './gateway/types.js';
 
-export type ConversationType = 'item' | 'planning';
+export type ConversationType = 'item' | 'planning' | 'kb';
 
 export interface Conversation {
   id: string;

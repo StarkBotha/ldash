@@ -5,10 +5,11 @@ import type { Services } from '../types.js';
 import type { ConversationService } from '../services/conversations.js';
 import type { SettingsService } from '../services/settings.js';
 import { getAdapter } from '../gateway/index.js';
-import { buildItemChatContext } from '../gateway/context.js';
+import { buildItemChatContext, buildKbChatContext } from '../gateway/context.js';
 import type { ChatMessage } from '../gateway/types.js';
 import { runToolLoop, type PendingToolCall } from '../gateway/loop.js';
 import { getItemChatToolDefinitions, createItemChatToolHandler } from '../chat/tools.js';
+import { getKbChatToolDefinitions, createKbChatToolHandler } from '../chat/kbTools.js';
 import { eventBus as defaultBus } from '../events/bus.js';
 import type { EventBus } from '../events/bus.js';
 import { createLogger } from '../logger.js';
@@ -27,14 +28,14 @@ export function createConversationsRouter(
 
   // POST /api/conversations — get-or-create conversation
   app.post('/api/conversations', async (c) => {
-    let body: { projectId?: string; itemId?: string };
+    let body: { projectId?: string; itemId?: string; kb?: boolean };
     try {
       body = await c.req.json();
     } catch {
       return c.json({ error: 'Invalid request body' }, 400);
     }
 
-    const { projectId, itemId } = body;
+    const { projectId, itemId, kb } = body;
 
     if (!projectId || typeof projectId !== 'string') {
       return c.json({ error: 'projectId is required' }, 400);
@@ -43,6 +44,12 @@ export function createConversationsRouter(
     const project = services.projects.get(projectId);
     if (!project) {
       return c.json({ error: 'Project not found' }, 404);
+    }
+
+    if (kb === true) {
+      const conversation = conversations.getOrCreateKbConversation(projectId);
+      logger.info('conversation fetched', { conversationId: conversation.id, type: 'kb', projectId });
+      return c.json(conversation);
     }
 
     if (itemId !== undefined && itemId !== null) {
@@ -113,9 +120,10 @@ export function createConversationsRouter(
       tool_calls: m.tool_calls ?? undefined,
     }));
 
-    // Prepend system prompt for item conversations
+    // Prepend system prompt for tool-using conversations (item + kb)
     let systemPrompt: string | undefined;
     const isItemChat = conversation.type === 'item' && conversation.item_id != null;
+    const isKbChat = conversation.type === 'kb' && conversation.project_id != null;
     if (isItemChat) {
       try {
         systemPrompt = buildItemChatContext(services, conversation.item_id!);
@@ -126,6 +134,13 @@ export function createConversationsRouter(
           'Items can be referenced by id or by ticket key (e.g. "DUN-12"). ' +
           `move_task accepts the column NAME directly — the columns are: ${columnNames}. ` +
           'Use the tools when the user asks to change status, record a note on a ticket, or file follow-up work. Do not move items the user did not ask about.';
+        chatMessages.unshift({ role: 'system', content: systemPrompt });
+      } catch {
+        // If context assembly fails, continue without system prompt
+      }
+    } else if (isKbChat) {
+      try {
+        systemPrompt = buildKbChatContext(services, conversation.project_id);
         chatMessages.unshift({ role: 'system', content: systemPrompt });
       } catch {
         // If context assembly fails, continue without system prompt
@@ -150,10 +165,12 @@ export function createConversationsRouter(
       gatewayLogger.debug('user message', { preview: lastUserMsg.content.slice(0, 200) });
     }
 
-    // Item conversations get board tools and run through the tool loop
-    if (isItemChat && conversation.project_id) {
-      const tools = getItemChatToolDefinitions();
-      const toolHandler = createItemChatToolHandler(services, conversation.project_id, bus, db);
+    // Item and KB conversations get tools and run through the tool loop
+    if ((isItemChat || isKbChat) && conversation.project_id) {
+      const tools = isKbChat ? getKbChatToolDefinitions() : getItemChatToolDefinitions();
+      const toolHandler = isKbChat
+        ? createKbChatToolHandler(services, conversation.project_id)
+        : createItemChatToolHandler(services, conversation.project_id, bus, db);
       const historyOffset = chatMessages.length;
 
       return streamText(c, async (stream) => {

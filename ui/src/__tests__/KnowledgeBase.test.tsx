@@ -14,13 +14,15 @@ const project = {
 };
 
 const docSummaries = [
-  { id: 'd1', project_id: 'p1', title: 'Architecture', created_at: '', updated_at: '' },
-  { id: 'd2', project_id: 'p1', title: 'Hosting', created_at: '', updated_at: '' },
+  { id: 'd1', project_id: 'p1', number: 1, key: 'DEM-KB-1', title: 'Architecture', created_at: '', updated_at: '' },
+  { id: 'd2', project_id: 'p1', number: 2, key: 'DEM-KB-2', title: 'Hosting', created_at: '', updated_at: '' },
 ];
 
 const archDoc: KbDocument = {
   id: 'd1',
   project_id: 'p1',
+  number: 1,
+  key: 'DEM-KB-1',
   title: 'Architecture',
   content: '# System overview\n\n| Service | Port |\n| ------- | ---- |\n| api | 3000 |\n',
   created_at: '',
@@ -48,6 +50,27 @@ vi.mock('../hooks/useSSE', () => ({
   useSSE: () => ({ status: 'connected' }),
 }));
 
+// The KB chat drawer pulls settings for the provider badge
+vi.mock('../api/settings', () => ({
+  getSettings: vi.fn().mockResolvedValue({ activeProvider: null, providers: [] }),
+}));
+
+// Stub the chat hook so the drawer renders without a real conversation/stream
+vi.mock('../hooks/useChat', () => ({
+  useChat: () => ({
+    conversation: { id: 'kb-conv', project_id: 'p1', item_id: null, type: 'kb', created_at: '' },
+    messages: [],
+    streamingText: '',
+    toolCallIndicators: [],
+    isStreaming: false,
+    error: null,
+    stallNotice: null,
+    sendMessage: vi.fn(),
+    dismissError: vi.fn(),
+    dismissStallNotice: vi.fn(),
+  }),
+}));
+
 // The real component lazy-loads the mermaid library, which jsdom can't render
 vi.mock('../components/Mermaid', () => ({
   Mermaid: ({ code }: { code: string }) => <div data-testid="mermaid-stub">{code}</div>,
@@ -68,6 +91,8 @@ function renderKb() {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  // jsdom doesn't implement scrollIntoView, which ChatPanel calls on mount
+  Element.prototype.scrollIntoView = vi.fn();
   mockedApi.projects.get.mockResolvedValue(project);
   mockedApi.kb.list.mockResolvedValue(docSummaries);
   mockedApi.kb.get.mockResolvedValue(archDoc);
@@ -81,10 +106,32 @@ describe('KnowledgeBase', () => {
     expect(mockedApi.kb.list).toHaveBeenCalledWith('p1');
   });
 
+  it('shows each doc key in the list', async () => {
+    renderKb();
+    expect(await screen.findByText('DEM-KB-1')).toBeTruthy();
+    expect(screen.getByText('DEM-KB-2')).toBeTruthy();
+  });
+
   it('shows an empty state when there are no docs', async () => {
     mockedApi.kb.list.mockResolvedValue([]);
     renderKb();
     expect(await screen.findByText('No documents yet')).toBeTruthy();
+  });
+
+  it('toggles the knowledgebase chat drawer open and closed', async () => {
+    renderKb();
+    // Drawer is closed initially
+    expect(screen.queryByText('Knowledgebase chat')).toBeNull();
+    const toggle = await screen.findByText('💬 Ask the KB');
+    fireEvent.click(toggle);
+    // Drawer opens with its header and KB-specific input placeholder
+    expect(await screen.findByText('Knowledgebase chat')).toBeTruthy();
+    expect(
+      screen.getByPlaceholderText('Ask about this knowledgebase, or ask to write a doc… (Enter to send)')
+    ).toBeTruthy();
+    // Toggle closes it again
+    fireEvent.click(screen.getByText('Close chat'));
+    expect(screen.queryByText('Knowledgebase chat')).toBeNull();
   });
 
   it('renders the selected doc as markdown (heading + table)', async () => {
@@ -116,6 +163,8 @@ describe('KnowledgeBase', () => {
     const created: KbDocument = {
       id: 'd3',
       project_id: 'p1',
+      number: 3,
+      key: 'DEM-KB-3',
       title: 'Runbook',
       content: 'restart things',
       created_at: '',
@@ -177,8 +226,8 @@ describe('KnowledgeBase', () => {
 
   it('typing a query searches and shows result titles + snippets', async () => {
     mockedApi.kb.search.mockResolvedValue([
-      { id: 'd1', project_id: 'p1', title: 'Architecture', updated_at: '', snippet: 'the api service runs on port 3000' },
-      { id: 'd2', project_id: 'p1', title: 'Hosting', updated_at: '', snippet: '' },
+      { id: 'd1', project_id: 'p1', key: 'DEM-KB-1', title: 'Architecture', updated_at: '', snippet: 'the api service runs on port 3000' },
+      { id: 'd2', project_id: 'p1', key: 'DEM-KB-2', title: 'Hosting', updated_at: '', snippet: '' },
     ]);
 
     renderKb();
@@ -194,11 +243,13 @@ describe('KnowledgeBase', () => {
 
   it('clicking a search result loads that doc', async () => {
     mockedApi.kb.search.mockResolvedValue([
-      { id: 'd2', project_id: 'p1', title: 'Hosting', updated_at: '', snippet: 'deployed on a vps' },
+      { id: 'd2', project_id: 'p1', key: 'DEM-KB-2', title: 'Hosting', updated_at: '', snippet: 'deployed on a vps' },
     ]);
     const hostingDoc: KbDocument = {
       id: 'd2',
       project_id: 'p1',
+      number: 2,
+      key: 'DEM-KB-2',
       title: 'Hosting',
       content: '# Hosting notes',
       created_at: '',
@@ -220,7 +271,7 @@ describe('KnowledgeBase', () => {
 
   it('clearing the search restores the full doc list', async () => {
     mockedApi.kb.search.mockResolvedValue([
-      { id: 'd1', project_id: 'p1', title: 'Architecture', updated_at: '', snippet: 'sys' },
+      { id: 'd1', project_id: 'p1', key: 'DEM-KB-1', title: 'Architecture', updated_at: '', snippet: 'sys' },
     ]);
 
     renderKb();
@@ -262,6 +313,7 @@ describe('KnowledgeBase', () => {
         id: 'd1',
         project_id: 'p1',
         project_name: 'demo',
+        key: 'DEM-KB-1',
         title: 'Architecture',
         updated_at: '',
         snippet: 'the api service',
@@ -270,6 +322,7 @@ describe('KnowledgeBase', () => {
         id: 'x1',
         project_id: 'p2',
         project_name: 'otherproj',
+        key: 'OTH-KB-1',
         title: 'Deploy guide',
         updated_at: '',
         snippet: 'api deploy steps',
@@ -297,6 +350,7 @@ describe('KnowledgeBase', () => {
         id: 'x1',
         project_id: 'p2',
         project_name: 'otherproj',
+        key: 'OTH-KB-1',
         title: 'Deploy guide',
         updated_at: '',
         snippet: 'api deploy steps',
@@ -305,6 +359,8 @@ describe('KnowledgeBase', () => {
     const crossDoc: KbDocument = {
       id: 'x1',
       project_id: 'p2',
+      number: 1,
+      key: 'OTH-KB-1',
       title: 'Deploy guide',
       content: '# Deploy notes',
       created_at: '',
@@ -331,7 +387,7 @@ describe('KnowledgeBase', () => {
   it('toggling "All projects" off restores the per-project search', async () => {
     mockedApi.kb.searchAll.mockResolvedValue([]);
     mockedApi.kb.search.mockResolvedValue([
-      { id: 'd1', project_id: 'p1', title: 'Architecture', updated_at: '', snippet: 'local hit' },
+      { id: 'd1', project_id: 'p1', key: 'DEM-KB-1', title: 'Architecture', updated_at: '', snippet: 'local hit' },
     ]);
 
     renderKb();
