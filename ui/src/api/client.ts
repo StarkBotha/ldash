@@ -110,7 +110,7 @@ export const api = {
         method: 'POST',
         body: JSON.stringify(data),
       }),
-    update: (id: string, data: Partial<{ title: string; content: string }>) =>
+    update: (id: string, data: Partial<{ title: string; content: string; pinned: boolean }>) =>
       apiFetch<KbDocument>(`/kb/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
     remove: (id: string) =>
       apiFetch<void>(`/kb/${id}`, { method: 'DELETE' }),

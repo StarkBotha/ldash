@@ -12,6 +12,8 @@ interface KbDocumentRow {
   key: string;
   title: string;
   content: string;
+  // SQLite has no boolean — stored as 0/1
+  pinned: number;
   created_at: string;
   updated_at: string;
 }
@@ -26,12 +28,17 @@ function rowToDoc(row: KbDocumentRow): KbDocument {
     key: row.key,
     title: row.title,
     content: row.content,
+    pinned: row.pinned === 1,
     created_at: row.created_at,
     updated_at: row.updated_at,
   };
 }
 
-const SUMMARY_COLUMNS = 'id, project_id, number, key, title, created_at, updated_at';
+function summaryRowToSummary(row: KbDocumentSummaryRow): KbDocumentSummary {
+  return { ...row, pinned: row.pinned === 1 };
+}
+
+const SUMMARY_COLUMNS = 'id, project_id, number, key, title, pinned, created_at, updated_at';
 
 const SNIPPET_LENGTH = 160;
 
@@ -170,12 +177,18 @@ export class KbService {
 
   list(projectId: string): KbDocumentSummary[] {
     const rows = this.db
-      .prepare(`SELECT ${SUMMARY_COLUMNS} FROM kb_documents WHERE project_id = ? ORDER BY title ASC`)
+      .prepare(
+        `SELECT ${SUMMARY_COLUMNS} FROM kb_documents WHERE project_id = ? ORDER BY pinned DESC, title ASC`
+      )
       .all(projectId) as KbDocumentSummaryRow[];
-    return rows;
+    return rows.map(summaryRowToSummary);
   }
 
-  update(id: string, data: { title?: string; content?: string }, actor?: Actor): KbDocument {
+  update(
+    id: string,
+    data: { title?: string; content?: string; pinned?: boolean },
+    actor?: Actor
+  ): KbDocument {
     const existing = this.get(id);
     if (!existing) {
       throw new Error('Document not found');
@@ -196,8 +209,21 @@ export class KbService {
       fields.push('content = ?');
       params.push(data.content);
     }
+    if (data.pinned !== undefined) {
+      fields.push('pinned = ?');
+      params.push(data.pinned ? 1 : 0);
+    }
 
-    fields.push("updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')");
+    if (fields.length === 0) {
+      // Nothing to change — return the existing doc untouched (no activity/event).
+      return existing;
+    }
+
+    // A pure pin/unpin toggle is not a content edit, so it must not bump
+    // updated_at (which UIs surface as "last edited").
+    if (data.title !== undefined || data.content !== undefined) {
+      fields.push("updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')");
+    }
     params.push(id);
     this.db.prepare(`UPDATE kb_documents SET ${fields.join(', ')} WHERE id = ?`).run(...params);
     const doc = this.get(id) as KbDocument;

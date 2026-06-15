@@ -128,6 +128,13 @@ export function KnowledgeBase({ projectId, docKey, onSelectDoc, onBack, onShowBo
   const deleteDoc = useDeleteKbDoc(projectId);
 
   const sortedDocs = [...(docs ?? [])].sort((a, b) => a.title.localeCompare(b.title));
+  // Pinned docs surface at the top of the sidebar and stay visible even while a
+  // search/filter is active — so they're rendered from the full doc list, not
+  // from the (possibly filtered) search results, and excluded everywhere else
+  // to avoid showing the same doc twice.
+  const pinnedDocs = sortedDocs.filter((d) => d.pinned);
+  const pinnedIds = new Set(pinnedDocs.map((d) => d.id));
+  const unpinnedDocs = sortedDocs.filter((d) => !d.pinned);
 
   // Deep-linking: resolve the URL doc-key to a doc id once the list is loaded.
   // Match is case-insensitive (URL keys are lowercased). An unknown key falls
@@ -184,8 +191,38 @@ export function KnowledgeBase({ projectId, docKey, onSelectDoc, onBack, onShowBo
     onSelectDoc(null);
   }
 
+  async function togglePin() {
+    if (!selectedDoc) return;
+    await updateDoc.mutateAsync({ id: selectedDoc.id, data: { pinned: !selectedDoc.pinned } });
+  }
+
   const saving = createDoc.isPending || updateDoc.isPending;
   const editing = mode === 'edit' || mode === 'create';
+
+  // A sidebar list entry for a current-project doc (used by both the pinned
+  // section and the full doc list). Cross-project search hits are rendered
+  // separately because they carry a snippet and a project badge.
+  const docListItem = (doc: { id: string; key: string; title: string; pinned: boolean }) => (
+    <li key={doc.id}>
+      <button
+        className={doc.id === selectedId && mode !== 'create' ? 'active' : ''}
+        onClick={() => {
+          setSelectedId(doc.id);
+          setMode('view');
+          setSelectedProjectName(null);
+          onSelectDoc(doc.key);
+        }}
+      >
+        {doc.pinned && (
+          <span className="kb-doc-pin" aria-hidden="true">
+            📌
+          </span>
+        )}
+        <span className="kb-doc-key">{doc.key}</span>
+        {doc.title}
+      </button>
+    </li>
+  );
 
   return (
     <div style={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
@@ -266,6 +303,13 @@ export function KnowledgeBase({ projectId, docKey, onSelectDoc, onBack, onShowBo
           <button className="kb-new-doc" onClick={startCreate}>
             + New document
           </button>
+          {/* Pinned docs stay at the top regardless of search/filter state */}
+          {pinnedDocs.length > 0 && (
+            <div className="kb-pinned-section">
+              <div className="kb-section-label">📌 Pinned</div>
+              <ul className="kb-doc-list">{pinnedDocs.map(docListItem)}</ul>
+            </div>
+          )}
           {searching ? (
             searchLoading ? (
               <div className="kb-sidebar-empty">Searching…</div>
@@ -273,36 +317,39 @@ export function KnowledgeBase({ projectId, docKey, onSelectDoc, onBack, onShowBo
               <div className="kb-sidebar-empty">No matches</div>
             ) : (
               <ul className="kb-doc-list">
-                {searchResults.map((result) => (
-                  <li key={result.id}>
-                    <button
-                      className={`kb-search-result${
-                        result.id === selectedId && mode !== 'create' ? ' active' : ''
-                      }`}
-                      onClick={() => {
-                        const crossProject =
-                          isGlobalResult(result) && result.project_id !== projectId;
-                        setSelectedId(result.id);
-                        setMode('view');
-                        setSelectedProjectName(crossProject ? result.project_name : null);
-                        // The URL only reflects current-project article keys;
-                        // a cross-project doc opens by id with a plain KB URL
-                        onSelectDoc(crossProject ? null : result.key);
-                      }}
-                    >
-                      <span className="kb-search-result-title">
-                        <span className="kb-doc-key">{result.key}</span>
-                        {result.title}
-                        {isGlobalResult(result) && (
-                          <span className="kb-search-result-project">{result.project_name}</span>
+                {/* Pinned hits are already shown above — don't list them twice */}
+                {searchResults
+                  .filter((result) => !pinnedIds.has(result.id))
+                  .map((result) => (
+                    <li key={result.id}>
+                      <button
+                        className={`kb-search-result${
+                          result.id === selectedId && mode !== 'create' ? ' active' : ''
+                        }`}
+                        onClick={() => {
+                          const crossProject =
+                            isGlobalResult(result) && result.project_id !== projectId;
+                          setSelectedId(result.id);
+                          setMode('view');
+                          setSelectedProjectName(crossProject ? result.project_name : null);
+                          // The URL only reflects current-project article keys;
+                          // a cross-project doc opens by id with a plain KB URL
+                          onSelectDoc(crossProject ? null : result.key);
+                        }}
+                      >
+                        <span className="kb-search-result-title">
+                          <span className="kb-doc-key">{result.key}</span>
+                          {result.title}
+                          {isGlobalResult(result) && (
+                            <span className="kb-search-result-project">{result.project_name}</span>
+                          )}
+                        </span>
+                        {result.snippet !== '' && (
+                          <span className="kb-search-result-snippet">{result.snippet}</span>
                         )}
-                      </span>
-                      {result.snippet !== '' && (
-                        <span className="kb-search-result-snippet">{result.snippet}</span>
-                      )}
-                    </button>
-                  </li>
-                ))}
+                      </button>
+                    </li>
+                  ))}
               </ul>
             )
           ) : isLoading ? (
@@ -310,24 +357,7 @@ export function KnowledgeBase({ projectId, docKey, onSelectDoc, onBack, onShowBo
           ) : sortedDocs.length === 0 ? (
             <div className="kb-sidebar-empty">No documents yet</div>
           ) : (
-            <ul className="kb-doc-list">
-              {sortedDocs.map((doc) => (
-                <li key={doc.id}>
-                  <button
-                    className={doc.id === selectedId && mode !== 'create' ? 'active' : ''}
-                    onClick={() => {
-                      setSelectedId(doc.id);
-                      setMode('view');
-                      setSelectedProjectName(null);
-                      onSelectDoc(doc.key);
-                    }}
-                  >
-                    <span className="kb-doc-key">{doc.key}</span>
-                    {doc.title}
-                  </button>
-                </li>
-              ))}
-            </ul>
+            <ul className="kb-doc-list">{unpinnedDocs.map(docListItem)}</ul>
           )}
         </aside>
 
@@ -362,6 +392,11 @@ export function KnowledgeBase({ projectId, docKey, onSelectDoc, onBack, onShowBo
                 <span className="kb-doc-key">{selectedDoc.key}</span>
                 {selectedProjectName !== null && selectedDoc.project_id !== projectId && (
                   <span className="kb-doc-project">{selectedProjectName}</span>
+                )}
+                {selectedDoc.project_id === projectId && (
+                  <button onClick={togglePin} disabled={updateDoc.isPending}>
+                    {selectedDoc.pinned ? 'Unpin' : '📌 Pin'}
+                  </button>
                 )}
                 <button onClick={startEdit}>Edit</button>
                 <button onClick={remove} disabled={deleteDoc.isPending}>

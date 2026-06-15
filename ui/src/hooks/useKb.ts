@@ -47,8 +47,13 @@ export function useCreateKbDoc(projectId: string) {
 export function useUpdateKbDoc(projectId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: Partial<{ title: string; content: string }> }) =>
-      api.kb.update(id, data),
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: string;
+      data: Partial<{ title: string; content: string; pinned: boolean }>;
+    }) => api.kb.update(id, data),
     onSuccess: (doc) => {
       qc.invalidateQueries({ queryKey: ['kb', projectId] });
       qc.invalidateQueries({ queryKey: ['kb-doc', doc.id] });

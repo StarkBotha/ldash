@@ -32,6 +32,16 @@ describe('kb migration', () => {
     expect(row).toBeDefined();
   });
 
+  it('has a pinned column defaulting to 0', () => {
+    const cols = ctx.db.prepare('PRAGMA table_info(kb_documents)').all() as {
+      name: string;
+      dflt_value: string | null;
+    }[];
+    const pinned = cols.find((c) => c.name === 'pinned');
+    expect(pinned).toBeDefined();
+    expect(pinned?.dflt_value).toBe('0');
+  });
+
   it('cascades kb docs when their project is deleted', () => {
     const project = createProject(ctx);
     const doc = ctx.kbService.create({ project_id: project.id, title: 'Doomed doc', content: 'x' });
@@ -114,6 +124,41 @@ describe('KbService', () => {
     const retitled = ctx.kbService.update(doc.id, { title: 'Runbook v2' });
     expect(retitled.title).toBe('Runbook v2');
     expect(retitled.content).toBe('v2');
+  });
+
+  it('new docs default to unpinned', () => {
+    const doc = ctx.kbService.create({ project_id: projectId, title: 'Doc' });
+    expect(doc.pinned).toBe(false);
+    expect(ctx.kbService.get(doc.id)?.pinned).toBe(false);
+    expect(ctx.kbService.list(projectId)[0].pinned).toBe(false);
+  });
+
+  it('update toggles pinned without bumping updated_at', async () => {
+    const doc = ctx.kbService.create({ project_id: projectId, title: 'Doc', content: 'x' });
+    await wait(5);
+    const pinned = ctx.kbService.update(doc.id, { pinned: true });
+    expect(pinned.pinned).toBe(true);
+    // A pure pin toggle is not a content edit — updated_at must be unchanged
+    expect(pinned.updated_at).toBe(doc.updated_at);
+
+    const unpinned = ctx.kbService.update(doc.id, { pinned: false });
+    expect(unpinned.pinned).toBe(false);
+    expect(unpinned.updated_at).toBe(doc.updated_at);
+  });
+
+  it('list sorts pinned docs first, then by title', () => {
+    ctx.kbService.create({ project_id: projectId, title: 'Zebra notes' });
+    const arch = ctx.kbService.create({ project_id: projectId, title: 'Architecture' });
+    const runbook = ctx.kbService.create({ project_id: projectId, title: 'Runbook' });
+    ctx.kbService.update(runbook.id, { pinned: true });
+    ctx.kbService.update(arch.id, { pinned: true });
+
+    // Pinned (Architecture, Runbook — alphabetical) first, then unpinned (Zebra notes)
+    expect(ctx.kbService.list(projectId).map((d) => d.title)).toEqual([
+      'Architecture',
+      'Runbook',
+      'Zebra notes',
+    ]);
   });
 
   it('update rejects an empty title and a missing doc', () => {
@@ -614,6 +659,22 @@ describe('kb routes', () => {
     const updated = res.body as KbDocument;
     expect(updated.title).toBe('New');
     expect(updated.content).toBe('v2');
+  });
+
+  it('PATCH /api/kb/:id pins and unpins a doc', async () => {
+    const doc = ctx.kbService.create({ project_id: projectId, title: 'Doc' });
+    const pin = await req(ctx.app, 'PATCH', `/api/kb/${doc.id}`, { pinned: true });
+    expect(pin.status).toBe(200);
+    expect((pin.body as KbDocument).pinned).toBe(true);
+
+    const unpin = await req(ctx.app, 'PATCH', `/api/kb/${doc.id}`, { pinned: false });
+    expect((unpin.body as KbDocument).pinned).toBe(false);
+  });
+
+  it('PATCH returns 400 for a non-boolean pinned', async () => {
+    const doc = ctx.kbService.create({ project_id: projectId, title: 'Doc' });
+    const res = await req(ctx.app, 'PATCH', `/api/kb/${doc.id}`, { pinned: 'yes' });
+    expect(res.status).toBe(400);
   });
 
   it('PATCH returns 400 for an empty title or an empty body', async () => {

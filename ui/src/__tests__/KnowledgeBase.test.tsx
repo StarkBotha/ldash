@@ -14,8 +14,8 @@ const project = {
 };
 
 const docSummaries = [
-  { id: 'd1', project_id: 'p1', number: 1, key: 'DEM-KB-1', title: 'Architecture', created_at: '', updated_at: '' },
-  { id: 'd2', project_id: 'p1', number: 2, key: 'DEM-KB-2', title: 'Hosting', created_at: '', updated_at: '' },
+  { id: 'd1', project_id: 'p1', number: 1, key: 'DEM-KB-1', title: 'Architecture', pinned: false, created_at: '', updated_at: '' },
+  { id: 'd2', project_id: 'p1', number: 2, key: 'DEM-KB-2', title: 'Hosting', pinned: false, created_at: '', updated_at: '' },
 ];
 
 const archDoc: KbDocument = {
@@ -25,6 +25,7 @@ const archDoc: KbDocument = {
   key: 'DEM-KB-1',
   title: 'Architecture',
   content: '# System overview\n\n| Service | Port |\n| ------- | ---- |\n| api | 3000 |\n',
+  pinned: false,
   created_at: '',
   updated_at: '',
 };
@@ -216,6 +217,7 @@ describe('KnowledgeBase', () => {
       key: 'DEM-KB-3',
       title: 'Runbook',
       content: 'restart things',
+      pinned: false,
       created_at: '',
       updated_at: '',
     };
@@ -301,6 +303,7 @@ describe('KnowledgeBase', () => {
       key: 'DEM-KB-2',
       title: 'Hosting',
       content: '# Hosting notes',
+      pinned: false,
       created_at: '',
       updated_at: '',
     };
@@ -412,6 +415,7 @@ describe('KnowledgeBase', () => {
       key: 'OTH-KB-1',
       title: 'Deploy guide',
       content: '# Deploy notes',
+      pinned: false,
       created_at: '',
       updated_at: '',
     };
@@ -451,6 +455,7 @@ describe('KnowledgeBase', () => {
       key: 'DEM-KB-2',
       title: 'Hosting',
       content: '# Hosting notes',
+      pinned: false,
       created_at: '',
       updated_at: '',
     };
@@ -479,6 +484,52 @@ describe('KnowledgeBase', () => {
     await waitFor(() => expect(mockedApi.kb.get).toHaveBeenCalledWith('d1'));
     fireEvent.click(await screen.findByText('Delete'));
     await waitFor(() => expect(lastSelectedDocKey).toBeNull());
+  });
+
+  it('shows a Pinned section and pins/unpins via PATCH', async () => {
+    // Hosting is pinned
+    mockedApi.kb.list.mockResolvedValue([
+      docSummaries[0],
+      { ...docSummaries[1], pinned: true },
+    ]);
+    mockedApi.kb.get.mockResolvedValue({ ...archDoc, id: 'd2', key: 'DEM-KB-2', title: 'Hosting', pinned: true });
+    mockedApi.kb.update.mockResolvedValue({ ...archDoc, id: 'd2', title: 'Hosting', pinned: false });
+
+    renderKb();
+    // The "Pinned" section label appears because a doc is pinned
+    expect(await screen.findByText('📌 Pinned')).toBeTruthy();
+
+    // Open the pinned doc — its toolbar offers Unpin
+    fireEvent.click(await screen.findByText('Hosting'));
+    const unpin = await screen.findByText('Unpin');
+    fireEvent.click(unpin);
+    await waitFor(() =>
+      expect(mockedApi.kb.update).toHaveBeenCalledWith('d2', { pinned: false })
+    );
+  });
+
+  it('keeps pinned docs visible while a search/filter is active', async () => {
+    // Architecture is pinned; the search only matches Hosting
+    mockedApi.kb.list.mockResolvedValue([
+      { ...docSummaries[0], pinned: true },
+      docSummaries[1],
+    ]);
+    mockedApi.kb.search.mockResolvedValue([
+      { id: 'd2', project_id: 'p1', key: 'DEM-KB-2', title: 'Hosting', updated_at: '', snippet: 'on a vps' },
+    ]);
+
+    renderKb();
+    await screen.findByText('Architecture');
+    fireEvent.change(screen.getByPlaceholderText('Search docs…'), {
+      target: { value: 'vps' },
+    });
+
+    await waitFor(() => expect(mockedApi.kb.search).toHaveBeenCalledWith('p1', 'vps'));
+    // Search result is shown…
+    expect(await screen.findByText('on a vps')).toBeTruthy();
+    // …and the pinned doc remains visible even though it doesn't match the query
+    expect(screen.getByText('📌 Pinned')).toBeTruthy();
+    expect(screen.getByText('Architecture')).toBeTruthy();
   });
 
   it('toggling "All projects" off restores the per-project search', async () => {

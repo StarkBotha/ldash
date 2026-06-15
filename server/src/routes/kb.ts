@@ -99,9 +99,13 @@ export function kbRouter(kbService: KbService): Hono {
     }
 
     const body = await c.req.json().catch(() => ({}));
-    const { title, content } = body as { title?: unknown; content?: unknown };
+    const { title, content, pinned } = body as {
+      title?: unknown;
+      content?: unknown;
+      pinned?: unknown;
+    };
 
-    const updateData: Partial<{ title: string; content: string }> = {};
+    const updateData: Partial<{ title: string; content: string; pinned: boolean }> = {};
 
     if (title !== undefined) {
       if (typeof title !== 'string' || title.trim() === '') {
@@ -115,9 +119,15 @@ export function kbRouter(kbService: KbService): Hono {
       }
       updateData.content = content;
     }
+    if (pinned !== undefined) {
+      if (typeof pinned !== 'boolean') {
+        throw makeError('pinned must be a boolean', 400);
+      }
+      updateData.pinned = pinned;
+    }
 
     if (Object.keys(updateData).length === 0) {
-      throw makeError('Body must contain at least one of: title, content', 400);
+      throw makeError('Body must contain at least one of: title, content, pinned', 400);
     }
 
     const updated = kbService.update(id, updateData);

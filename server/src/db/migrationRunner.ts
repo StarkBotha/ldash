@@ -10,6 +10,7 @@ import * as migration008 from './migrations/008_kb_documents.js';
 import * as migration009 from './migrations/009_kb_doc_keys.js';
 import * as migration010 from './migrations/010_kb_conversation_type.js';
 import * as migration011 from './migrations/011_column_changed_at.js';
+import * as migration012 from './migrations/012_kb_pinned.js';
 import { createLogger } from '../logger.js';
 
 const logger = createLogger('db');
@@ -23,7 +24,7 @@ interface Migration {
   disableForeignKeys?: boolean;
 }
 
-const MIGRATIONS: Migration[] = [migration001, migration002, migration003, migration004, migration005, migration006, migration007, migration008, migration009, migration010, migration011];
+const MIGRATIONS: Migration[] = [migration001, migration002, migration003, migration004, migration005, migration006, migration007, migration008, migration009, migration010, migration011, migration012];
 
 export function runMigrations(db: Database.Database): void {
   db.exec(`
