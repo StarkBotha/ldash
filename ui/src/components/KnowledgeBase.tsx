@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import rehypeRaw from 'rehype-raw';
+import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
 import { useProject } from '../hooks/useProjects';
 import { getSettings } from '../api/settings';
 import { ChatPanel } from './ChatPanel';
@@ -28,9 +30,27 @@ function isGlobalResult(r: KbSearchResult | KbGlobalSearchResult): r is KbGlobal
 
 interface Props {
   projectId: string;
+  // KB doc key from the URL (e.g. "lda-kb-3"), or null when on the plain KB route
+  docKey: string | null;
+  // Push the open article's key to the URL (lowercased upstream); null clears it
+  onSelectDoc: (docKey: string | null) => void;
   onBack: () => void;
   onShowBoard: () => void;
 }
+
+// Sanitize schema for rendering KB markdown that may contain raw HTML (e.g.
+// <br> inside GFM table cells). Based on the default GitHub schema (which strips
+// <script>, event-handler attributes, javascript: URLs, etc.) but extended so it
+// keeps the language-* className on code/pre fences — the mermaid component below
+// detects diagrams by that className, and the default schema would strip it.
+const sanitizeSchema = {
+  ...defaultSchema,
+  attributes: {
+    ...defaultSchema.attributes,
+    code: [...(defaultSchema.attributes?.code ?? []), ['className', /^language-./]],
+    pre: [...(defaultSchema.attributes?.pre ?? []), ['className', /^language-./]],
+  },
+};
 
 // ```mermaid fences render as diagrams; everything else stays a code block
 const markdownComponents: Components = {
@@ -61,7 +81,7 @@ const markdownComponents: Components = {
   },
 };
 
-export function KnowledgeBase({ projectId, onBack, onShowBoard }: Props) {
+export function KnowledgeBase({ projectId, docKey, onSelectDoc, onBack, onShowBoard }: Props) {
   const { data: project } = useProject(projectId);
   const { data: docs, isLoading } = useKbDocs(projectId);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -109,6 +129,26 @@ export function KnowledgeBase({ projectId, onBack, onShowBoard }: Props) {
 
   const sortedDocs = [...(docs ?? [])].sort((a, b) => a.title.localeCompare(b.title));
 
+  // Deep-linking: resolve the URL doc-key to a doc id once the list is loaded.
+  // Match is case-insensitive (URL keys are lowercased). An unknown key falls
+  // through to the empty viewer (the list still renders). Only runs when the URL
+  // key and the loaded list change so a user click that already pushed the URL
+  // doesn't get re-resolved here.
+  useEffect(() => {
+    if (!docs) return;
+    if (!docKey) {
+      // Plain KB URL: clear the viewer — unless a cross-project doc is open
+      // (those open by id and intentionally carry no key in the URL)
+      if (selectedProjectName === null) setSelectedId(null);
+      return;
+    }
+    const match = docs.find((d) => d.key.toLowerCase() === docKey.toLowerCase());
+    setSelectedId(match ? match.id : null);
+    if (match) setSelectedProjectName(null);
+    setMode('view');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [docKey, docs]);
+
   function startCreate() {
     setMode('create');
     setDraftTitle('');
@@ -128,6 +168,7 @@ export function KnowledgeBase({ projectId, onBack, onShowBoard }: Props) {
     if (mode === 'create') {
       const doc = await createDoc.mutateAsync({ title, content: draftContent });
       setSelectedId(doc.id);
+      onSelectDoc(doc.key);
     } else if (mode === 'edit' && selectedId) {
       await updateDoc.mutateAsync({ id: selectedId, data: { title, content: draftContent } });
     }
@@ -140,6 +181,7 @@ export function KnowledgeBase({ projectId, onBack, onShowBoard }: Props) {
     await deleteDoc.mutateAsync(selectedDoc.id);
     setSelectedId(null);
     setMode('view');
+    onSelectDoc(null);
   }
 
   const saving = createDoc.isPending || updateDoc.isPending;
@@ -238,13 +280,14 @@ export function KnowledgeBase({ projectId, onBack, onShowBoard }: Props) {
                         result.id === selectedId && mode !== 'create' ? ' active' : ''
                       }`}
                       onClick={() => {
+                        const crossProject =
+                          isGlobalResult(result) && result.project_id !== projectId;
                         setSelectedId(result.id);
                         setMode('view');
-                        setSelectedProjectName(
-                          isGlobalResult(result) && result.project_id !== projectId
-                            ? result.project_name
-                            : null
-                        );
+                        setSelectedProjectName(crossProject ? result.project_name : null);
+                        // The URL only reflects current-project article keys;
+                        // a cross-project doc opens by id with a plain KB URL
+                        onSelectDoc(crossProject ? null : result.key);
                       }}
                     >
                       <span className="kb-search-result-title">
@@ -276,6 +319,7 @@ export function KnowledgeBase({ projectId, onBack, onShowBoard }: Props) {
                       setSelectedId(doc.id);
                       setMode('view');
                       setSelectedProjectName(null);
+                      onSelectDoc(doc.key);
                     }}
                   >
                     <span className="kb-doc-key">{doc.key}</span>
@@ -325,7 +369,11 @@ export function KnowledgeBase({ projectId, onBack, onShowBoard }: Props) {
                 </button>
               </div>
               <div className="kb-markdown">
-                <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
+                  rehypePlugins={[rehypeRaw, [rehypeSanitize, sanitizeSchema]]}
+                  components={markdownComponents}
+                >
                   {selectedDoc.content}
                 </ReactMarkdown>
               </div>

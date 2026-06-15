@@ -11,9 +11,20 @@ function projectPath(name: string, view: ProjectView): string {
   return `/projects/${encodeURIComponent(name)}/${view}`;
 }
 
-function projectRouteFromPath(pathname: string): { name: string; view: ProjectView } | null {
-  const match = pathname.match(/^\/projects\/([^/]+)\/(board|kb)\/?$/);
-  return match ? { name: decodeURIComponent(match[1]), view: match[2] as ProjectView } : null;
+// A KB doc key (lowercased) may trail the kb route, e.g. /projects/ldash/kb/lda-kb-3
+function kbDocPath(name: string, docKey: string): string {
+  return `/projects/${encodeURIComponent(name)}/kb/${encodeURIComponent(docKey.toLowerCase())}`;
+}
+
+function projectRouteFromPath(
+  pathname: string
+): { name: string; view: ProjectView; docKey: string | null } | null {
+  const match = pathname.match(/^\/projects\/([^/]+)\/(board|kb)(?:\/([^/]+))?\/?$/);
+  if (!match) return null;
+  const view = match[2] as ProjectView;
+  // Only the KB view carries a trailing doc-key segment
+  const docKey = view === 'kb' && match[3] ? decodeURIComponent(match[3]) : null;
+  return { name: decodeURIComponent(match[1]), view, docKey };
 }
 
 export function App() {
@@ -84,6 +95,14 @@ export function App() {
         route?.view === 'kb' ? (
           <KnowledgeBase
             projectId={selectedProject.id}
+            docKey={route.docKey}
+            onSelectDoc={(docKey) =>
+              navigate(
+                docKey
+                  ? kbDocPath(selectedProject.name, docKey)
+                  : projectPath(selectedProject.name, 'kb')
+              )
+            }
             onBack={() => navigate('/')}
             onShowBoard={() => navigate(projectPath(selectedProject.name, 'board'))}
           />

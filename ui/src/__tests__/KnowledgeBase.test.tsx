@@ -80,13 +80,26 @@ import { api } from '../api/client';
 
 const mockedApi = vi.mocked(api, true);
 
-function renderKb() {
+// Capture the latest URL key the component pushed via onSelectDoc
+let lastSelectedDocKey: string | null | undefined;
+
+function renderKb(docKey: string | null = null) {
+  lastSelectedDocKey = undefined;
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(
+  const result = render(
     <QueryClientProvider client={qc}>
-      <KnowledgeBase projectId="p1" onBack={() => {}} onShowBoard={() => {}} />
+      <KnowledgeBase
+        projectId="p1"
+        docKey={docKey}
+        onSelectDoc={(k) => {
+          lastSelectedDocKey = k;
+        }}
+        onBack={() => {}}
+        onShowBoard={() => {}}
+      />
     </QueryClientProvider>
   );
+  return { ...result, qc };
 }
 
 beforeEach(() => {
@@ -144,6 +157,42 @@ describe('KnowledgeBase', () => {
     expect(screen.getByRole('table')).toBeTruthy();
     expect(screen.getByText('api')).toBeTruthy();
     expect(mockedApi.kb.get).toHaveBeenCalledWith('d1');
+  });
+
+  it('renders a <br> inside a GFM table cell as a real line break', async () => {
+    mockedApi.kb.get.mockResolvedValue({
+      ...archDoc,
+      content: '| Col |\n| --- |\n| line one<br>line two |\n',
+    });
+    const { container } = renderKb();
+    fireEvent.click(await screen.findByText('Architecture'));
+
+    // Wait for the table cell to render, then assert it contains a real <br> element
+    await screen.findByRole('table');
+    const cell = container.querySelector('td');
+    expect(cell).not.toBeNull();
+    expect(cell?.querySelector('br')).not.toBeNull();
+    expect(cell?.textContent).toContain('line one');
+    expect(cell?.textContent).toContain('line two');
+  });
+
+  it('strips a <script> tag and neutralises an onerror img payload', async () => {
+    mockedApi.kb.get.mockResolvedValue({
+      ...archDoc,
+      content:
+        '# Safe heading\n\n<script>window.__xss = 1;</script>\n\n<img src="x" onerror="window.__xss = 2;">\n',
+    });
+    const { container } = renderKb();
+    fireEvent.click(await screen.findByText('Architecture'));
+    await screen.findByRole('heading', { level: 1, name: 'Safe heading' });
+
+    // The <script> element must not survive the sanitizer
+    expect(container.querySelector('script')).toBeNull();
+    // An <img> may render but its onerror handler attribute must be stripped
+    const img = container.querySelector('img');
+    expect(img?.getAttribute('onerror')).toBeNull();
+    // Neither payload executed
+    expect((window as unknown as { __xss?: number }).__xss).toBeUndefined();
   });
 
   it('mermaid fences escape the pre wrapper; regular fences keep it', async () => {
@@ -382,6 +431,54 @@ describe('KnowledgeBase', () => {
     ).toBeTruthy();
     // 'otherproj' renders on the sidebar result badge AND the viewer toolbar badge
     expect(screen.getAllByText('otherproj')).toHaveLength(2);
+  });
+
+  it('opening an article reports its key (lowercased) for the URL', async () => {
+    renderKb();
+    fireEvent.click(await screen.findByText('Architecture'));
+    await waitFor(() => expect(mockedApi.kb.get).toHaveBeenCalledWith('d1'));
+    // The component hands the key up to App, which lowercases it for the URL
+    expect(lastSelectedDocKey).toBe('DEM-KB-1');
+  });
+
+  it('a docKey in the URL opens that article (case-insensitive)', async () => {
+    // Lowercased key as it would arrive from the URL segment
+    renderKb('dem-kb-2');
+    const hostingDoc: KbDocument = {
+      id: 'd2',
+      project_id: 'p1',
+      number: 2,
+      key: 'DEM-KB-2',
+      title: 'Hosting',
+      content: '# Hosting notes',
+      created_at: '',
+      updated_at: '',
+    };
+    mockedApi.kb.get.mockResolvedValue(hostingDoc);
+
+    // No click needed — deep-link resolves the key to the doc once the list loads
+    await waitFor(() => expect(mockedApi.kb.get).toHaveBeenCalledWith('d2'));
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Hosting notes' })
+    ).toBeTruthy();
+  });
+
+  it('an unknown docKey in the URL degrades to the empty viewer (no crash)', async () => {
+    renderKb('dem-kb-999');
+    // List still renders; viewer shows the "select a document" prompt
+    expect(await screen.findByText('Architecture')).toBeTruthy();
+    expect(await screen.findByText('Select a document')).toBeTruthy();
+    // Never tried to fetch a doc since nothing resolved
+    expect(mockedApi.kb.get).not.toHaveBeenCalled();
+  });
+
+  it('clearing the open article reports null for the URL', async () => {
+    mockedApi.kb.remove.mockResolvedValue(undefined);
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    renderKb('dem-kb-1');
+    await waitFor(() => expect(mockedApi.kb.get).toHaveBeenCalledWith('d1'));
+    fireEvent.click(await screen.findByText('Delete'));
+    await waitFor(() => expect(lastSelectedDocKey).toBeNull());
   });
 
   it('toggling "All projects" off restores the per-project search', async () => {
