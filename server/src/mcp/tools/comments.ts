@@ -45,4 +45,44 @@ export function registerCommentTools(server: McpServer, services: Services, bus:
       return { content: [{ type: 'text' as const, text: JSON.stringify(comment, null, 2) }] };
     }
   );
+
+  server.tool(
+    'ldash_edit_comment',
+    'Edit an existing comment on an item — the new body fully replaces the old text. Use this to fix or update a comment you posted earlier (correct a mistake, add detail) instead of posting a duplicate follow-up. Identify the comment by its id: ldash_get_item lists each comment with its id.',
+    {
+      comment_id: z.string().describe('The id of the comment to edit.'),
+      body: z.string().min(1).describe('The new comment text, replacing the existing text entirely. Markdown is accepted. Must not be empty.'),
+    },
+    async (input) => {
+      const existing = services.comments.get(input.comment_id);
+      if (!existing) {
+        return { content: [{ type: 'text' as const, text: 'Error: comment not found' }], isError: true };
+      }
+
+      const item = services.items.get(existing.item_id);
+      if (!item) {
+        return { content: [{ type: 'text' as const, text: 'Error: item not found' }], isError: true };
+      }
+
+      const comment = services.comments.update(input.comment_id, { body: input.body });
+
+      services.activity.append({
+        item_id: existing.item_id,
+        project_id: item.project_id,
+        actor_type: 'claude',
+        actor_id: 'claude-code',
+        event_type: 'comment.updated',
+        payload: { comment_id: comment.id, author: comment.author },
+      });
+
+      bus.emit({
+        type: 'comment.updated',
+        projectId: item.project_id,
+        entityId: comment.id,
+        data: { comment },
+      });
+
+      return { content: [{ type: 'text' as const, text: JSON.stringify(comment, null, 2) }] };
+    }
+  );
 }

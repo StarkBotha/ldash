@@ -45,6 +45,15 @@ export class CommentService {
     return this.get(id) as Comment;
   }
 
+  update(id: string, data: { body: string }): Comment {
+    const existing = this.get(id);
+    if (!existing) {
+      throw new Error('Comment not found');
+    }
+    this.db.prepare('UPDATE comments SET body = ? WHERE id = ?').run(data.body, id);
+    return this.get(id) as Comment;
+  }
+
   delete(id: string): void {
     this.db.prepare('DELETE FROM comments WHERE id = ?').run(id);
   }

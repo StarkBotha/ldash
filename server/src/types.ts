@@ -122,6 +122,7 @@ export const EventTypes = {
   ITEM_BLOCKED: 'item.blocked',
   ITEM_UNBLOCKED: 'item.unblocked',
   COMMENT_CREATED: 'comment.created',
+  COMMENT_UPDATED: 'comment.updated',
   ATTACHMENT_CREATED: 'attachment.created',
   ATTACHMENT_DELETED: 'attachment.deleted',
   COLUMN_CREATED: 'column.created',

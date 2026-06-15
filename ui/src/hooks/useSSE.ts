@@ -36,7 +36,8 @@ function invalidateForEvent(
       queryClient.invalidateQueries({ queryKey: ['activity', 'project', projectId] });
       break;
 
-    case 'comment.created': {
+    case 'comment.created':
+    case 'comment.updated': {
       const comment = data.comment as { item_id?: string } | undefined;
       const itemId = comment?.item_id ?? entityId;
       queryClient.invalidateQueries({ queryKey: ['comments', itemId] });
