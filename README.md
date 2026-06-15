@@ -105,6 +105,38 @@ Every write an agent makes is recorded in the activity log attributed to the age
 
 ---
 
+## Telling your agent to use the board (CLAUDE.md snippet)
+
+MCP gives the agent the *tools*; it doesn't make the agent *use* them. To get an agent like Claude Code to track all its work on ldash automatically, add instructions to your global `CLAUDE.md` (`~/.claude/CLAUDE.md`). Below is the snippet the author uses — copy it into your own `CLAUDE.md` and adjust the URLs/ports to match your setup:
+
+```md
+## ldash board tracking — ALL repos, ALL tasks
+
+ldash is my local task board (`ldash_*` MCP tools; server http://localhost:3210, UI http://localhost:5273, runs as a systemd user service). **ALL work must be a ticket — no exceptions.** That includes bugs, investigations/debugging sessions, housekeeping/ops (commits, repo publishing, config changes), and single-step tasks. If you're about to do work and no ticket exists for it, create one first:
+
+- **Project = repo folder name.** At the start of work, `ldash_list_projects` and find the project whose name exactly matches the repo's root folder name (basename of the git root, or of the working directory if not a git repo). If it doesn't exist, create it with `ldash_create_project`.
+- **Before starting work** — i.e. BEFORE the first edit/command, not after the work is done — make sure a task item exists for it: find it with `ldash_list_items` or create it with `ldash_create_item` (type `task`; nest under the right story via `parent_id` if a hierarchy exists), then move it to in-progress with `ldash_update_item_status`. Create-the-ticket-first is the rule even for a one-line change: ticket → do the work → comment + move to done. Creating the ticket only at the end (after the edit already landed) is a failure of this rule.
+- **When done and verified**, `ldash_add_comment` with what was done (files touched, tests run), then move the task to done.
+- **File follow-up work immediately** (bugs, refactors, TODOs discovered along the way) as new tasks with `ldash_create_item` — no mental lists. A bug or an investigation gets its own ticket too, even if you fix it on the spot. If blocked, `ldash_block_item` with the reason.
+- **‼️ NOTHING outstanding lives only in chat.** Every single outstanding task, follow-up, open or unanswered question, pending decision, anomaly to verify, and external/blocked dependency (someone else's action, an ops decision, a vendor answer) MUST be logged as an ldash ticket the moment it is identified — use type `investigation` for open questions. If a response mentions anything as "remaining", "open", "to verify", "worth chasing", "needs deciding", or "follow up later" and no ticket exists for it, that is a failure: the user does not track prose, the board is the single source of truth. Before ending any work session, sweep your own summaries for untracked items and ticket them.
+- **Only tasks move between columns.** Story/epic status is derived by the server — never try to set it.
+- **Column convention — what each status means.** Match the column to the *kind* of remaining work: **In Progress** = engineering work actively in flight; **Review** = engineering is done and verified but it still needs a test/validation on prod (or another final confirmation) before it can be called done — i.e. nothing left to build, just to confirm; **Backlog** = not started, or merely awaiting an external party (vendor/ops/another team) with no active push from us; **Done** = complete and confirmed. A ticket whose only outstanding step is "test it on prod" goes to **Review**, not In Progress or Done.
+- If the ldash tools are unavailable (server down), say so once and carry on — don't silently skip tracking.
+- For planning a whole body of work onto the board, use the `/ldash-plan` skill.
+
+## ldash knowledgebase — project knowledge lives in ldash, NOT in local files
+
+Each ldash project has a knowledgebase (kb): per-project markdown docs (mermaid diagrams render in the UI), managed via the `ldash_*_kb_doc` MCP tools. **From now on, project knowledge is stored in the ldash kb — not in local `.claude/` knowledge files and not in ad-hoc local `.md` notes files.**
+
+- **Retrieve first**: at the start of work on a project, `ldash_list_kb_docs` (or `ldash_search_kb_docs`) its kb before re-deriving knowledge from scratch; read a doc with `ldash_get_kb_doc` (accepts key, id, or title — case-insensitive).
+- **Each doc has an immutable key** like `LDA-KB-1` (project prefix + `KB` + a per-project counter, independent of board ticket numbers). Quote that key to refer to a specific article, the same way you'd cite a ticket like `LDA-51`. `list`/`search` results include the key; `get`/`delete` resolve a doc by it.
+- **Store**: `ldash_save_kb_doc` — it UPSERTS by title, so re-saving a title replaces that doc; update the existing doc when facts change rather than creating near-duplicates. Save anything worth keeping: architecture overviews, runbooks, how-tos, hosting/deploy info, gotchas, command references, process diagrams.
+- **Cross-project kb access is explicit-only.** Default scope is the current project. Only when I explicitly ask (e.g. "check ProjectX's kb" or "search all KBs"): resolve the project via `ldash_list_projects` and pass its id, or omit `project_id` on `ldash_search_kb_docs` to search every project at once. Never roam other projects' KBs unprompted.
+- **Do NOT create local knowledge stores**: no `.claude/CODEBASE.md`, no handoff/session-notes `.md` files, no `NOTES.md`/`docs/commands-*.md`-style knowledge dumps. Exceptions that stay local: `CLAUDE.md` files themselves (harness instructions, not knowledge storage) and real deliverable docs that ship with the repo (README, published docs, specs that are part of the product).
+```
+
+---
+
 ## Project layout
 
 ```
