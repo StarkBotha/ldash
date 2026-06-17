@@ -1,12 +1,15 @@
 import { useState } from 'react';
 import { useComments, useCreateComment } from '../hooks/useItemDetail';
+import { KbLinkedText } from './KbLinkedText';
 import type { Comment } from '../types';
 
 interface Props {
   itemId: string;
+  projectName?: string;
+  prefix?: string;
 }
 
-export function CommentBox({ itemId }: Props) {
+export function CommentBox({ itemId, projectName, prefix }: Props) {
   const { data: comments } = useComments(itemId);
   const createComment = useCreateComment();
   const [body, setBody] = useState('');
@@ -31,7 +34,9 @@ export function CommentBox({ itemId }: Props) {
             <div style={{ fontSize: 13, color: '#888', marginBottom: 4 }}>
               {c.author} · {new Date(c.created_at).toLocaleString()}
             </div>
-            <div style={{ whiteSpace: 'pre-wrap' }}>{c.body}</div>
+            <div style={{ whiteSpace: 'pre-wrap' }}>
+              <KbLinkedText text={c.body} projectName={projectName} prefix={prefix} />
+            </div>
           </div>
         ))}
       </div>

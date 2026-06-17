@@ -2,8 +2,10 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useMoveItem, useFlagItem, useBlockItem, useDeleteItem, useUpdateItem } from '../hooks/useBoard';
 import { useAttachments, useUploadAttachment, useDeleteAttachment } from '../hooks/useItemDetail';
+import { useProject } from '../hooks/useProjects';
 import { api } from '../api/client';
 import { CommentBox } from './CommentBox';
+import { KbLinkedText } from './KbLinkedText';
 import { ActivityFeed } from './ActivityFeed';
 import { ChatPanel } from './ChatPanel';
 import { getSettings } from '../api/settings';
@@ -36,6 +38,8 @@ export function ItemDetailPanel({ item, columns, projectId, onClose, onEdit, onD
   const attachments = attachmentsData?.attachments ?? [];
   const uploadAttachment = useUploadAttachment();
   const deleteAttachment = useDeleteAttachment();
+
+  const { data: project } = useProject(projectId);
 
   const { data: settings } = useQuery({
     queryKey: ['settings'],
@@ -269,7 +273,9 @@ export function ItemDetailPanel({ item, columns, projectId, onClose, onEdit, onD
               {item.description && (
                 <div style={sectionStyle}>
                   <label style={{ display: 'block', marginBottom: 4, fontWeight: 600, fontSize: 14 }}>Description</label>
-                  <p style={{ margin: 0, whiteSpace: 'pre-wrap', fontSize: 15 }}>{item.description}</p>
+                  <p style={{ margin: 0, whiteSpace: 'pre-wrap', fontSize: 15 }}>
+                    <KbLinkedText text={item.description} projectName={project?.name} prefix={project?.prefix} />
+                  </p>
                 </div>
               )}
 
@@ -330,7 +336,7 @@ export function ItemDetailPanel({ item, columns, projectId, onClose, onEdit, onD
             <>
               <div style={sectionStyle}>
                 <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, fontSize: 14 }}>Comments</label>
-                <CommentBox itemId={item.id} />
+                <CommentBox itemId={item.id} projectName={project?.name} prefix={project?.prefix} />
               </div>
 
               <div style={sectionStyle}>
