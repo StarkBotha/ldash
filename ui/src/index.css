@@ -61,7 +61,7 @@ button {
 }
 
 .kb-sidebar {
-  width: 260px;
+  width: 260px; /* default; overridden by the inline width the resizer drives */
   flex-shrink: 0;
   border-right: 1px solid #ddd;
   background: #fff;
@@ -70,6 +70,17 @@ button {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+/* Drag handle between the sidebar and the main content */
+.kb-resizer {
+  flex: 0 0 5px;
+  cursor: col-resize;
+  background: transparent;
+}
+
+.kb-resizer:hover {
+  background: #d1d5db;
 }
 
 .kb-chat-drawer {
@@ -140,9 +151,10 @@ button {
 }
 
 .kb-search-result-title {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px;
+  align-items: start;
 }
 
 .kb-search-result-snippet {
@@ -192,7 +204,15 @@ button {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 11px;
   color: #6b7280;
-  margin-right: 6px;
+  white-space: nowrap;
+}
+
+/* Title cell in the sidebar list / search hits — wraps to multiple lines in
+   its own column instead of truncating */
+.kb-doc-title-cell {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.35;
 }
 
 /* In the open-doc toolbar the key sits on the left, pushing buttons right */
@@ -232,7 +252,10 @@ button {
 }
 
 .kb-doc-list button {
-  display: block;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px;
+  align-items: start;
   width: 100%;
   text-align: left;
   border: none;
@@ -240,9 +263,6 @@ button {
   padding: 6px 8px;
   border-radius: 6px;
   color: #1f2937;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .kb-doc-list button:hover {
@@ -300,6 +320,15 @@ button {
   justify-content: flex-end;
   gap: 8px;
   margin-bottom: 8px;
+}
+
+/* The article's title, shown at the top of the open doc */
+.kb-doc-title {
+  margin: 0 0 16px;
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.25;
+  color: #111827;
 }
 
 /* ---- Knowledgebase editor ---- */

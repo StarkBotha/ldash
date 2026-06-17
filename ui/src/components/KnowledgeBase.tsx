@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -98,6 +98,39 @@ export function KnowledgeBase({ projectId, docKey, onSelectDoc, onBack, onShowBo
   // The whole-KB chat drawer (one chat per project, scoped to all its docs)
   const [chatOpen, setChatOpen] = useState(false);
   const { status } = useSSE(projectId);
+
+  // Drag-resizable sidebar. Width persists across reloads; clamped so it can't
+  // be dragged to nothing or eat the whole view.
+  const SIDEBAR_MIN = 180;
+  const SIDEBAR_MAX = 560;
+  const [sidebarWidth, setSidebarWidth] = useState(() => {
+    const saved = Number(localStorage.getItem('kb-sidebar-width'));
+    return saved >= SIDEBAR_MIN && saved <= SIDEBAR_MAX ? saved : 260;
+  });
+  useEffect(() => {
+    localStorage.setItem('kb-sidebar-width', String(sidebarWidth));
+  }, [sidebarWidth]);
+  const dragStart = useRef<{ x: number; width: number } | null>(null);
+  function startResize(e: React.MouseEvent) {
+    e.preventDefault();
+    dragStart.current = { x: e.clientX, width: sidebarWidth };
+    document.body.style.userSelect = 'none';
+    document.body.style.cursor = 'col-resize';
+    const onMove = (ev: MouseEvent) => {
+      if (!dragStart.current) return;
+      const next = dragStart.current.width + (ev.clientX - dragStart.current.x);
+      setSidebarWidth(Math.min(SIDEBAR_MAX, Math.max(SIDEBAR_MIN, next)));
+    };
+    const onUp = () => {
+      dragStart.current = null;
+      document.body.style.userSelect = '';
+      document.body.style.cursor = '';
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  }
 
   const { data: settings } = useQuery({
     queryKey: ['settings'],
@@ -213,13 +246,15 @@ export function KnowledgeBase({ projectId, docKey, onSelectDoc, onBack, onShowBo
           onSelectDoc(doc.key);
         }}
       >
-        {doc.pinned && (
-          <span className="kb-doc-pin" aria-hidden="true">
-            📌
-          </span>
-        )}
-        <span className="kb-doc-key">{doc.key}</span>
-        {doc.title}
+        <span className="kb-doc-key">
+          {doc.pinned && (
+            <span className="kb-doc-pin" aria-hidden="true">
+              📌
+            </span>
+          )}
+          {doc.key}
+        </span>
+        <span className="kb-doc-title-cell">{doc.title}</span>
       </button>
     </li>
   );
@@ -254,7 +289,7 @@ export function KnowledgeBase({ projectId, docKey, onSelectDoc, onBack, onShowBo
       </div>
 
       <div className="kb-layout">
-        <aside className="kb-sidebar">
+        <aside className="kb-sidebar" style={{ width: sidebarWidth }}>
           <div className="kb-search">
             <div className="kb-search-field">
               <input
@@ -339,10 +374,12 @@ export function KnowledgeBase({ projectId, docKey, onSelectDoc, onBack, onShowBo
                       >
                         <span className="kb-search-result-title">
                           <span className="kb-doc-key">{result.key}</span>
-                          {result.title}
-                          {isGlobalResult(result) && (
-                            <span className="kb-search-result-project">{result.project_name}</span>
-                          )}
+                          <span className="kb-doc-title-cell">
+                            {result.title}
+                            {isGlobalResult(result) && (
+                              <span className="kb-search-result-project">{result.project_name}</span>
+                            )}
+                          </span>
                         </span>
                         {result.snippet !== '' && (
                           <span className="kb-search-result-snippet">{result.snippet}</span>
@@ -360,6 +397,14 @@ export function KnowledgeBase({ projectId, docKey, onSelectDoc, onBack, onShowBo
             <ul className="kb-doc-list">{unpinnedDocs.map(docListItem)}</ul>
           )}
         </aside>
+
+        <div
+          className="kb-resizer"
+          onMouseDown={startResize}
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="Resize sidebar"
+        />
 
         <main className="kb-main">
           {editing ? (
@@ -403,6 +448,7 @@ export function KnowledgeBase({ projectId, docKey, onSelectDoc, onBack, onShowBo
                   Delete
                 </button>
               </div>
+              <h1 className="kb-doc-title">{selectedDoc.title}</h1>
               <div className="kb-markdown">
                 <ReactMarkdown
                   remarkPlugins={[remarkGfm]}
