@@ -35,6 +35,11 @@ function listWorkChildren(itemService: ItemService, projectId: string, parentId:
  *     - All in FIRST column → FIRST column id
  *     - All in DONE column → DONE column id
  *     - Otherwise → SECOND column id
+ *
+ *   Note: this derived column is a vestigial "headline status" only — the BOARD
+ *   no longer places story/epic cards by it. The board renders a container in
+ *   every lane where it has children (see `buildGroups` in `ui/.../Column.tsx`),
+ *   so a derived single column can't strand a card in a childless lane.
  */
 function deriveColumnId(
   tasks: Item[],

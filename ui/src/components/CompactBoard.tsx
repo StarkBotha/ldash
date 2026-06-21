@@ -8,11 +8,11 @@ interface CompactBoardProps {
 
 function TypeBadge({ type }: { type: Item['type'] }) {
   const colors: Record<string, string> = {
-    epic: '#7c3aed',
-    story: '#0070f3',
-    task: '#16a34a',
-    bug: '#dc2626',
-    investigation: '#0d9488',
+    epic: 'var(--purple)',
+    story: 'var(--accent)',
+    task: 'var(--success)',
+    bug: 'var(--danger)',
+    investigation: 'var(--teal)',
   };
   return (
     <span
@@ -22,8 +22,8 @@ function TypeBadge({ type }: { type: Item['type'] }) {
         borderRadius: 4,
         fontSize: 11,
         fontWeight: 600,
-        background: colors[type] ?? '#888',
-        color: '#fff',
+        background: colors[type] ?? 'var(--text-2)',
+        color: 'var(--on-accent)',
         marginRight: 6,
         textTransform: 'uppercase',
       }}
@@ -46,11 +46,11 @@ export function CompactBoard({ projectId }: CompactBoardProps) {
   });
 
   if (colsLoading || itemsLoading) {
-    return <div style={{ padding: 16, color: '#888' }}>Loading board...</div>;
+    return <div style={{ padding: 16, color: 'var(--text-2)' }}>Loading board...</div>;
   }
 
   if (colsError || itemsError) {
-    return <div style={{ padding: 16, color: '#ef4444' }}>Failed to load board</div>;
+    return <div style={{ padding: 16, color: 'var(--danger)' }}>Failed to load board</div>;
   }
 
   const sortedColumns = [...(columns ?? [])].sort((a: Column, b: Column) => a.position - b.position);
@@ -67,7 +67,7 @@ export function CompactBoard({ projectId }: CompactBoardProps) {
                 style={{
                   fontSize: 13,
                   fontWeight: 600,
-                  color: '#666',
+                  color: 'var(--text-2)',
                   marginBottom: 6,
                   display: 'flex',
                   alignItems: 'center',
@@ -77,7 +77,7 @@ export function CompactBoard({ projectId }: CompactBoardProps) {
                 {col.name}
                 <span
                   style={{
-                    background: '#e5e7eb',
+                    background: 'var(--surface-2)',
                     borderRadius: 10,
                     padding: '0 6px',
                     fontSize: 12,
@@ -95,8 +95,8 @@ export function CompactBoard({ projectId }: CompactBoardProps) {
                       key={item.id}
                       style={{
                         padding: '4px 8px',
-                        background: '#fff',
-                        border: '1px solid #e5e7eb',
+                        background: 'var(--surface)',
+                        border: '1px solid var(--border)',
                         borderRadius: 4,
                         fontSize: 13,
                         display: 'flex',
@@ -115,7 +115,7 @@ export function CompactBoard({ projectId }: CompactBoardProps) {
                             width: 8,
                             height: 8,
                             borderRadius: '50%',
-                            background: '#ef4444',
+                            background: 'var(--danger)',
                             marginLeft: 4,
                           }}
                           title="Blocked"

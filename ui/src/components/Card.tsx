@@ -13,11 +13,11 @@ interface Props {
 }
 
 export const TYPE_COLORS: Record<string, string> = {
-  epic: '#8b5cf6',
-  story: '#3b82f6',
-  task: '#10b981',
-  bug: '#ef4444',
-  investigation: '#14b8a6',
+  epic: 'var(--purple)',
+  story: 'var(--accent)',
+  task: 'var(--success)',
+  bug: 'var(--danger)',
+  investigation: 'var(--teal)',
 };
 
 export function Card({ item, parentTitle, childCount, collapsed, onToggleCollapse, onAddChild, onClick }: Props) {
@@ -26,8 +26,8 @@ export function Card({ item, parentTitle, childCount, collapsed, onToggleCollaps
     <div
       onClick={onClick}
       style={{
-        background: '#fff',
-        border: item.flagged ? '2px solid #f59e0b' : '1px solid #e0e0e0',
+        background: 'var(--surface)',
+        border: item.flagged ? '2px solid var(--warning)' : '1px solid var(--border)',
         borderRadius: 6,
         padding: 10,
         cursor: 'pointer',
@@ -38,8 +38,8 @@ export function Card({ item, parentTitle, childCount, collapsed, onToggleCollaps
         <span style={{
           fontSize: 12,
           fontWeight: 600,
-          color: '#fff',
-          background: TYPE_COLORS[item.type] ?? '#888',
+          color: 'var(--on-accent)',
+          background: TYPE_COLORS[item.type] ?? 'var(--text-2)',
           borderRadius: 4,
           padding: '1px 6px',
           flexShrink: 0,
@@ -55,13 +55,13 @@ export function Card({ item, parentTitle, childCount, collapsed, onToggleCollaps
               }}
               title={`Add a child to ${item.title}`}
               style={{
-                border: '1px solid #e0e0e0',
-                background: '#fff',
+                border: '1px solid var(--border)',
+                background: 'var(--surface)',
                 borderRadius: 4,
                 padding: '0 6px',
                 fontSize: 14,
                 lineHeight: '18px',
-                color: '#666',
+                color: 'var(--text-2)',
                 cursor: 'pointer',
               }}
             >
@@ -76,12 +76,12 @@ export function Card({ item, parentTitle, childCount, collapsed, onToggleCollaps
               }}
               title={collapsed ? `Show ${childCount} ${childLabel}` : `Hide ${childCount} ${childLabel}`}
               style={{
-                border: '1px solid #e0e0e0',
-                background: collapsed ? '#eee' : '#fff',
+                border: '1px solid var(--border)',
+                background: collapsed ? 'var(--surface-2)' : 'var(--surface)',
                 borderRadius: 4,
                 padding: '0 5px',
                 fontSize: 12,
-                color: '#666',
+                color: 'var(--text-2)',
                 cursor: 'pointer',
               }}
             >
@@ -91,14 +91,14 @@ export function Card({ item, parentTitle, childCount, collapsed, onToggleCollaps
         </div>
       </div>
       <div style={{ marginTop: 4, fontSize: 15 }}>
-        <span style={{ fontSize: 12, color: '#999', fontWeight: 600, marginRight: 5 }}>{item.key}</span>
+        <span style={{ fontSize: 12, color: 'var(--text-3)', fontWeight: 600, marginRight: 5 }}>{item.key}</span>
         {item.title}
       </div>
       {parentTitle && (
         <div style={{
           marginTop: 3,
           fontSize: 12,
-          color: '#999',
+          color: 'var(--text-3)',
           overflow: 'hidden',
           textOverflow: 'ellipsis',
           whiteSpace: 'nowrap',
@@ -115,8 +115,8 @@ export function Card({ item, parentTitle, childCount, collapsed, onToggleCollaps
           <span
             style={{
               fontSize: 12,
-              color: '#fff',
-              background: '#ef4444',
+              color: 'var(--on-accent)',
+              background: 'var(--danger)',
               borderRadius: 4,
               padding: '1px 6px',
             }}

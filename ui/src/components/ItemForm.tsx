@@ -21,9 +21,19 @@ interface Props {
 
 export function ItemForm({ projectId, columnId, columns, items, item, defaultType, defaultParentId, onClose }: Props) {
   const [title, setTitle] = useState(item?.title ?? '');
-  const [type, setType] = useState<ItemType>(item?.type ?? defaultType ?? 'task');
+  // When adding a child under an epic, default the type to Story (the natural
+  // child of an epic) rather than the generic Task default.
+  const seededParent = defaultParentId ? items.find((i) => i.id === defaultParentId) : undefined;
+  const seededType: ItemType =
+    defaultType ?? (seededParent?.type === 'epic' ? 'story' : 'task');
+  const [type, setType] = useState<ItemType>(item?.type ?? seededType);
   const [description, setDescription] = useState(item?.description ?? '');
-  const [parentId, setParentId] = useState<string>(item?.parent_id ?? defaultParentId ?? '');
+  // When editing, the parent is the item's own current parent — defaultParentId
+  // is a create-mode seed and must NOT leak in (a null-parent item would
+  // otherwise fall through to defaultParentId and could be set as its own parent).
+  const [parentId, setParentId] = useState<string>(
+    item ? (item.parent_id ?? '') : (defaultParentId ?? '')
+  );
   const [colId, setColId] = useState(item?.column_id ?? columnId);
   const [error, setError] = useState('');
 
@@ -95,7 +105,9 @@ export function ItemForm({ projectId, columnId, columns, items, item, defaultTyp
           data: {
             title,
             description,
-            parent_id: parentId || null,
+            // Never submit the item as its own parent (defensive — the server
+            // also rejects this).
+            parent_id: parentId && parentId !== item.id ? parentId : null,
             ...(isWorkItemType(item.type) && type !== item.type ? { type } : {}),
           },
         });
@@ -149,12 +161,12 @@ export function ItemForm({ projectId, columnId, columns, items, item, defaultTyp
       : parentCandidates;
 
   const overlayStyle: React.CSSProperties = {
-    position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)',
+    position: 'fixed', inset: 0, background: 'var(--overlay)',
     display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000,
   };
 
   const modalStyle: React.CSSProperties = {
-    background: '#fff', borderRadius: 8, padding: 24, width: 480, maxWidth: '90vw',
+    background: 'var(--surface)', borderRadius: 8, padding: 24, width: 480, maxWidth: '90vw',
     maxHeight: '90vh', overflowY: 'auto',
   };
 
@@ -219,7 +231,7 @@ export function ItemForm({ projectId, columnId, columns, items, item, defaultTyp
                     src={api.attachments.url(a.id)}
                     alt={a.filename}
                     title={a.filename}
-                    style={{ height: 40, width: 40, objectFit: 'cover', borderRadius: 4, border: '1px solid #e5e7eb' }}
+                    style={{ height: 40, width: 40, objectFit: 'cover', borderRadius: 4, border: '1px solid var(--border)' }}
                   />
                 ))}
                 {pendingImages.map((img, i) => (
@@ -228,7 +240,7 @@ export function ItemForm({ projectId, columnId, columns, items, item, defaultTyp
                       src={img.dataUrl}
                       alt={img.filename ?? 'pasted image'}
                       title={`${img.filename ?? 'pasted image'} — uploads when you press Create`}
-                      style={{ height: 40, width: 40, objectFit: 'cover', borderRadius: 4, border: '1px dashed #9ca3af' }}
+                      style={{ height: 40, width: 40, objectFit: 'cover', borderRadius: 4, border: '1px dashed var(--text-3)' }}
                     />
                     <button
                       type="button"
@@ -236,7 +248,7 @@ export function ItemForm({ projectId, columnId, columns, items, item, defaultTyp
                       title="Remove"
                       style={{
                         position: 'absolute', top: -6, right: -6, width: 16, height: 16,
-                        borderRadius: '50%', border: 'none', background: '#374151', color: '#fff',
+                        borderRadius: '50%', border: 'none', background: 'var(--text)', color: 'var(--on-accent)',
                         fontSize: 10, lineHeight: '16px', padding: 0, cursor: 'pointer',
                       }}
                     >
@@ -245,13 +257,13 @@ export function ItemForm({ projectId, columnId, columns, items, item, defaultTyp
                   </span>
                 ))}
                 {uploadingCount > 0 && (
-                  <span style={{ fontSize: 12, color: '#6b7280', alignSelf: 'center' }}>
+                  <span style={{ fontSize: 12, color: 'var(--text-2)', alignSelf: 'center' }}>
                     Uploading {uploadingCount} image{uploadingCount > 1 ? 's' : ''}…
                   </span>
                 )}
               </div>
             )}
-            <p style={{ margin: '4px 0 0', fontSize: 12, color: '#9ca3af' }}>
+            <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--text-3)' }}>
               {item
                 ? 'Paste an image (Ctrl+V) to attach it to this ticket.'
                 : 'Paste an image (Ctrl+V) to attach it — it uploads when you press Create.'}
@@ -289,7 +301,7 @@ export function ItemForm({ projectId, columnId, columns, items, item, defaultTyp
             </div>
           )}
 
-          {error && <p style={{ color: 'red', marginBottom: 12 }}>{error}</p>}
+          {error && <p style={{ color: 'var(--danger-text)', marginBottom: 12 }}>{error}</p>}
 
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
             <button type="button" onClick={onClose}>Cancel</button>

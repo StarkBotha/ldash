@@ -10,6 +10,7 @@ interface Props {
 export function ProjectForm({ project, onClose }: Props) {
   const [name, setName] = useState(project?.name ?? '');
   const [description, setDescription] = useState(project?.description ?? '');
+  const [repoPath, setRepoPath] = useState(project?.repo_path ?? '');
   const [error, setError] = useState('');
 
   const createProject = useCreateProject();
@@ -25,10 +26,11 @@ export function ProjectForm({ project, onClose }: Props) {
     }
 
     try {
+      const repo_path = repoPath.trim() || null;
       if (project) {
-        await updateProject.mutateAsync({ id: project.id, data: { name, description } });
+        await updateProject.mutateAsync({ id: project.id, data: { name, description, repo_path } });
       } else {
-        await createProject.mutateAsync({ name, description });
+        await createProject.mutateAsync({ name, description, repo_path });
       }
       onClose();
     } catch (err) {
@@ -37,12 +39,12 @@ export function ProjectForm({ project, onClose }: Props) {
   }
 
   const overlayStyle: React.CSSProperties = {
-    position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)',
+    position: 'fixed', inset: 0, background: 'var(--overlay)',
     display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000,
   };
 
   const modalStyle: React.CSSProperties = {
-    background: '#fff', borderRadius: 8, padding: 24, width: 420, maxWidth: '90vw',
+    background: 'var(--surface)', borderRadius: 8, padding: 24, width: 420, maxWidth: '90vw',
   };
 
   return (
@@ -68,7 +70,16 @@ export function ProjectForm({ project, onClose }: Props) {
               style={{ width: '100%', padding: 8, boxSizing: 'border-box' }}
             />
           </div>
-          {error && <p style={{ color: 'red', marginBottom: 12 }}>{error}</p>}
+          <div style={{ marginBottom: 16 }}>
+            <label style={{ display: 'block', marginBottom: 4 }}>Repository path (optional)</label>
+            <input
+              value={repoPath}
+              onChange={(e) => setRepoPath(e.target.value)}
+              placeholder="/home/you/dev/your-repo"
+              style={{ width: '100%', padding: 8, boxSizing: 'border-box' }}
+            />
+          </div>
+          {error && <p style={{ color: 'var(--danger-text)', marginBottom: 12 }}>{error}</p>}
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
             <button type="button" onClick={onClose}>Cancel</button>
             <button type="submit">{project ? 'Save' : 'Create'}</button>

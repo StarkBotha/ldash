@@ -26,15 +26,23 @@ export function projectsRouter(
   // POST /api/projects
   app.post('/', async (c) => {
     const body = await c.req.json().catch(() => ({}));
-    const { name, description } = body as { name?: unknown; description?: unknown };
+    const { name, description, repo_path } = body as {
+      name?: unknown;
+      description?: unknown;
+      repo_path?: unknown;
+    };
 
     if (!name || typeof name !== 'string' || name.trim() === '') {
       throw makeError('name is required and must be a non-empty string', 400);
+    }
+    if (repo_path !== undefined && repo_path !== null && typeof repo_path !== 'string') {
+      throw makeError('repo_path must be a string or null', 400);
     }
 
     const project = projectService.create({
       name: name.trim(),
       description: typeof description === 'string' ? description : '',
+      repo_path: typeof repo_path === 'string' && repo_path.trim() !== '' ? repo_path.trim() : null,
     });
 
     activityService.append({
@@ -73,9 +81,13 @@ export function projectsRouter(
     }
 
     const body = await c.req.json().catch(() => ({}));
-    const { name, description } = body as { name?: unknown; description?: unknown };
+    const { name, description, repo_path } = body as {
+      name?: unknown;
+      description?: unknown;
+      repo_path?: unknown;
+    };
 
-    const updateData: Partial<{ name: string; description: string }> = {};
+    const updateData: Partial<{ name: string; description: string; repo_path: string | null }> = {};
     const oldFields: Record<string, unknown> = {};
     const newFields: Record<string, unknown> = {};
 
@@ -95,9 +107,19 @@ export function projectsRouter(
       oldFields.description = existing.description;
       newFields.description = description;
     }
+    if (repo_path !== undefined) {
+      if (repo_path !== null && typeof repo_path !== 'string') {
+        throw makeError('repo_path must be a string or null', 400);
+      }
+      const normalized =
+        typeof repo_path === 'string' && repo_path.trim() !== '' ? repo_path.trim() : null;
+      updateData.repo_path = normalized;
+      oldFields.repo_path = existing.repo_path;
+      newFields.repo_path = normalized;
+    }
 
     if (Object.keys(updateData).length === 0) {
-      throw makeError('Body must contain at least one of: name, description', 400);
+      throw makeError('Body must contain at least one of: name, description, repo_path', 400);
     }
 
     const updated = projectService.update(id, updateData);

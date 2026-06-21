@@ -81,7 +81,7 @@ export function App() {
           cursor: 'pointer',
           fontSize: 20,
           zIndex: 900,
-          color: '#6b7280',
+          color: 'var(--text-2)',
         }}
       >
         ⚙

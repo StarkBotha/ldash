@@ -59,9 +59,9 @@ export function PlanChat({ projectId }: PlanChatProps) {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: '#fafafa' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--surface-2)' }}>
       {/* Header */}
-      <div style={{ padding: '8px 16px', borderBottom: '1px solid #ddd', background: '#fff', display: 'flex', alignItems: 'center', gap: 8 }}>
+      <div style={{ padding: '8px 16px', borderBottom: '1px solid var(--border)', background: 'var(--surface)', display: 'flex', alignItems: 'center', gap: 8 }}>
         <strong style={{ fontSize: 15 }}>Planning Chat</strong>
         <button
           onClick={() => void handleClear()}
@@ -89,9 +89,9 @@ export function PlanChat({ projectId }: PlanChatProps) {
               style={{
                 alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
                 maxWidth: '80%',
-                background: msg.role === 'user' ? '#0070f3' : '#fff',
-                color: msg.role === 'user' ? '#fff' : '#333',
-                border: msg.role === 'user' ? 'none' : '1px solid #ddd',
+                background: msg.role === 'user' ? 'var(--accent)' : 'var(--surface)',
+                color: msg.role === 'user' ? 'var(--on-accent)' : 'var(--text)',
+                border: msg.role === 'user' ? 'none' : '1px solid var(--border)',
                 borderRadius: 8,
                 padding: '8px 12px',
                 fontSize: 15,
@@ -108,8 +108,8 @@ export function PlanChat({ projectId }: PlanChatProps) {
             style={{
               alignSelf: 'flex-start',
               maxWidth: '80%',
-              background: '#fff',
-              border: '1px solid #ddd',
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
               borderRadius: 8,
               padding: '8px 12px',
               fontSize: 15,
@@ -127,11 +127,11 @@ export function PlanChat({ projectId }: PlanChatProps) {
             {toolCallIndicators.map((indicator, i) => (
               <div
                 key={i}
-                style={{ fontSize: 13, color: '#666', display: 'flex', alignItems: 'center', gap: 4 }}
+                style={{ fontSize: 13, color: 'var(--text-2)', display: 'flex', alignItems: 'center', gap: 4 }}
               >
                 {indicator.status === 'pending' && <span>⟳</span>}
-                {indicator.status === 'done' && <span style={{ color: '#22c55e' }}>✓</span>}
-                {indicator.status === 'error' && <span style={{ color: '#ef4444' }}>✗</span>}
+                {indicator.status === 'done' && <span style={{ color: 'var(--success)' }}>✓</span>}
+                {indicator.status === 'error' && <span style={{ color: 'var(--danger)' }}>✗</span>}
                 <span>{indicator.label}</span>
               </div>
             ))}
@@ -143,9 +143,9 @@ export function PlanChat({ projectId }: PlanChatProps) {
       {stallNotice && (
         <div
           style={{
-            background: '#f0f9ff',
-            border: '1px solid #bae6fd',
-            color: '#0369a1',
+            background: 'var(--info-bg)',
+            border: '1px solid var(--info-border)',
+            color: 'var(--info-text)',
             padding: '8px 16px',
             display: 'flex',
             alignItems: 'center',
@@ -156,7 +156,7 @@ export function PlanChat({ projectId }: PlanChatProps) {
           <span style={{ flex: 1 }}>{stallNotice}</span>
           <button
             onClick={dismissStallNotice}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#0369a1', fontWeight: 'bold' }}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--info-text)', fontWeight: 'bold' }}
           >
             ×
           </button>
@@ -167,9 +167,9 @@ export function PlanChat({ projectId }: PlanChatProps) {
       {displayError && (
         <div
           style={{
-            background: '#fee2e2',
-            border: '1px solid #fca5a5',
-            color: '#dc2626',
+            background: 'var(--danger-bg)',
+            border: '1px solid var(--danger-border)',
+            color: 'var(--danger-text)',
             padding: '8px 16px',
             display: 'flex',
             alignItems: 'center',
@@ -180,7 +180,7 @@ export function PlanChat({ projectId }: PlanChatProps) {
           <span style={{ flex: 1 }}>{displayError}</span>
           <button
             onClick={() => setLocalError(null)}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', fontWeight: 'bold' }}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--danger-text)', fontWeight: 'bold' }}
           >
             ×
           </button>
@@ -188,7 +188,7 @@ export function PlanChat({ projectId }: PlanChatProps) {
       )}
 
       {/* Input area */}
-      <div style={{ padding: 12, borderTop: '1px solid #ddd', background: '#fff', display: 'flex', gap: 8 }}>
+      <div style={{ padding: 12, borderTop: '1px solid var(--border)', background: 'var(--surface)', display: 'flex', gap: 8 }}>
         <textarea
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
@@ -200,7 +200,7 @@ export function PlanChat({ projectId }: PlanChatProps) {
             resize: 'none',
             padding: '8px 12px',
             borderRadius: 6,
-            border: '1px solid #ddd',
+            border: '1px solid var(--border)',
             fontSize: 15,
             minHeight: 60,
             fontFamily: 'inherit',
@@ -212,8 +212,8 @@ export function PlanChat({ projectId }: PlanChatProps) {
           disabled={isStreaming || !inputValue.trim()}
           style={{
             padding: '8px 16px',
-            background: isStreaming || !inputValue.trim() ? '#d1d5db' : '#0070f3',
-            color: '#fff',
+            background: isStreaming || !inputValue.trim() ? 'var(--border)' : 'var(--accent)',
+            color: 'var(--on-accent)',
             border: 'none',
             borderRadius: 6,
             cursor: isStreaming || !inputValue.trim() ? 'not-allowed' : 'pointer',

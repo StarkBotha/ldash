@@ -23,6 +23,7 @@ export function registerProjectTools(server: McpServer, services: Services, bus:
     {
       name: z.string().min(1).describe('Name of the project. Required and must not be empty. Typically the repo or product name.'),
       description: z.string().optional().describe('Short description of what the project is. Optional.'),
+      repo_path: z.string().optional().describe("Absolute filesystem path to the project's repository on disk. Optional; shown in the board header with click-to-copy."),
     },
     async (input) => {
       const name = input.name.trim();
@@ -30,9 +31,11 @@ export function registerProjectTools(server: McpServer, services: Services, bus:
         return { content: [{ type: 'text' as const, text: 'Error: name must not be empty' }], isError: true };
       }
 
+      const repoPath = input.repo_path?.trim();
       const project = services.projects.create({
         name,
         description: input.description ?? '',
+        repo_path: repoPath ? repoPath : null,
       });
 
       services.activity.append({

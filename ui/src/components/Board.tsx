@@ -48,6 +48,8 @@ export function Board({ projectId, onBack, onShowKb }: Props) {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   // Done column shows only items moved to Done today; this reveals all of them.
   const [showAllDone, setShowAllDone] = useState(false);
+  // Brief "Copied!" feedback after clicking the repo-path chip in the header.
+  const [copiedPath, setCopiedPath] = useState(false);
   // Tracks the project whose collapse defaults have been applied, so the
   // collapse-by-default only seeds once per project and never fights the user.
   const collapseInitRef = useRef<string | null>(null);
@@ -77,7 +79,9 @@ export function Board({ projectId, onBack, onShowKb }: Props) {
     for (const it of items) {
       if (it.type === 'epic' || it.type === 'story') keys.add(`${it.column_id}::${it.id}`);
       let parentId = it.parent_id;
-      while (parentId != null) {
+      const seen = new Set<string>([it.id]); // cycle guard — never loop forever
+      while (parentId != null && !seen.has(parentId)) {
+        seen.add(parentId);
         const parent = byId.get(parentId);
         if (parent && (parent.type === 'epic' || parent.type === 'story')) {
           keys.add(`${it.column_id}::${parent.id}`);
@@ -151,24 +155,59 @@ export function Board({ projectId, onBack, onShowKb }: Props) {
     setShowItemForm(true);
   }
 
-  // A new item under a story/epic starts in the first column (Backlog) and
-  // defaults to a task, with the parent preselected.
+  // A new item under a story/epic starts in the first column (Backlog) with the
+  // parent preselected. An epic's natural child is a story; everything else
+  // defaults to a task.
   function openAddChildForm(parent: Item) {
-    openNewItemForm(sortedColumns[0]?.id ?? '', { parentId: parent.id, type: 'task' });
+    openNewItemForm(sortedColumns[0]?.id ?? '', {
+      parentId: parent.id,
+      type: parent.type === 'epic' ? 'story' : 'task',
+    });
   }
 
   return (
     <div style={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
       <div style={{
         padding: '12px 72px 12px 24px', // right padding clears the global settings gear
-        borderBottom: '1px solid #ddd',
+        borderBottom: '1px solid var(--border)',
         display: 'flex',
         alignItems: 'center',
         gap: 12,
-        background: '#fff',
+        background: 'var(--surface)',
       }}>
         <button onClick={onBack}>← Back</button>
         <h1 style={{ margin: 0, fontSize: 20 }}>{project?.name}</h1>
+        {project?.repo_path && (
+          <button
+            type="button"
+            title="Click to copy the repository path"
+            onClick={async () => {
+              try {
+                await navigator.clipboard.writeText(project.repo_path!);
+                setCopiedPath(true);
+                setTimeout(() => setCopiedPath(false), 1500);
+              } catch {
+                // clipboard unavailable (e.g. non-secure context) — silently no-op
+              }
+            }}
+            style={{
+              fontFamily: 'monospace',
+              fontSize: 12,
+              color: 'var(--text-2)',
+              background: 'transparent',
+              border: '1px solid var(--border)',
+              borderRadius: 4,
+              padding: '2px 8px',
+              cursor: 'pointer',
+              maxWidth: 360,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {copiedPath ? 'Copied!' : project.repo_path}
+          </button>
+        )}
         <div className="view-tabs">
           <button className="active" disabled>Board</button>
           <button onClick={onShowKb}>Knowledgebase</button>
@@ -259,6 +298,7 @@ export function Board({ projectId, onBack, onShowKb }: Props) {
             onCardClick={(item) => setSelectedItem(item)}
             onNewItem={() => openNewItemForm(col.id, { type: 'story' })}
             onAddChild={openAddChildForm}
+            isFirstColumn={col.id === sortedColumns[0]?.id}
           />
         ))}
       </div>
@@ -272,6 +312,10 @@ export function Board({ projectId, onBack, onShowKb }: Props) {
           projectId={projectId}
           onClose={() => setSelectedItem(null)}
           onEdit={(item) => {
+            // Clear create-mode seeds so a prior "+ add child" parent can't
+            // bleed into an edit (that leak is what let an item self-parent).
+            setItemFormParentId('');
+            setItemFormType(undefined);
             setEditingItem(item);
             setShowItemForm(true);
           }}

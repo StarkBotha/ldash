@@ -32,9 +32,9 @@ export const api = {
   projects: {
     list: () => apiFetch<Project[]>('/projects'),
     get: (id: string) => apiFetch<Project>(`/projects/${id}`),
-    create: (data: { name: string; description?: string }) =>
+    create: (data: { name: string; description?: string; repo_path?: string | null }) =>
       apiFetch<Project>('/projects', { method: 'POST', body: JSON.stringify(data) }),
-    update: (id: string, data: Partial<{ name: string; description: string }>) =>
+    update: (id: string, data: Partial<{ name: string; description: string; repo_path: string | null }>) =>
       apiFetch<Project>(`/projects/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
     delete: (id: string) =>
       apiFetch<void>(`/projects/${id}`, { method: 'DELETE' }),

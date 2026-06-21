@@ -24,6 +24,8 @@ export interface Project {
   name: string;
   description: string;
   prefix: string;
+  /** Optional absolute path to the project's repository on disk. */
+  repo_path: string | null;
   created_at: string;
   updated_at: string;
 }

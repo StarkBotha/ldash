@@ -36,7 +36,7 @@ export function KbLinkedText({ text, projectName, prefix }: Props) {
         href={href}
         target="_blank"
         rel="noopener noreferrer"
-        style={{ color: '#2563eb', textDecoration: 'underline' }}
+        style={{ color: 'var(--link)', textDecoration: 'underline' }}
       >
         {key}
       </a>

@@ -193,7 +193,7 @@ export function SettingsPage({ onClose }: SettingsPageProps) {
   const overlayStyle: React.CSSProperties = {
     position: 'fixed',
     inset: 0,
-    background: 'rgba(0,0,0,0.4)',
+    background: 'var(--overlay)',
     zIndex: 1000,
     display: 'flex',
     alignItems: 'center',
@@ -201,14 +201,14 @@ export function SettingsPage({ onClose }: SettingsPageProps) {
   };
 
   const cardStyle: React.CSSProperties = {
-    background: '#fff',
+    background: 'var(--surface)',
     borderRadius: 8,
     padding: 24,
     width: 560,
     maxWidth: '90vw',
     maxHeight: '80vh',
     overflowY: 'auto',
-    boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+    boxShadow: '0 20px 60px var(--shadow)',
   };
 
   return (
@@ -244,13 +244,13 @@ export function SettingsPage({ onClose }: SettingsPageProps) {
           return (
             <div
               key={index}
-              style={{ border: '1px solid #e5e7eb', borderRadius: 6, padding: 12, marginBottom: 12 }}
+              style={{ border: '1px solid var(--border)', borderRadius: 6, padding: 12, marginBottom: 12 }}
             >
               {!provider.editing ? (
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
                     <div style={{ fontWeight: 600, fontSize: 15 }}>{provider.name}</div>
-                    <div style={{ fontSize: 13, color: '#6b7280' }}>
+                    <div style={{ fontSize: 13, color: 'var(--text-2)' }}>
                       {provider.type} · {provider.model || 'default (sonnet)'}
                       {provider.baseUrl ? ` · ${provider.baseUrl}` : ''}
                       {provider.apiKey ? ` · key: ${provider.apiKey}` : ''}
@@ -258,7 +258,7 @@ export function SettingsPage({ onClose }: SettingsPageProps) {
                   </div>
                   <div style={{ display: 'flex', gap: 6 }}>
                     <button onClick={() => openEdit(index)} style={{ fontSize: 13 }}>Edit</button>
-                    <button onClick={() => removeProvider(index)} style={{ fontSize: 13, color: 'red' }}>Delete</button>
+                    <button onClick={() => removeProvider(index)} style={{ fontSize: 13, color: 'var(--danger-text)' }}>Delete</button>
                   </div>
                 </div>
               ) : (
@@ -287,7 +287,7 @@ export function SettingsPage({ onClose }: SettingsPageProps) {
                     <label style={{ display: 'block', fontSize: 13, marginBottom: 3 }}>
                       Model
                       {provider.type === 'claude-subscription' && (
-                        <span style={{ color: '#9ca3af', fontWeight: 'normal' }}> (empty = Default / Sonnet)</span>
+                        <span style={{ color: 'var(--text-3)', fontWeight: 'normal' }}> (empty = Default / Sonnet)</span>
                       )}
                     </label>
                     {/* datalist for autocomplete — free text always allowed */}
@@ -308,7 +308,7 @@ export function SettingsPage({ onClose }: SettingsPageProps) {
                       style={{ width: '100%', padding: '4px 8px', fontSize: 14, boxSizing: 'border-box' }}
                     />
                     {modelHint && (
-                      <div style={{ fontSize: 12, color: '#6b7280', marginTop: 3 }}>{modelHint}</div>
+                      <div style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 3 }}>{modelHint}</div>
                     )}
                   </div>
                   {provider.type === 'openai-compatible' && (
@@ -364,22 +364,22 @@ export function SettingsPage({ onClose }: SettingsPageProps) {
         </select>
 
         {saveError && (
-          <div style={{ color: '#991b1b', fontSize: 14, marginBottom: 12, background: '#fef2f2', padding: '8px 10px', borderRadius: 4 }}>
+          <div style={{ color: 'var(--danger-text)', fontSize: 14, marginBottom: 12, background: 'var(--danger-bg)', padding: '8px 10px', borderRadius: 4 }}>
             {saveError}
           </div>
         )}
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, alignItems: 'center' }}>
           {saveStatus === 'saved' && (
-            <span style={{ color: '#059669', fontSize: 14, fontWeight: 600 }}>Saved</span>
+            <span style={{ color: 'var(--success)', fontSize: 14, fontWeight: 600 }}>Saved</span>
           )}
           <button
             onClick={handleSave}
             disabled={saveStatus === 'saving'}
             style={{
               padding: '6px 20px',
-              background: saveStatus === 'saving' ? '#9ca3af' : '#3b82f6',
-              color: '#fff',
+              background: saveStatus === 'saving' ? 'var(--text-3)' : 'var(--accent)',
+              color: 'var(--on-accent)',
               border: 'none',
               borderRadius: 6,
               cursor: saveStatus === 'saving' ? 'not-allowed' : 'pointer',

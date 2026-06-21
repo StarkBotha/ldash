@@ -125,6 +125,35 @@ describe('Items', () => {
     expect((body as Item).updated_at >= item.updated_at).toBe(true);
   });
 
+  it('PATCH /api/items/:id setting parent_id to its own id returns 409 (self-parent guard)', async () => {
+    const { body: created } = await req(app, 'POST', '/api/items', {
+      project_id: projectId, type: 'story', title: 'Self', column_id: firstColId,
+    });
+    const item = created as Item;
+    const { status } = await req(app, 'PATCH', `/api/items/${item.id}`, { parent_id: item.id });
+    expect(status).toBe(409);
+    // parent must remain unchanged (null)
+    const { body: after } = await req(app, 'GET', `/api/items/${item.id}`);
+    expect((after as Item).parent_id).toBeNull();
+  });
+
+  it('PATCH /api/items/:id creating a parent cycle returns 409', async () => {
+    const { body: aRaw } = await req(app, 'POST', '/api/items', {
+      project_id: projectId, type: 'epic', title: 'A', column_id: firstColId,
+    });
+    const { body: bRaw } = await req(app, 'POST', '/api/items', {
+      project_id: projectId, type: 'story', title: 'B', column_id: firstColId,
+    });
+    const a = aRaw as Item;
+    const b = bRaw as Item;
+    // B under A (fine)
+    const r1 = await req(app, 'PATCH', `/api/items/${b.id}`, { parent_id: a.id });
+    expect(r1.status).toBe(200);
+    // A under B would close the loop A->B->A — must be rejected
+    const r2 = await req(app, 'PATCH', `/api/items/${a.id}`, { parent_id: b.id });
+    expect(r2.status).toBe(409);
+  });
+
   it('AC29: PATCH /api/items/:id/move changes column_id', async () => {
     const { body: created } = await req(app, 'POST', '/api/items', {
       project_id: projectId, type: 'task', title: 'Mover', column_id: firstColId,

@@ -41,8 +41,8 @@ function MessageBubble({ message }: { message: Message }) {
           maxWidth: '80%',
           padding: '8px 12px',
           borderRadius: 12,
-          background: isUser ? '#3b82f6' : '#f3f4f6',
-          color: isUser ? '#fff' : '#1f2937',
+          background: isUser ? 'var(--accent)' : 'var(--surface-2)',
+          color: isUser ? 'var(--on-accent)' : 'var(--text)',
           fontSize: 15,
         }}
       >
@@ -62,11 +62,11 @@ function ToolChipRow({ chips }: { chips: ToolCallIndicator[] }) {
       {chips.map((indicator, i) => (
         <div
           key={i}
-          style={{ fontSize: 13, color: '#666', display: 'flex', alignItems: 'center', gap: 4 }}
+          style={{ fontSize: 13, color: 'var(--text-2)', display: 'flex', alignItems: 'center', gap: 4 }}
         >
           {indicator.status === 'pending' && <span>⟳</span>}
-          {indicator.status === 'done' && <span style={{ color: '#22c55e' }}>✓</span>}
-          {indicator.status === 'error' && <span style={{ color: '#ef4444' }}>✗</span>}
+          {indicator.status === 'done' && <span style={{ color: 'var(--success)' }}>✓</span>}
+          {indicator.status === 'error' && <span style={{ color: 'var(--danger)' }}>✗</span>}
           <span>{indicator.label}</span>
         </div>
       ))}
@@ -144,23 +144,23 @@ export function ChatPanel({ projectId, itemId, providerLabel, kb = false, placeh
 
   if (!conversation) {
     return (
-      <div style={{ padding: 20, color: '#6b7280', fontSize: 15 }}>Loading...</div>
+      <div style={{ padding: 20, color: 'var(--text-2)', fontSize: 15 }}>Loading...</div>
     );
   }
 
-  const badgeColor = providerLabel ? '#3b82f6' : '#f59e0b';
+  const badgeColor = providerLabel ? 'var(--accent)' : 'var(--warning)';
   const badgeText = providerLabel || 'No provider configured';
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       {/* Provider badge */}
-      <div style={{ padding: '8px 12px', borderBottom: '1px solid #e5e7eb' }}>
+      <div style={{ padding: '8px 12px', borderBottom: '1px solid var(--border)' }}>
         <span
           style={{
             display: 'inline-block',
             fontSize: 12,
             fontWeight: 600,
-            color: '#fff',
+            color: 'var(--on-accent)',
             background: badgeColor,
             borderRadius: 4,
             padding: '2px 8px',
@@ -192,8 +192,8 @@ export function ChatPanel({ projectId, itemId, providerLabel, kb = false, placeh
                 maxWidth: '80%',
                 padding: '8px 12px',
                 borderRadius: 12,
-                background: '#f3f4f6',
-                color: '#1f2937',
+                background: 'var(--surface-2)',
+                color: 'var(--text)',
                 fontSize: 15,
               }}
             >
@@ -212,7 +212,7 @@ export function ChatPanel({ projectId, itemId, providerLabel, kb = false, placeh
         )}
 
         {isStreaming && !streamingText && (
-          <div style={{ color: '#9ca3af', fontSize: 14, padding: '4px 12px' }}>Thinking...</div>
+          <div style={{ color: 'var(--text-3)', fontSize: 14, padding: '4px 12px' }}>Thinking...</div>
         )}
 
         {/* Live tool call indicators (cleared once server history is re-synced) */}
@@ -226,22 +226,22 @@ export function ChatPanel({ projectId, itemId, providerLabel, kb = false, placeh
         <div
           style={{
             padding: '8px 12px',
-            background: '#f0f9ff',
-            borderTop: '1px solid #bae6fd',
+            background: 'var(--info-bg)',
+            borderTop: '1px solid var(--info-border)',
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
             gap: 8,
           }}
         >
-          <span style={{ color: '#0369a1', fontSize: 14 }}>{stallNotice}</span>
+          <span style={{ color: 'var(--info-text)', fontSize: 14 }}>{stallNotice}</span>
           <button
             onClick={dismissStallNotice}
             style={{
               background: 'none',
               border: 'none',
               cursor: 'pointer',
-              color: '#0369a1',
+              color: 'var(--info-text)',
               fontWeight: 600,
               fontSize: 14,
               flexShrink: 0,
@@ -257,22 +257,22 @@ export function ChatPanel({ projectId, itemId, providerLabel, kb = false, placeh
         <div
           style={{
             padding: '8px 12px',
-            background: '#fef2f2',
-            borderTop: '1px solid #fecaca',
+            background: 'var(--danger-bg)',
+            borderTop: '1px solid var(--danger-border)',
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
             gap: 8,
           }}
         >
-          <span style={{ color: '#991b1b', fontSize: 14 }}>{error}</span>
+          <span style={{ color: 'var(--danger-text)', fontSize: 14 }}>{error}</span>
           <button
             onClick={dismissError}
             style={{
               background: 'none',
               border: 'none',
               cursor: 'pointer',
-              color: '#991b1b',
+              color: 'var(--danger-text)',
               fontWeight: 600,
               fontSize: 14,
               flexShrink: 0,
@@ -284,7 +284,7 @@ export function ChatPanel({ projectId, itemId, providerLabel, kb = false, placeh
       )}
 
       {/* Input area */}
-      <div style={{ padding: '8px 12px', borderTop: '1px solid #e5e7eb', display: 'flex', gap: 8 }}>
+      <div style={{ padding: '8px 12px', borderTop: '1px solid var(--border)', display: 'flex', gap: 8 }}>
         <textarea
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
@@ -297,7 +297,7 @@ export function ChatPanel({ projectId, itemId, providerLabel, kb = false, placeh
             padding: '6px 10px',
             fontSize: 14,
             borderRadius: 6,
-            border: '1px solid #d1d5db',
+            border: '1px solid var(--border)',
             resize: 'none',
             fontFamily: 'inherit',
           }}
@@ -307,8 +307,8 @@ export function ChatPanel({ projectId, itemId, providerLabel, kb = false, placeh
           disabled={isStreaming || !inputValue.trim()}
           style={{
             padding: '6px 16px',
-            background: isStreaming ? '#9ca3af' : '#3b82f6',
-            color: '#fff',
+            background: isStreaming ? 'var(--text-3)' : 'var(--accent)',
+            color: 'var(--on-accent)',
             border: 'none',
             borderRadius: 6,
             cursor: isStreaming ? 'not-allowed' : 'pointer',

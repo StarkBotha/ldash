@@ -79,19 +79,21 @@ describe('buildGroups (Column hierarchy grouping)', () => {
     expect(groups[0].looseLeaves.map((i) => i.id)).toEqual(['loose']);
   });
 
-  it('groups stories under their epic header even when the epic card is in another column', () => {
+  it('groups stories under their epic and surfaces the epic card even when the epic\'s own status is another column', () => {
     const epic = makeItem({ id: 'epic1', type: 'epic', position: 0, column_id: 'progress', title: 'Epic One' });
     const story = makeItem({ id: 'story1', type: 'story', parent_id: 'epic1', position: 7 });
     const task = makeItem({ id: 'task1', type: 'task', parent_id: 'story1', position: 3 });
     const all = [epic, story, task];
 
-    // Column only contains the story and task — epic lives elsewhere
+    // Column only contains the story and task — epic's own card lives elsewhere
     const groups = buildGroups([story, task], all);
 
     expect(groups).toHaveLength(1);
     expect(groups[0].epicId).toBe('epic1');
     expect(groups[0].epicTitle).toBe('Epic One');
-    expect(groups[0].epicCard).toBeNull(); // epic card is in another column
+    // The epic card is now rendered in every lane it has a group (like a story
+    // card), not only its status lane.
+    expect(groups[0].epicCard?.id).toBe('epic1');
     expect(storyIds(groups[0])).toEqual(['story1']);
     expect(tasksOf(groups[0], 'story1')).toEqual(['task1']);
   });
@@ -145,5 +147,60 @@ describe('buildGroups (Column hierarchy grouping)', () => {
     expect(tasksOf(groups[0], 'storyY')).toEqual([]);
     expect(groups[1].epicId).toBeNull();
     expect(groups[1].looseLeaves.map((i) => i.id)).toEqual(['free']);
+  });
+
+  // Container model (LDA-135): stories/epics are placed by their children, not by
+  // a derived single status.
+  it('does NOT show a story in its status lane when its leaves are all elsewhere', () => {
+    const story = makeItem({ id: 'story1', type: 'story', column_id: 'progress', position: 1 });
+    const task = makeItem({ id: 'task1', type: 'task', parent_id: 'story1', column_id: 'done', position: 2 });
+    const all = [story, task];
+
+    // The 'progress' lane physically contains the story (its derived status) but
+    // none of its children — it must not render here.
+    const groups = buildGroups([story], all);
+
+    expect(groups).toHaveLength(0);
+  });
+
+  it('DOES show a childless story in its own status lane', () => {
+    const story = makeItem({ id: 'story1', type: 'story', column_id: 'progress', position: 1 });
+    const all = [story];
+
+    const groups = buildGroups([story], all);
+
+    expect(groups).toHaveLength(1);
+    expect(groups[0].epicId).toBeNull();
+    expect(storyIds(groups[0])).toEqual(['story1']);
+    expect(tasksOf(groups[0], 'story1')).toEqual([]);
+  });
+
+  it('does NOT show an epic in its status lane when none of its descendants are there', () => {
+    const epic = makeItem({ id: 'epic1', type: 'epic', column_id: 'progress', position: 0 });
+    const story = makeItem({ id: 'story1', type: 'story', parent_id: 'epic1', column_id: 'done', position: 1 });
+    const task = makeItem({ id: 'task1', type: 'task', parent_id: 'story1', column_id: 'done', position: 2 });
+    const all = [epic, story, task];
+
+    // 'progress' lane holds the epic (its derived status) but no descendants.
+    const groups = buildGroups([epic], all);
+
+    expect(groups).toHaveLength(0);
+  });
+
+  it('shows a completely empty epic only in the Backlog (first) lane', () => {
+    const epic = makeItem({ id: 'epic1', type: 'epic', column_id: 'backlog', position: 0, title: 'Empty Epic' });
+    const all = [epic];
+
+    // Backlog lane (isFirstColumn = true) keeps the empty epic visible…
+    const backlog = buildGroups([epic], all, true);
+    expect(backlog).toHaveLength(1);
+    expect(backlog[0].epicId).toBe('epic1');
+    expect(backlog[0].epicCard?.id).toBe('epic1');
+    expect(backlog[0].stories).toHaveLength(0);
+    expect(backlog[0].looseLeaves).toHaveLength(0);
+
+    // …but any other lane does not show it.
+    const other = buildGroups([epic], all, false);
+    expect(other).toHaveLength(0);
   });
 });

@@ -15,8 +15,8 @@ export function PlanView({ projectId, onClose }: PlanViewProps) {
           display: 'flex',
           alignItems: 'center',
           padding: '10px 72px 10px 24px',
-          borderBottom: '1px solid #ddd',
-          background: '#fff',
+          borderBottom: '1px solid var(--border)',
+          background: 'var(--surface)',
           gap: 12,
         }}
       >
@@ -27,8 +27,8 @@ export function PlanView({ projectId, onClose }: PlanViewProps) {
             marginLeft: 'auto',
             padding: '4px 12px',
             fontSize: 13,
-            background: '#fff',
-            border: '1px solid #ddd',
+            background: 'var(--surface)',
+            border: '1px solid var(--border)',
             borderRadius: 4,
             cursor: 'pointer',
           }}
@@ -38,13 +38,13 @@ export function PlanView({ projectId, onClose }: PlanViewProps) {
       </div>
 
       {/* Chat panel — flex 3 */}
-      <div style={{ flex: 3, overflow: 'hidden', borderBottom: '2px solid #e5e7eb' }}>
+      <div style={{ flex: 3, overflow: 'hidden', borderBottom: '2px solid var(--border)' }}>
         <PlanChat projectId={projectId} />
       </div>
 
       {/* Compact board — flex 2 */}
-      <div style={{ flex: 2, overflow: 'hidden', background: '#f9fafb' }}>
-        <div style={{ padding: '6px 16px', fontSize: 13, fontWeight: 600, color: '#888', borderBottom: '1px solid #e5e7eb' }}>
+      <div style={{ flex: 2, overflow: 'hidden', background: 'var(--surface-2)' }}>
+        <div style={{ padding: '6px 16px', fontSize: 13, fontWeight: 600, color: 'var(--text-2)', borderBottom: '1px solid var(--border)' }}>
           Board (live)
         </div>
         <div style={{ height: 'calc(100% - 29px)', overflow: 'auto' }}>

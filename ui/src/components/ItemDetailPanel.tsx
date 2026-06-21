@@ -124,8 +124,8 @@ export function ItemDetailPanel({ item, columns, projectId, onClose, onEdit, onD
     right: 0,
     width: 420,
     height: '100vh',
-    background: '#fff',
-    borderLeft: '1px solid #ddd',
+    background: 'var(--surface)',
+    borderLeft: '1px solid var(--border)',
     display: 'flex',
     flexDirection: 'column',
     // Above the global Settings gear (900) so it can't cover the panel's ✕,
@@ -135,18 +135,18 @@ export function ItemDetailPanel({ item, columns, projectId, onClose, onEdit, onD
 
   const sectionStyle: React.CSSProperties = {
     padding: '12px 20px',
-    borderBottom: '1px solid #f0f0f0',
+    borderBottom: '1px solid var(--border-subtle)',
   };
 
   const tabStyle = (tab: Tab): React.CSSProperties => ({
     padding: '8px 16px',
-    background: activeTab === tab ? '#fff' : '#f9fafb',
+    background: activeTab === tab ? 'var(--surface)' : 'var(--surface-2)',
     border: 'none',
-    borderBottom: activeTab === tab ? '2px solid #3b82f6' : '2px solid transparent',
+    borderBottom: activeTab === tab ? '2px solid var(--accent)' : '2px solid transparent',
     cursor: 'pointer',
     fontSize: 14,
     fontWeight: activeTab === tab ? 600 : 400,
-    color: activeTab === tab ? '#1d4ed8' : '#6b7280',
+    color: activeTab === tab ? 'var(--accent-strong)' : 'var(--text-2)',
   });
 
   return (
@@ -154,7 +154,7 @@ export function ItemDetailPanel({ item, columns, projectId, onClose, onEdit, onD
       <div
         onClick={onClose}
         style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.1)', zIndex: 949,
+          position: 'fixed', inset: 0, background: 'var(--overlay)', zIndex: 949,
         }}
       />
       <div style={panelStyle} onPaste={handlePaste}>
@@ -168,26 +168,26 @@ export function ItemDetailPanel({ item, columns, projectId, onClose, onEdit, onD
                   onChange={handleTypeChange}
                   title="Change item type"
                   style={{
-                    fontSize: 12, fontWeight: 600, color: '#fff',
-                    background: TYPE_COLORS[item.type] ?? '#888',
+                    fontSize: 12, fontWeight: 600, color: 'var(--on-accent)',
+                    background: TYPE_COLORS[item.type] ?? 'var(--text-2)',
                     border: 'none', borderRadius: 4, padding: '1px 6px',
                     cursor: 'pointer',
                   }}
                 >
                   {WORK_ITEM_TYPES.map((t) => (
-                    <option key={t} value={t} style={{ color: '#111', background: '#fff' }}>{t}</option>
+                    <option key={t} value={t} style={{ color: 'var(--text)', background: 'var(--surface)' }}>{t}</option>
                   ))}
                 </select>
               ) : (
                 <span style={{
-                  fontSize: 12, fontWeight: 600, color: '#fff',
-                  background: TYPE_COLORS[item.type] ?? '#888',
+                  fontSize: 12, fontWeight: 600, color: 'var(--on-accent)',
+                  background: TYPE_COLORS[item.type] ?? 'var(--text-2)',
                   borderRadius: 4, padding: '1px 6px',
                 }}>
                   {item.type}
                 </span>
               )}
-              <span style={{ fontSize: 13, fontWeight: 600, color: '#999' }}>{item.key}</span>
+              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-3)' }}>{item.key}</span>
             </div>
             <h2 style={{ margin: 0, fontSize: 18 }}>{item.title}</h2>
           </div>
@@ -198,7 +198,7 @@ export function ItemDetailPanel({ item, columns, projectId, onClose, onEdit, onD
         </div>
 
         {/* Tabs */}
-        <div style={{ display: 'flex', borderBottom: '1px solid #e5e7eb' }}>
+        <div style={{ display: 'flex', borderBottom: '1px solid var(--border)' }}>
           <button style={tabStyle('details')} onClick={() => setActiveTab('details')}>Details</button>
           <button style={tabStyle('comments')} onClick={() => setActiveTab('comments')}>Comments / Activity</button>
           <button style={tabStyle('chat')} onClick={() => setActiveTab('chat')}>Chat</button>
@@ -225,7 +225,7 @@ export function ItemDetailPanel({ item, columns, projectId, onClose, onEdit, onD
                     <span style={{ fontSize: 14 }}>
                       {columns.find((col) => col.id === item.column_id)?.name ?? item.column_id}
                     </span>
-                    <span style={{ fontSize: 12, color: '#9ca3af', marginLeft: 8 }}>
+                    <span style={{ fontSize: 12, color: 'var(--text-3)', marginLeft: 8 }}>
                       derived from its work items
                     </span>
                   </div>
@@ -235,13 +235,13 @@ export function ItemDetailPanel({ item, columns, projectId, onClose, onEdit, onD
               <div style={{ ...sectionStyle, display: 'flex', gap: 8 }}>
                 <button
                   onClick={handleFlagToggle}
-                  style={{ background: item.flagged ? '#f59e0b' : undefined }}
+                  style={{ background: item.flagged ? 'var(--warning)' : undefined }}
                 >
                   {item.flagged ? '🚩 Unflag' : '🚩 Flag'}
                 </button>
                 <button
                   onClick={handleBlockToggle}
-                  style={{ background: item.blocked ? '#ef4444' : undefined, color: item.blocked ? '#fff' : undefined }}
+                  style={{ background: item.blocked ? 'var(--danger)' : undefined, color: item.blocked ? 'var(--on-accent)' : undefined }}
                 >
                   {item.blocked ? 'Unblock' : 'Block'}
                 </button>
@@ -264,9 +264,9 @@ export function ItemDetailPanel({ item, columns, projectId, onClose, onEdit, onD
               )}
 
               {item.blocked && item.blocked_reason && (
-                <div style={{ ...sectionStyle, background: '#fef2f2' }}>
+                <div style={{ ...sectionStyle, background: 'var(--danger-bg)' }}>
                   <strong style={{ fontSize: 14 }}>Blocked:</strong>{' '}
-                  <span style={{ fontSize: 14, color: '#991b1b' }}>{item.blocked_reason}</span>
+                  <span style={{ fontSize: 14, color: 'var(--danger-text)' }}>{item.blocked_reason}</span>
                 </div>
               )}
 
@@ -292,7 +292,7 @@ export function ItemDetailPanel({ item, columns, projectId, onClose, onEdit, onD
                           onClick={() => window.open(api.attachments.url(att.id), '_blank')}
                           style={{
                             height: 80, width: 80, objectFit: 'cover',
-                            borderRadius: 6, border: '1px solid #e5e7eb',
+                            borderRadius: 6, border: '1px solid var(--border)',
                             cursor: 'pointer', display: 'block',
                           }}
                         />
@@ -303,7 +303,7 @@ export function ItemDetailPanel({ item, columns, projectId, onClose, onEdit, onD
                             position: 'absolute', top: 2, right: 2,
                             width: 18, height: 18, padding: 0, lineHeight: '16px',
                             fontSize: 11, borderRadius: 9, border: 'none',
-                            background: 'rgba(0,0,0,0.55)', color: '#fff', cursor: 'pointer',
+                            background: 'var(--overlay)', color: 'var(--on-accent)', cursor: 'pointer',
                           }}
                         >
                           ✕
@@ -313,9 +313,9 @@ export function ItemDetailPanel({ item, columns, projectId, onClose, onEdit, onD
                     {uploadingCount > 0 && (
                       <div style={{
                         height: 80, width: 80, borderRadius: 6,
-                        border: '1px dashed #d1d5db', background: '#f9fafb',
+                        border: '1px dashed var(--border)', background: 'var(--surface-2)',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: 12, color: '#9ca3af',
+                        fontSize: 12, color: 'var(--text-3)',
                       }}>
                         Uploading…
                       </div>
@@ -325,7 +325,7 @@ export function ItemDetailPanel({ item, columns, projectId, onClose, onEdit, onD
               )}
 
               <div style={{ ...sectionStyle, marginTop: 'auto' }}>
-                <button onClick={handleDelete} style={{ color: 'red', width: '100%' }}>
+                <button onClick={handleDelete} style={{ color: 'var(--danger-text)', width: '100%' }}>
                   Delete item
                 </button>
               </div>

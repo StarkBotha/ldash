@@ -8,6 +8,7 @@ interface ProjectRow {
   name: string;
   description: string;
   prefix: string;
+  repo_path: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -18,6 +19,7 @@ function rowToProject(row: ProjectRow): Project {
     name: row.name,
     description: row.description,
     prefix: row.prefix,
+    repo_path: row.repo_path ?? null,
     created_at: row.created_at,
     updated_at: row.updated_at,
   };
@@ -40,17 +42,17 @@ export class ProjectService {
     return row ? rowToProject(row) : undefined;
   }
 
-  create(data: { name: string; description?: string }): Project {
+  create(data: { name: string; description?: string; repo_path?: string | null }): Project {
     const id = nanoid();
     const existing = this.db.prepare('SELECT prefix FROM projects').all() as { prefix: string }[];
     const prefix = derivePrefix(data.name, new Set(existing.map((r) => r.prefix)));
     this.db
-      .prepare('INSERT INTO projects (id, name, description, prefix) VALUES (?, ?, ?, ?)')
-      .run(id, data.name, data.description ?? '', prefix);
+      .prepare('INSERT INTO projects (id, name, description, prefix, repo_path) VALUES (?, ?, ?, ?, ?)')
+      .run(id, data.name, data.description ?? '', prefix, data.repo_path ?? null);
     return this.get(id) as Project;
   }
 
-  update(id: string, data: Partial<{ name: string; description: string }>): Project {
+  update(id: string, data: Partial<{ name: string; description: string; repo_path: string | null }>): Project {
     const fields: string[] = [];
     const values: unknown[] = [];
 
@@ -61,6 +63,10 @@ export class ProjectService {
     if (data.description !== undefined) {
       fields.push('description = ?');
       values.push(data.description);
+    }
+    if (data.repo_path !== undefined) {
+      fields.push('repo_path = ?');
+      values.push(data.repo_path);
     }
 
     fields.push("updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')");

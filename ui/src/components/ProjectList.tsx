@@ -21,7 +21,7 @@ export function ProjectList({ onSelectProject }: Props) {
   }
 
   if (isLoading) return <div style={{ padding: 24 }}>Loading projects…</div>;
-  if (error) return <div style={{ padding: 24, color: 'red' }}>Error loading projects</div>;
+  if (error) return <div style={{ padding: 24, color: 'var(--danger-text)' }}>Error loading projects</div>;
 
   return (
     <div style={{ padding: 24, maxWidth: 800, margin: '0 auto' }}>
@@ -31,7 +31,7 @@ export function ProjectList({ onSelectProject }: Props) {
       </div>
 
       {projects?.length === 0 && (
-        <p style={{ color: '#888' }}>No projects yet. Create one to get started.</p>
+        <p style={{ color: 'var(--text-2)' }}>No projects yet. Create one to get started.</p>
       )}
 
       <div style={{ display: 'grid', gap: 12 }}>
@@ -40,20 +40,20 @@ export function ProjectList({ onSelectProject }: Props) {
             key={project.id}
             onClick={() => onSelectProject(project.id)}
             style={{
-              border: '1px solid #ddd',
+              border: '1px solid var(--border)',
               borderRadius: 8,
               padding: 16,
               cursor: 'pointer',
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'flex-start',
-              background: '#fafafa',
+              background: 'var(--surface-2)',
             }}
           >
             <div>
               <strong>{project.name}</strong>
               {project.description && (
-                <p style={{ margin: '4px 0 0', color: '#666', fontSize: 15 }}>{project.description}</p>
+                <p style={{ margin: '4px 0 0', color: 'var(--text-2)', fontSize: 15 }}>{project.description}</p>
               )}
             </div>
             <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
@@ -68,7 +68,7 @@ export function ProjectList({ onSelectProject }: Props) {
               </button>
               <button
                 onClick={(e) => handleDelete(e, project)}
-                style={{ color: 'red' }}
+                style={{ color: 'var(--danger-text)' }}
               >
                 Delete
               </button>

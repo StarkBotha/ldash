@@ -9,6 +9,7 @@ const project = {
   name: 'demo',
   description: '',
   prefix: 'DEM',
+  repo_path: null,
   created_at: '2026-06-12T00:00:00Z',
   updated_at: '2026-06-12T00:00:00Z',
 };

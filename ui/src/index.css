@@ -2,14 +2,76 @@
   font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   font-size: 15px;
   line-height: 1.5;
-  color: #1f2937;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+
+  /* ===== Theme tokens — dark (the only active theme). =====
+     Every color in the app (this file + inline component styles) references
+     one of these. Adding another theme later = override these on a selector
+     like [data-theme="light"]; nothing else touches raw colors. */
+  color-scheme: dark;
+
+  /* Surfaces */
+  --bg: #0f1217;            /* app/page background */
+  --surface: #181c23;       /* cards, panels, inputs, popovers */
+  --surface-2: #232934;     /* raised / hover / active surface */
+  --surface-3: #12151b;     /* sunken / recessed panel (drawers, code wells) */
+
+  /* Borders */
+  --border: #2b313c;        /* default borders & dividers */
+  --border-strong: #3a4250; /* emphasised dividers, drag handles, dashed */
+  --border-subtle: #20252e; /* faint dividers */
+
+  /* Text */
+  --text: #e7e9ee;          /* primary text */
+  --text-2: #aab2bf;        /* secondary text */
+  --text-3: #79818f;        /* muted / placeholder / tertiary */
+
+  /* Brand / accent */
+  --accent: #3b82f6;
+  --accent-hover: #60a5fa;
+  --accent-strong: #2563eb;
+  --on-accent: #ffffff;     /* text/icon on an accent fill */
+  --link: #60a5fa;
+
+  /* Status — danger */
+  --danger: #ef4444;
+  --danger-text: #f87171;
+  --danger-bg: #2a1618;
+  --danger-border: #5a2a2d;
+
+  /* Status — success */
+  --success: #22c55e;
+  --success-text: #4ade80;
+
+  /* Status — warning */
+  --warning: #f59e0b;
+
+  /* Status — info (sky) */
+  --info: #38bdf8;
+  --info-text: #7dd3fc;
+  --info-bg: #0d1f2d;
+  --info-border: #1c3a4f;
+
+  /* Accent — teal / purple */
+  --teal: #2dd4bf;
+  --purple: #a78bfa;
+
+  /* Type-tinted container boundaries (epic / story children boxes on the board) */
+  --epic-border: #8b5cf6;   /* slightly darker than --purple */
+  --story-border: #2563eb;  /* slightly darker than --accent */
+
+  /* Overlays & shadow */
+  --overlay: rgba(0, 0, 0, 0.6);
+  --shadow: rgba(0, 0, 0, 0.45);
+
+  color: var(--text);
 }
 
 body {
   margin: 0;
-  background: #f3f4f6;
+  background: var(--bg);
+  color: var(--text);
 }
 
 /* Form controls don't inherit fonts by default */
@@ -29,25 +91,25 @@ button {
 
 .view-tabs {
   display: inline-flex;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--border);
   border-radius: 6px;
   overflow: hidden;
 }
 
 .view-tabs button {
   border: none;
-  background: #fff;
+  background: var(--surface);
   padding: 4px 12px;
-  color: #6b7280;
+  color: var(--text-2);
 }
 
 .view-tabs button + button {
-  border-left: 1px solid #d1d5db;
+  border-left: 1px solid var(--border);
 }
 
 .view-tabs button.active {
-  background: #e5e7eb;
-  color: #1f2937;
+  background: var(--surface-2);
+  color: var(--text);
   font-weight: 600;
   cursor: default;
 }
@@ -63,8 +125,8 @@ button {
 .kb-sidebar {
   width: 260px; /* default; overridden by the inline width the resizer drives */
   flex-shrink: 0;
-  border-right: 1px solid #ddd;
-  background: #fff;
+  border-right: 1px solid var(--border);
+  background: var(--surface);
   padding: 12px;
   overflow-y: auto;
   display: flex;
@@ -80,14 +142,14 @@ button {
 }
 
 .kb-resizer:hover {
-  background: #d1d5db;
+  background: var(--border-strong);
 }
 
 .kb-chat-drawer {
   width: 380px;
   flex-shrink: 0;
-  border-left: 1px solid #ddd;
-  background: #fafafa;
+  border-left: 1px solid var(--border);
+  background: var(--surface-3);
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -98,8 +160,8 @@ button {
   align-items: center;
   gap: 6px;
   padding: 8px 12px;
-  border-bottom: 1px solid #ddd;
-  background: #fff;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
   font-size: 15px;
 }
 
@@ -111,15 +173,15 @@ button {
   width: 100%;
   box-sizing: border-box;
   padding: 6px 28px 6px 10px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--border);
   border-radius: 6px;
   font-size: 13px;
-  color: #1f2937;
-  background: #fff;
+  color: var(--text);
+  background: var(--surface);
 }
 
 .kb-search-input::placeholder {
-  color: #9ca3af;
+  color: var(--text-3);
 }
 
 .kb-search-clear {
@@ -129,7 +191,7 @@ button {
   transform: translateY(-50%);
   border: none;
   background: none;
-  color: #9ca3af;
+  color: var(--text-3);
   padding: 2px 6px;
   font-size: 12px;
   line-height: 1;
@@ -137,8 +199,8 @@ button {
 }
 
 .kb-search-clear:hover {
-  color: #374151;
-  background: #f3f4f6;
+  color: var(--text);
+  background: var(--surface-2);
 }
 
 /* Search hits stack a title over a snippet, so the one-line ellipsis rule
@@ -159,7 +221,7 @@ button {
 
 .kb-search-result-snippet {
   font-size: 12px;
-  color: #6b7280;
+  color: var(--text-2);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -171,7 +233,7 @@ button {
   align-items: center;
   gap: 6px;
   font-size: 12px;
-  color: #6b7280;
+  color: var(--text-2);
   user-select: none;
 }
 
@@ -185,9 +247,9 @@ button {
   margin-left: 6px;
   padding: 1px 5px;
   font-size: 11px;
-  color: #6b7280;
-  background: #f3f4f6;
-  border: 1px solid #e5e7eb;
+  color: var(--text-2);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
   border-radius: 4px;
   white-space: nowrap;
 }
@@ -203,7 +265,7 @@ button {
 .kb-doc-key {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 11px;
-  color: #6b7280;
+  color: var(--text-2);
   white-space: nowrap;
 }
 
@@ -225,19 +287,19 @@ button {
 
 .kb-new-doc {
   padding: 6px 10px;
-  border: 1px dashed #9ca3af;
+  border: 1px dashed var(--border-strong);
   border-radius: 6px;
   background: none;
-  color: #374151;
+  color: var(--text);
   text-align: left;
 }
 
 .kb-new-doc:hover {
-  background: #f3f4f6;
+  background: var(--surface-2);
 }
 
 .kb-sidebar-empty {
-  color: #9ca3af;
+  color: var(--text-3);
   font-size: 13px;
   padding: 8px 4px;
 }
@@ -262,22 +324,22 @@ button {
   background: none;
   padding: 6px 8px;
   border-radius: 6px;
-  color: #1f2937;
+  color: var(--text);
 }
 
 .kb-doc-list button:hover {
-  background: #f3f4f6;
+  background: var(--surface-2);
 }
 
 .kb-doc-list button.active {
-  background: #e5e7eb;
+  background: var(--surface-2);
   font-weight: 600;
 }
 
 .kb-pinned-section {
   margin-bottom: 8px;
   padding-bottom: 8px;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .kb-section-label {
@@ -285,7 +347,7 @@ button {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: #9ca3af;
+  color: var(--text-3);
   padding: 4px 8px;
 }
 
@@ -301,7 +363,7 @@ button {
 }
 
 .kb-empty {
-  color: #9ca3af;
+  color: var(--text-3);
   padding: 48px 24px;
   text-align: center;
 }
@@ -309,8 +371,8 @@ button {
 .kb-doc {
   max-width: 1280px;
   margin: 0 auto;
-  background: #fff;
-  border: 1px solid #ddd;
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 8px;
   padding: 24px 32px;
 }
@@ -328,7 +390,7 @@ button {
   font-size: 26px;
   font-weight: 700;
   line-height: 1.25;
-  color: #111827;
+  color: var(--text);
 }
 
 /* ---- Knowledgebase editor ---- */
@@ -344,22 +406,26 @@ button {
 
 .kb-title-input {
   padding: 8px 10px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--border);
   border-radius: 6px;
   font-size: 18px;
   font-weight: 600;
+  background: var(--surface);
+  color: var(--text);
 }
 
 .kb-content-input {
   flex: 1;
   min-height: 320px;
   padding: 10px 12px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--border);
   border-radius: 6px;
   resize: vertical;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 13px;
   line-height: 1.6;
+  background: var(--surface);
+  color: var(--text);
 }
 
 .kb-editor-actions {
@@ -387,7 +453,7 @@ button {
 
 .kb-markdown h1 {
   font-size: 26px;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--border);
   padding-bottom: 6px;
 }
 
@@ -410,27 +476,27 @@ button {
 }
 
 .kb-markdown a {
-  color: #2563eb;
+  color: var(--link);
 }
 
 .kb-markdown blockquote {
   margin: 0.8em 0;
   padding: 2px 14px;
-  border-left: 3px solid #d1d5db;
-  color: #6b7280;
+  border-left: 3px solid var(--border);
+  color: var(--text-2);
 }
 
 .kb-markdown code {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 13px;
-  background: #f3f4f6;
+  background: var(--surface-2);
   border-radius: 4px;
   padding: 1px 5px;
 }
 
 .kb-markdown pre {
-  background: #1f2937;
-  color: #f3f4f6;
+  background: var(--surface-3);
+  color: var(--text);
   border-radius: 8px;
   padding: 14px 16px;
   overflow-x: auto;
@@ -450,18 +516,18 @@ button {
 
 .kb-markdown th,
 .kb-markdown td {
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--border);
   padding: 6px 12px;
   text-align: left;
 }
 
 .kb-markdown th {
-  background: #f3f4f6;
+  background: var(--surface-2);
 }
 
 .kb-markdown hr {
   border: none;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid var(--border);
   margin: 1.5em 0;
 }
 
@@ -482,7 +548,7 @@ button {
 }
 
 .kb-mermaid-loading {
-  color: #9ca3af;
+  color: var(--text-3);
   font-size: 13px;
 }
 
@@ -491,7 +557,7 @@ button {
 }
 
 .kb-mermaid-error-note {
-  color: #b91c1c;
+  color: var(--danger-text);
   font-size: 13px;
   margin-top: 4px;
 }
@@ -508,19 +574,19 @@ button {
   width: 18px;
   height: 18px;
   padding: 0;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--border);
   border-radius: 50%;
-  background: #fff;
-  color: #9ca3af;
+  background: var(--surface);
+  color: var(--text-3);
   font-size: 11px;
   line-height: 1;
   cursor: pointer;
 }
 
 .help-tip-button:hover {
-  color: #374151;
-  border-color: #9ca3af;
-  background: #f3f4f6;
+  color: var(--text);
+  border-color: var(--border-strong);
+  background: var(--surface-2);
 }
 
 .help-tip-panel {
@@ -531,13 +597,13 @@ button {
   width: 280px;
   box-sizing: border-box;
   padding: 10px 12px;
-  background: #fff;
-  border: 1px solid #ddd;
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 6px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 2px 8px var(--shadow);
   font-size: 13px;
   line-height: 1.45;
-  color: #374151;
+  color: var(--text);
   text-align: left;
 }
 
@@ -575,4 +641,3 @@ button {
   flex: 1;
   min-width: 0;
 }
-

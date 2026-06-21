@@ -195,7 +195,15 @@ export function itemsRouter(
       throw makeError('Body must contain at least one of: title, description, parent_id, type', 400);
     }
 
-    const updated = itemService.update(id, updateData);
+    let updated;
+    try {
+      updated = itemService.update(id, updateData);
+    } catch (err) {
+      if (err instanceof Error && /own parent|parent cycle/.test(err.message)) {
+        return c.json({ error: err.message }, 409);
+      }
+      throw err;
+    }
 
     activityService.append({
       project_id: existing.project_id,

@@ -160,7 +160,11 @@ export function KnowledgeBase({ projectId, docKey, onSelectDoc, onBack, onShowBo
   const updateDoc = useUpdateKbDoc(projectId);
   const deleteDoc = useDeleteKbDoc(projectId);
 
-  const sortedDocs = [...(docs ?? [])].sort((a, b) => a.title.localeCompare(b.title));
+  // Sort by key, numeric-aware so LDA-KB-2 sorts before LDA-KB-10 (a plain
+  // string sort would order it KB-1, KB-10, KB-11, …, KB-2).
+  const sortedDocs = [...(docs ?? [])].sort((a, b) =>
+    a.key.localeCompare(b.key, undefined, { numeric: true })
+  );
   // Pinned docs surface at the top of the sidebar and stay visible even while a
   // search/filter is active — so they're rendered from the full doc list, not
   // from the (possibly filtered) search results, and excluded everywhere else
@@ -264,11 +268,11 @@ export function KnowledgeBase({ projectId, docKey, onSelectDoc, onBack, onShowBo
       <div
         style={{
           padding: '12px 72px 12px 24px', // right padding clears the global settings gear
-          borderBottom: '1px solid #ddd',
+          borderBottom: '1px solid var(--border)',
           display: 'flex',
           alignItems: 'center',
           gap: 12,
-          background: '#fff',
+          background: 'var(--surface)',
         }}
       >
         <button onClick={onBack}>← Back</button>

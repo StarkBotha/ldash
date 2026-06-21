@@ -19,7 +19,8 @@ export function useProject(id: string) {
 export function useCreateProject() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (data: { name: string; description?: string }) => api.projects.create(data),
+    mutationFn: (data: { name: string; description?: string; repo_path?: string | null }) =>
+      api.projects.create(data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['projects'] }),
   });
 }
@@ -27,7 +28,7 @@ export function useCreateProject() {
 export function useUpdateProject() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: Partial<{ name: string; description: string }> }) =>
+    mutationFn: ({ id, data }: { id: string; data: Partial<{ name: string; description: string; repo_path: string | null }> }) =>
       api.projects.update(id, data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['projects'] }),
   });

@@ -28,8 +28,9 @@ export function Mermaid({ code }: Props) {
       try {
         const mermaid = (await import('mermaid')).default;
         if (!initialized) {
-          // 'neutral' matches the app's light gray look
-          mermaid.initialize({ startOnLoad: false, theme: 'neutral' });
+          // 'dark' matches the app's dark theme so diagrams don't render on a
+          // bright white background
+          mermaid.initialize({ startOnLoad: false, theme: 'dark' });
           initialized = true;
         }
         const result = await mermaid.render(id, code);

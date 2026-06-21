@@ -151,8 +151,27 @@ export class ItemService {
       values.push(data.description);
     }
     if ('parent_id' in data) {
+      const newParent = data.parent_id ?? null;
+      if (newParent !== null) {
+        if (newParent === id) {
+          throw new Error('An item cannot be its own parent');
+        }
+        // Walk the proposed parent's ancestry; reaching `id` means this edit
+        // would create a parent cycle (which would hang any parent-walk). The
+        // visited set also stops us looping on pre-existing bad data.
+        const seen = new Set<string>();
+        let cursor: string | null = newParent;
+        while (cursor !== null) {
+          if (cursor === id) {
+            throw new Error('Setting this parent would create a parent cycle');
+          }
+          if (seen.has(cursor)) break;
+          seen.add(cursor);
+          cursor = this.get(cursor)?.parent_id ?? null;
+        }
+      }
       fields.push('parent_id = ?');
-      values.push(data.parent_id ?? null);
+      values.push(newParent);
     }
 
     fields.push("updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')");
