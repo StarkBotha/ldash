@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useProject } from '../hooks/useProjects';
 import { useColumns, useItems } from '../hooks/useBoard';
 import { useSSE } from '../hooks/useSSE';
-import { Column } from './Column';
+import { Column, CollapsedLane } from './Column';
 import { ConnectionIndicator } from './ConnectionIndicator';
 import { HelpTip } from './HelpTip';
 import { ItemDetailPanel } from './ItemDetailPanel';
@@ -10,7 +10,13 @@ import { ItemForm } from './ItemForm';
 import { ProjectForm } from './ProjectForm';
 import { PlanView } from './PlanView';
 import { triggerExport } from '../api/export';
+import { isWorkItemType } from '../types';
 import type { Item, ItemType } from '../types';
+
+// Below this viewport width the board can't fit all five lanes, so the
+// Review/Done/Cancelled lanes collapse to slim expandable rails — only Backlog
+// and In Progress stay open by default.
+const NARROW_BREAKPOINT = 900;
 
 interface Props {
   projectId: string;
@@ -48,6 +54,12 @@ export function Board({ projectId, onBack, onShowKb }: Props) {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   // Done column shows only items moved to Done today; this reveals all of them.
   const [showAllDone, setShowAllDone] = useState(false);
+  // On narrow viewports the Review/Done/Cancelled lanes collapse to rails; this
+  // tracks which of them the user has manually expanded.
+  const [expandedLanes, setExpandedLanes] = useState<Set<string>>(new Set());
+  const [isNarrow, setIsNarrow] = useState(
+    () => typeof window !== 'undefined' && window.innerWidth <= NARROW_BREAKPOINT
+  );
   // Brief "Copied!" feedback after clicking the repo-path chip in the header.
   const [copiedPath, setCopiedPath] = useState(false);
   // Tracks the project whose collapse defaults have been applied, so the
@@ -55,12 +67,22 @@ export function Board({ projectId, onBack, onShowKb }: Props) {
   const collapseInitRef = useRef<string | null>(null);
   const { status } = useSSE(projectId);
 
+  // Track whether the viewport is narrow enough to collapse secondary lanes.
+  useEffect(() => {
+    const mq = window.matchMedia(`(max-width: ${NARROW_BREAKPOINT}px)`);
+    const onChange = () => setIsNarrow(mq.matches);
+    onChange();
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
+
   // Reset filters when switching projects
   useEffect(() => {
     setEpicFilter('all');
     setSearch('');
     setCollapsed(new Set());
     setShowAllDone(false);
+    setExpandedLanes(new Set());
     collapseInitRef.current = null;
   }, [projectId]);
 
@@ -103,6 +125,11 @@ export function Board({ projectId, onBack, onShowKb }: Props) {
   // The Done column is the last column whose role is not 'cancelled' (mirrors
   // the server's rollup rule). Its cards are filtered to "moved today" by default.
   const doneColId = [...sortedColumns].reverse().find((c) => c.role !== 'cancelled')?.id;
+
+  // Lanes that collapse to rails on a narrow viewport: everything past In
+  // Progress (index 1) — i.e. Review, Done and Cancelled. Backlog and In
+  // Progress always stay open.
+  const collapsibleColIds = new Set(sortedColumns.filter((_, idx) => idx > 1).map((c) => c.id));
 
   const allItems = items ?? [];
 
@@ -147,6 +174,28 @@ export function Board({ projectId, onBack, onShowKb }: Props) {
     });
   }
 
+  // The items shown in a given lane (the Done column hides items not moved there
+  // today unless "show all done" is on). Shared by the full lane and its rail count.
+  function itemsForColumn(col: { id: string }): Item[] {
+    return searchedItems.filter((item) => {
+      if (item.column_id !== col.id) return false;
+      if (col.id === doneColId && !showAllDone && !isToday(item.column_changed_at)) return false;
+      return true;
+    });
+  }
+
+  function expandLane(colId: string) {
+    setExpandedLanes((prev) => new Set(prev).add(colId));
+  }
+
+  function collapseLane(colId: string) {
+    setExpandedLanes((prev) => {
+      const next = new Set(prev);
+      next.delete(colId);
+      return next;
+    });
+  }
+
   function openNewItemForm(colId: string, opts?: { parentId?: string; type?: ItemType }) {
     setItemFormColId(colId);
     setItemFormParentId(opts?.parentId ?? '');
@@ -171,6 +220,7 @@ export function Board({ projectId, onBack, onShowKb }: Props) {
         padding: '12px 72px 12px 24px', // right padding clears the global settings gear
         borderBottom: '1px solid var(--border)',
         display: 'flex',
+        flexWrap: 'wrap', // narrow widths wrap controls to new rows instead of overflowing off-screen
         alignItems: 'center',
         gap: 12,
         background: 'var(--surface)',
@@ -279,28 +329,39 @@ export function Board({ projectId, onBack, onShowKb }: Props) {
       </div>
 
       <div style={{ flex: 1, display: 'flex', overflowX: 'auto', padding: 16, gap: 16 }}>
-        {sortedColumns.map((col) => (
-          <Column
-            key={col.id}
-            column={col}
-            items={searchedItems.filter((item) => {
-              if (item.column_id !== col.id) return false;
-              // In the Done column, hide items not moved there today unless the
-              // user opted to show all. Other columns are unaffected.
-              if (col.id === doneColId && !showAllDone && !isToday(item.column_changed_at)) {
-                return false;
+        {sortedColumns.map((col) => {
+          const laneItems = itemsForColumn(col);
+          // On a narrow viewport, a collapsible lane the user hasn't expanded
+          // shows as a slim rail instead of a full column.
+          const railed = isNarrow && collapsibleColIds.has(col.id) && !expandedLanes.has(col.id);
+          if (railed) {
+            return (
+              <CollapsedLane
+                key={col.id}
+                column={col}
+                count={laneItems.filter((i) => isWorkItemType(i.type)).length}
+                onExpand={() => expandLane(col.id)}
+              />
+            );
+          }
+          return (
+            <Column
+              key={col.id}
+              column={col}
+              items={laneItems}
+              allItems={allItems}
+              collapsedIds={collapsed}
+              onToggleCollapse={toggleCollapse}
+              onCardClick={(item) => setSelectedItem(item)}
+              onNewItem={() => openNewItemForm(col.id, { type: 'story' })}
+              onAddChild={openAddChildForm}
+              isFirstColumn={col.id === sortedColumns[0]?.id}
+              onCollapseLane={
+                isNarrow && collapsibleColIds.has(col.id) ? () => collapseLane(col.id) : undefined
               }
-              return true;
-            })}
-            allItems={allItems}
-            collapsedIds={collapsed}
-            onToggleCollapse={toggleCollapse}
-            onCardClick={(item) => setSelectedItem(item)}
-            onNewItem={() => openNewItemForm(col.id, { type: 'story' })}
-            onAddChild={openAddChildForm}
-            isFirstColumn={col.id === sortedColumns[0]?.id}
-          />
-        ))}
+            />
+          );
+        })}
       </div>
 
       <ConnectionIndicator status={status} />

@@ -270,6 +270,7 @@ export function KnowledgeBase({ projectId, docKey, onSelectDoc, onBack, onShowBo
           padding: '12px 72px 12px 24px', // right padding clears the global settings gear
           borderBottom: '1px solid var(--border)',
           display: 'flex',
+          flexWrap: 'wrap', // narrow widths wrap controls to new rows instead of overflowing off-screen
           alignItems: 'center',
           gap: 12,
           background: 'var(--surface)',

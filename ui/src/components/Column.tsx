@@ -41,6 +41,9 @@ interface Props {
   onAddChild: (parent: Item) => void;
   /** True for the Backlog (first) lane — where completely empty epics are shown. */
   isFirstColumn: boolean;
+  /** When set, the lane is collapsible (narrow viewport) — renders a "‹" handle
+   *  in the header that collapses this lane back to a slim rail. */
+  onCollapseLane?: () => void;
 }
 
 /** Walk parent_id up to find the root epic ancestor id, or null if none.
@@ -204,7 +207,55 @@ export function buildGroups(
   return result;
 }
 
-export function Column({ column, items, allItems, collapsedIds, onToggleCollapse, onCardClick, onNewItem, onAddChild, isFirstColumn }: Props) {
+/** Slim, clickable rail shown in place of a full lane on narrow viewports.
+ *  Clicking it expands the lane back to a full column. */
+export function CollapsedLane({
+  column,
+  count,
+  onExpand,
+}: {
+  column: ColumnType;
+  count: number;
+  onExpand: () => void;
+}) {
+  const isCancelled = column.role === 'cancelled';
+  return (
+    <button
+      onClick={onExpand}
+      title={`Expand ${column.name}`}
+      style={{
+        flex: '0 0 auto',
+        width: 40,
+        alignSelf: 'stretch',
+        background: 'var(--surface-2)',
+        border: 'none',
+        borderRadius: 8,
+        cursor: 'pointer',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: 10,
+        padding: '12px 0',
+        color: isCancelled ? 'var(--text-3)' : 'var(--text-2)',
+      }}
+    >
+      <span style={{ fontSize: 12 }}>▸</span>
+      <span style={{ fontSize: 13 }}>{count}</span>
+      <span
+        style={{
+          writingMode: 'vertical-rl',
+          fontWeight: 600,
+          whiteSpace: 'nowrap',
+          letterSpacing: '0.03em',
+        }}
+      >
+        {column.name}
+      </span>
+    </button>
+  );
+}
+
+export function Column({ column, items, allItems, collapsedIds, onToggleCollapse, onCardClick, onNewItem, onAddChild, isFirstColumn, onCollapseLane }: Props) {
   const groups = buildGroups(items, allItems, isFirstColumn);
   const isCancelled = column.role === 'cancelled';
   // Count the actual work items (leaves) in the lane — stories/epics are
@@ -233,6 +284,15 @@ export function Column({ column, items, allItems, collapsedIds, onToggleCollapse
         alignItems: 'center',
         borderBottom: '1px solid var(--border)',
       }}>
+        {onCollapseLane && (
+          <button
+            onClick={onCollapseLane}
+            style={{ marginRight: 6, padding: '0 6px', fontSize: 14, cursor: 'pointer' }}
+            title={`Collapse ${column.name}`}
+          >
+            ‹
+          </button>
+        )}
         <span style={{ fontWeight: 600, color: isCancelled ? 'var(--text-3)' : undefined }}>{column.name}</span>
         <span style={{ color: 'var(--text-2)', fontSize: 14 }}>{workItemCount}</span>
         <button
