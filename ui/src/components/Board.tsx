@@ -3,6 +3,7 @@ import { useProject } from '../hooks/useProjects';
 import { useColumns, useItems } from '../hooks/useBoard';
 import { useSSE } from '../hooks/useSSE';
 import { Column, CollapsedLane } from './Column';
+import { HeaderMenu } from './HeaderMenu';
 import { ConnectionIndicator } from './ConnectionIndicator';
 import { HelpTip } from './HelpTip';
 import { ItemDetailPanel } from './ItemDetailPanel';
@@ -13,15 +14,17 @@ import { triggerExport } from '../api/export';
 import { isWorkItemType } from '../types';
 import type { Item, ItemType } from '../types';
 
-// Below this viewport width the board can't fit all five lanes, so the
-// Review/Done/Cancelled lanes collapse to slim expandable rails — only Backlog
-// and In Progress stay open by default.
-const NARROW_BREAKPOINT = 900;
+// Five lanes at the 280px readable minimum need ~1496px (5×280 + 4×16 gaps +
+// 2×16 padding). Below that the board would otherwise scroll horizontally, so
+// the Review/Done/Cancelled lanes collapse to slim expandable rails instead —
+// only Backlog and In Progress stay open by default.
+const NARROW_BREAKPOINT = 1500;
 
 interface Props {
   projectId: string;
   onBack: () => void;
   onShowKb: () => void;
+  onOpenSettings: () => void;
 }
 
 /** True if an ISO timestamp falls on the current local calendar day. */
@@ -36,7 +39,7 @@ function isToday(iso: string | undefined): boolean {
   );
 }
 
-export function Board({ projectId, onBack, onShowKb }: Props) {
+export function Board({ projectId, onBack, onShowKb, onOpenSettings }: Props) {
   const { data: project } = useProject(projectId);
   const { data: columns, isLoading: colsLoading } = useColumns();
   const { data: items, isLoading: itemsLoading } = useItems(projectId);
@@ -262,17 +265,6 @@ export function Board({ projectId, onBack, onShowKb }: Props) {
           <button className="active" disabled>Board</button>
           <button onClick={onShowKb}>Knowledgebase</button>
         </div>
-        <button onClick={() => setShowProjectForm(true)}>Edit</button>
-        <select
-          value={epicFilter}
-          onChange={(e) => setEpicFilter(e.target.value)}
-          style={{ marginLeft: 8 }}
-        >
-          <option value="all">All items</option>
-          {epics.map((epic) => (
-            <option key={epic.id} value={epic.id}>{epic.title}</option>
-          ))}
-        </select>
         <input
           type="search"
           placeholder="Search tickets…"
@@ -290,41 +282,76 @@ export function Board({ projectId, onBack, onShowKb }: Props) {
             show everything.
           </p>
         </HelpTip>
-        <label style={{ marginLeft: 8, fontSize: 13, display: 'flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}>
-          <input
-            type="checkbox"
-            checked={showAllDone}
-            onChange={(e) => setShowAllDone(e.target.checked)}
-          />
-          Show all done
-        </label>
-        <HelpTip>
-          <p>
-            By default the <strong>Done</strong> column shows only items moved there today, so it
-            doesn't grow without bound. Tick this to show every done item.
-          </p>
-          <p>
-            This composes with search and the epic filter — searching still respects the "today"
-            limit unless this box is ticked.
-          </p>
-        </HelpTip>
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
-          <button onClick={() => setIsPlanningMode(true)}>Plan</button>
-          <button
-            onClick={async () => {
-              try {
-                const result = await triggerExport(projectId);
-                window.alert('Exported to: ' + result.outputDir);
-              } catch (err: unknown) {
-                window.alert('Export failed: ' + (err instanceof Error ? err.message : String(err)));
-              }
-            }}
-          >
-            Export
-          </button>
-          <button onClick={() => openNewItemForm(sortedColumns[0]?.id ?? '', { type: 'story' })}>
-            New item
-          </button>
+
+        {/* Everything else lives behind the hamburger to keep the header tidy. */}
+        <div style={{ marginLeft: 'auto' }}>
+          <HeaderMenu label="Board menu">
+            {(close) => (
+              <>
+                <button
+                  className="header-menu-item"
+                  onClick={() => { openNewItemForm(sortedColumns[0]?.id ?? '', { type: 'story' }); close(); }}
+                >
+                  ＋ New item
+                </button>
+                <button
+                  className="header-menu-item"
+                  onClick={() => { setIsPlanningMode(true); close(); }}
+                >
+                  ✦ Plan
+                </button>
+                <button
+                  className="header-menu-item"
+                  onClick={async () => {
+                    close();
+                    try {
+                      const result = await triggerExport(projectId);
+                      window.alert('Exported to: ' + result.outputDir);
+                    } catch (err: unknown) {
+                      window.alert('Export failed: ' + (err instanceof Error ? err.message : String(err)));
+                    }
+                  }}
+                >
+                  ⇩ Export
+                </button>
+                <button
+                  className="header-menu-item"
+                  onClick={() => { setShowProjectForm(true); close(); }}
+                >
+                  ✎ Edit project
+                </button>
+
+                <div className="header-menu-divider" />
+
+                <div className="header-menu-section">Filter</div>
+                <div className="header-menu-field">
+                  <select value={epicFilter} onChange={(e) => setEpicFilter(e.target.value)}>
+                    <option value="all">All items</option>
+                    {epics.map((epic) => (
+                      <option key={epic.id} value={epic.id}>{epic.title}</option>
+                    ))}
+                  </select>
+                </div>
+                <label className="header-menu-item" style={{ cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={showAllDone}
+                    onChange={(e) => setShowAllDone(e.target.checked)}
+                  />
+                  Show all done
+                </label>
+
+                <div className="header-menu-divider" />
+
+                <button
+                  className="header-menu-item"
+                  onClick={() => { onOpenSettings(); close(); }}
+                >
+                  ⚙ Settings
+                </button>
+              </>
+            )}
+          </HeaderMenu>
         </div>
       </div>
 

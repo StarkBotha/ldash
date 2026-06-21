@@ -615,6 +615,93 @@ button {
   margin-bottom: 0;
 }
 
+/* ---- Header hamburger menu (project page headers) ---- */
+
+.header-menu {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+.header-menu-button {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 16px;
+  line-height: 1;
+  color: var(--text-2);
+  cursor: pointer;
+}
+
+.header-menu-button:hover {
+  color: var(--text);
+  border-color: var(--border-strong);
+  background: var(--surface-2);
+}
+
+.header-menu-panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 1000;
+  min-width: 230px;
+  box-sizing: border-box;
+  padding: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: left;
+}
+
+/* A full-width clickable row (buttons and label+control rows share this). */
+.header-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 7px 10px;
+  border: none;
+  background: none;
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+
+button.header-menu-item:hover {
+  background: var(--surface-2);
+}
+
+.header-menu-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 4px 2px;
+}
+
+.header-menu-section {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-3);
+  padding: 6px 10px 2px;
+}
+
+.header-menu-field {
+  padding: 2px 10px 8px;
+}
+
+.header-menu-field select {
+  width: 100%;
+  box-sizing: border-box;
+}
+
 /* In the kb sidebar a 280px right-anchored panel would spill past the sidebar's
    left edge and get clipped by its overflow — anchor the panel to the full
    .kb-search row instead so it fits inside the 260px sidebar. */

@@ -68,24 +68,27 @@ export function App() {
 
   return (
     <>
-      {/* Gear icon always visible in top-right */}
-      <button
-        onClick={() => setShowSettings(true)}
-        title="Settings"
-        style={{
-          position: 'fixed',
-          top: 12,
-          right: 16,
-          background: 'none',
-          border: 'none',
-          cursor: 'pointer',
-          fontSize: 20,
-          zIndex: 900,
-          color: 'var(--text-2)',
-        }}
-      >
-        ⚙
-      </button>
+      {/* On the project list there's no header menu, so the gear floats top-right.
+          Inside a project, Settings lives in that view's hamburger menu instead. */}
+      {!selectedProject && (
+        <button
+          onClick={() => setShowSettings(true)}
+          title="Settings"
+          style={{
+            position: 'fixed',
+            top: 12,
+            right: 16,
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            fontSize: 20,
+            zIndex: 900,
+            color: 'var(--text-2)',
+          }}
+        >
+          ⚙
+        </button>
+      )}
 
       {showSettings && (
         <SettingsPage onClose={() => setShowSettings(false)} />
@@ -105,12 +108,14 @@ export function App() {
             }
             onBack={() => navigate('/')}
             onShowBoard={() => navigate(projectPath(selectedProject.name, 'board'))}
+            onOpenSettings={() => setShowSettings(true)}
           />
         ) : (
           <Board
             projectId={selectedProject.id}
             onBack={() => navigate('/')}
             onShowKb={() => navigate(projectPath(selectedProject.name, 'kb'))}
+            onOpenSettings={() => setShowSettings(true)}
           />
         )
       ) : routeName && !projects ? (

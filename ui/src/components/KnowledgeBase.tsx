@@ -7,6 +7,7 @@ import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
 import { useProject } from '../hooks/useProjects';
 import { getSettings } from '../api/settings';
 import { ChatPanel } from './ChatPanel';
+import { HeaderMenu } from './HeaderMenu';
 import {
   useKbDocs,
   useKbDoc,
@@ -36,6 +37,7 @@ interface Props {
   onSelectDoc: (docKey: string | null) => void;
   onBack: () => void;
   onShowBoard: () => void;
+  onOpenSettings: () => void;
 }
 
 // Sanitize schema for rendering KB markdown that may contain raw HTML (e.g.
@@ -81,7 +83,7 @@ const markdownComponents: Components = {
   },
 };
 
-export function KnowledgeBase({ projectId, docKey, onSelectDoc, onBack, onShowBoard }: Props) {
+export function KnowledgeBase({ projectId, docKey, onSelectDoc, onBack, onShowBoard, onOpenSettings }: Props) {
   const { data: project } = useProject(projectId);
   const { data: docs, isLoading } = useKbDocs(projectId);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -284,13 +286,21 @@ export function KnowledgeBase({ projectId, docKey, onSelectDoc, onBack, onShowBo
             Knowledgebase
           </button>
         </div>
-        <button
-          className="kb-chat-toggle"
-          onClick={() => setChatOpen((v) => !v)}
-          style={{ marginLeft: 'auto' }}
-        >
-          {chatOpen ? 'Close chat' : '💬 Ask the KB'}
-        </button>
+        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <button className="kb-chat-toggle" onClick={() => setChatOpen((v) => !v)}>
+            {chatOpen ? 'Close chat' : '💬 Ask the KB'}
+          </button>
+          <HeaderMenu label="Knowledgebase menu">
+            {(close) => (
+              <button
+                className="header-menu-item"
+                onClick={() => { onOpenSettings(); close(); }}
+              >
+                ⚙ Settings
+              </button>
+            )}
+          </HeaderMenu>
+        </div>
       </div>
 
       <div className="kb-layout">

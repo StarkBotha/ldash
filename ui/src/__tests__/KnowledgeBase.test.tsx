@@ -98,6 +98,7 @@ function renderKb(docKey: string | null = null) {
         }}
         onBack={() => {}}
         onShowBoard={() => {}}
+        onOpenSettings={() => {}}
       />
     </QueryClientProvider>
   );
